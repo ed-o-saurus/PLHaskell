@@ -1,0 +1,4 @@
+# PL/Haskell extension
+comment = 'PL/Haskell procedural language'
+default_version = '1.0'
+module_pathname = '$libdir/plhaskell.so'
