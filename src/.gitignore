@@ -1,0 +1,6 @@
+*.hi
+*.dyn_hi
+*_stub.h
+*.hs
+*.o
+*.so
