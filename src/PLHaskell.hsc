@@ -491,7 +491,3 @@ listEmpty pCallInfo = do
 foreign export capi runFunction :: StablePtr (IO ()) -> IO ()
 runFunction :: StablePtr (IO ()) -> IO ()
 runFunction = join . deRefStablePtr
-
-
-
-
