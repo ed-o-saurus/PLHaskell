@@ -18,6 +18,8 @@ This document assumes that the reader is familiar with PostgreSQL (specifically 
 
 ## Build and Install
 
+This extension is intended to be build and installed in a Linux environment. It has only been tested on the x86-64 architecture. 
+
 The following are needed to build and install PL/Haskell:
 * PostgreSQL server
 * PostgreSQL development files
