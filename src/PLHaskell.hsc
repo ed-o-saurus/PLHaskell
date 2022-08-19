@@ -333,8 +333,8 @@ readArgDef pValueInfo = do
             | typ == (#const COMPOSITE_TYPE) = do
                 CShort count <- (#peek struct ValueInfo, Count) pValueInfo
                 fieldsDef <- mapM getFieldDef [0 .. count-1]
-                return ("\\pValueInfo -> do {isNull <- readIsNull pValueInfo; if isNull; then return Prelude.Nothing; else do {" ++
-                    concat fieldsDef ++ "return (Prelude.Just (" ++ intercalate ", " (map (interpolate "field?") [0 .. count-1]) ++ "))}}")
+                return ("\\pValueInfo -> do {isNull <- readIsNull pValueInfo; if isNull; then Prelude.return Prelude.Nothing; else do {" ++
+                    concat fieldsDef ++ "Prelude.return (Prelude.Just (" ++ intercalate ", " (map (interpolate "field?") [0 .. count-1]) ++ "))}}")
             | otherwise = error "Bad Type"
     def
 
