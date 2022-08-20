@@ -530,8 +530,8 @@ Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull)
 static void Enter(void) __attribute__((constructor));
 static void Enter(void)
 {
-	int new_fn;
-	int stderr_pipefd[2];
+    int new_fn;
+    int stderr_pipefd[2];
     char GHC_PackagePath[MAXPGPATH+18];
     static char *argv[] = {"PLHaskell", "+RTS", "--install-signal-handlers=no", "-RTS"}; // Configuration for the RTS
     static int argc = sizeof(argv) / sizeof(char*);
@@ -553,10 +553,9 @@ static void Enter(void)
     stderr_pipe_fn = stderr_pipefd[0];
 
     fflush(stderr);
-    new_fn = stderr_pipefd[1];
 
-    dup2(new_fn, STDERR_FILENO);
-    close(new_fn);
+    dup2(stderr_pipefd[1], STDERR_FILENO);
+    close(stderr_pipefd[1]);
 
     atexit(exit_function); // Used to collect error information if the RTS terminates the process. 
 }
