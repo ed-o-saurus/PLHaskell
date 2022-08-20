@@ -47,7 +47,7 @@ As root, run `uninstall.sh`.
 
 ### Testing
 
-A test battery is provided in the `test.sql` file in the root directory. It can be run with the command
+A test battery is provided in the `tests.sql` file in the root directory. It can be run with the command
 
 ```
 psql -f tests.sql
