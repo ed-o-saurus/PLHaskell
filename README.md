@@ -29,8 +29,6 @@ The following are needed to build and install PL/Haskell:
 
 ### Build
 
-First, edit `Makefile` to have the variable `PG_INCLUDE_DIR` set to the directory that contains the Postgres include files. This is the directory that contains the file `postgres.h`.
-
 Run, `make` to build all the files needed for the extension.
 
 ### Install

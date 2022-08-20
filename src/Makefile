@@ -6,7 +6,7 @@ GHC_VERSION = $(shell ghc --numeric-version)
 RTS_NAME  = $(shell ghc-pkg describe rts  | grep hs-libraries | awk '{print $$2}')
 HINT_NAME = $(shell ghc-pkg describe hint | grep hs-libraries | awk '{print $$2}')
 
-PG_INCLUDE_DIR = /usr/pgsql-14/include/server
+PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 
 .PHONY: all clean
 all : PGutils.dyn_hi plhaskell.so
