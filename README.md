@@ -29,11 +29,11 @@ The following are needed to build and install PL/Haskell:
 
 ### Build
 
-Run, `make` to build all the files needed for the extension.
+Ensure that `pg_config` is available in the path. Run `make` to build all the files needed for the extension.
 
 ### Install
 
-You must be `root` to install the extension. Ensure that `pg_config` is available in the path for root. As root, run `install.sh` from the root directory. 
+You must be `root` to install the extension. As root, run `install.sh` from the root directory.
 
 In each database that you wish to have the extension, run the SQL command `CREATE EXTENSION plhaskell;`.
 
