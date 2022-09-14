@@ -4,3 +4,4 @@
 *.hs
 *.o
 *.so
+.vscode

@@ -1,8 +1,6 @@
 #ifndef __PLHASKELL
 #define __PLHASKELL
 
-#include <stdlib.h>
-
 #include "postgres.h"
 #include "funcapi.h"
 

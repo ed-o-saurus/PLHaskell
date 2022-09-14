@@ -3,7 +3,6 @@
 
 #include "Rts.h"
 
-#include <stdlib.h>
 #include <unistd.h>
 
 #include "postgres.h"
@@ -20,8 +19,9 @@ extern char pkglib_path[];
 void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet);
 void BuildValueInfo(struct ValueInfo* pValueInfo, Oid typeoid);
 
-void DestoyCallInfoFunction(void* arg);
-void DestoyCallInfoIterator(void* arg);
+void DestroyCallInfoValidator(void* arg);
+void DestroyCallInfoFunction(void* arg);
+void DestroyCallInfoIterator(void* arg);
 
 void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull);
 Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull);
@@ -70,12 +70,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             cb = palloc(sizeof(MemoryContextCallback));
 
             // Allocate, setup, and Build CallInfo
-            pCallInfo = funcctx->user_fctx = palloc(sizeof(struct CallInfo));
-            pCallInfo->List = NULL;
-            pCallInfo->Iterator = NULL;
+            pCallInfo = funcctx->user_fctx = palloc0(sizeof(struct CallInfo));
 
             // Register callback to free List and Iterator
-            cb->func = DestoyCallInfoIterator;
+            cb->func = DestroyCallInfoIterator;
             cb->arg = pCallInfo;
             MemoryContextRegisterResetCallback(funcctx->multi_call_memory_ctx, cb);
 
@@ -107,7 +105,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
                 SRF_RETURN_NEXT_NULL(funcctx);
             else
                 SRF_RETURN_NEXT(funcctx, result);
-        }    
+        }
     }
     else
     {
@@ -117,11 +115,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             MemoryContextCallback *cb = palloc(sizeof(MemoryContextCallback));
 
             // Allocate, setup, and Build CallInfo
-            pCallInfo = fcinfo->flinfo->fn_extra = palloc(sizeof(struct CallInfo));
-            pCallInfo->Function = NULL;
+            pCallInfo = fcinfo->flinfo->fn_extra = palloc0(sizeof(struct CallInfo));
 
             // Register callback to free Function
-            cb->func = DestoyCallInfoFunction;
+            cb->func = DestroyCallInfoFunction;
             cb->arg = pCallInfo;
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
@@ -149,6 +146,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 {
     struct CallInfo* pCallInfo;
     Oid funcoid = PG_GETARG_OID(0);
+    MemoryContextCallback *cb;
 
     HeapTuple proctup;
     Datum proretset;
@@ -170,7 +168,16 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 
     ReleaseSysCache(proctup);
 
-    pCallInfo = palloc(sizeof(struct CallInfo));
+    cb = palloc(sizeof(MemoryContextCallback));
+
+    // Allocate, setup, and Build CallInfo
+    pCallInfo = palloc0(sizeof(struct CallInfo));
+
+    // Register callback to free List and Iterator
+    cb->func = DestroyCallInfoValidator;
+    cb->arg = pCallInfo;
+    MemoryContextRegisterResetCallback(CurrentMemoryContext, cb);
+
     BuildCallInfo(pCallInfo, funcoid, DatumGetBool(proretset));
 
     // Raise error if the function's signature is incorrect
@@ -295,7 +302,7 @@ void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet)
     close(modfd);
 
     ReleaseSysCache(proctup);
-} 
+}
 
 // Fill ValueInfo struct
 void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
@@ -426,19 +433,34 @@ void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
     ReleaseSysCache(typetup);
 }
 
-// Free Function
-void DestoyCallInfoFunction(void* arg)
+// Delete temp module file
+void DestroyCallInfoValidator(void* arg)
 {
     struct CallInfo *pCallInfo = arg;
+
+    if(pCallInfo->ModFileName)
+        unlink(pCallInfo->ModFileName);
+}
+
+// Delete temp module file and free Function
+void DestroyCallInfoFunction(void* arg)
+{
+    struct CallInfo *pCallInfo = arg;
+
+    if(pCallInfo->ModFileName)
+        unlink(pCallInfo->ModFileName);
 
     if(pCallInfo->Function)
         hs_free_stable_ptr(pCallInfo->Function);
 }
 
-// Free List and Iterator
-void DestoyCallInfoIterator(void* arg)
+// Delete temp module file and free List and Iterator
+void DestroyCallInfoIterator(void* arg)
 {
     struct CallInfo *pCallInfo = arg;
+
+    if(pCallInfo->ModFileName)
+        unlink(pCallInfo->ModFileName);
 
     if(pCallInfo->List)
         hs_free_stable_ptr(pCallInfo->List);

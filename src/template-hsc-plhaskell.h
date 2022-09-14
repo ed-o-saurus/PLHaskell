@@ -7,4 +7,3 @@
     hsc_printf("(liftIO . freeStablePtr) pFunc;"); \
     hsc_printf("}"); \
 }
-

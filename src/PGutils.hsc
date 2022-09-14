@@ -43,4 +43,3 @@ raiseError :: String -> a
 raiseError msg = unsafePerformIO $ do
     unPGm (report exception msg)
     undefined
-
