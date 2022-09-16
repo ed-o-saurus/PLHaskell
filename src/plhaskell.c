@@ -19,9 +19,7 @@ extern char pkglib_path[];
 void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet);
 void BuildValueInfo(struct ValueInfo* pValueInfo, Oid typeoid);
 
-void DestroyCallInfoValidator(void* arg);
-void DestroyCallInfoFunction(void* arg);
-void DestroyCallInfoIterator(void* arg);
+void DestroyCallInfo(void* arg);
 
 void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull);
 Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull);
@@ -72,8 +70,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             // Allocate, setup, and Build CallInfo
             pCallInfo = funcctx->user_fctx = palloc0(sizeof(struct CallInfo));
 
-            // Register callback to free List and Iterator
-            cb->func = DestroyCallInfoIterator;
+            // Register callback to free List and Iterator and delete temp module file
+            cb->func = DestroyCallInfo;
             cb->arg = pCallInfo;
             MemoryContextRegisterResetCallback(funcctx->multi_call_memory_ctx, cb);
 
@@ -117,8 +115,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             // Allocate, setup, and Build CallInfo
             pCallInfo = fcinfo->flinfo->fn_extra = palloc0(sizeof(struct CallInfo));
 
-            // Register callback to free Function
-            cb->func = DestroyCallInfoFunction;
+            // Register callback to free Function and delete temp module file
+            cb->func = DestroyCallInfo;
             cb->arg = pCallInfo;
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
@@ -173,8 +171,8 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     // Allocate, setup, and Build CallInfo
     pCallInfo = palloc0(sizeof(struct CallInfo));
 
-    // Register callback to free List and Iterator
-    cb->func = DestroyCallInfoValidator;
+    // Register callback to delete temp module file
+    cb->func = DestroyCallInfo;
     cb->arg = pCallInfo;
     MemoryContextRegisterResetCallback(CurrentMemoryContext, cb);
 
@@ -433,40 +431,25 @@ void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
     ReleaseSysCache(typetup);
 }
 
-// Delete temp module file
-void DestroyCallInfoValidator(void* arg)
-{
-    struct CallInfo *pCallInfo = arg;
-
-    if(pCallInfo->ModFileName)
-        unlink(pCallInfo->ModFileName);
-}
-
-// Delete temp module file and free Function
-void DestroyCallInfoFunction(void* arg)
+// Delete temp module file and free Function or List and Iterator
+void DestroyCallInfo(void* arg)
 {
     struct CallInfo *pCallInfo = arg;
 
     if(pCallInfo->ModFileName)
         unlink(pCallInfo->ModFileName);
 
-    if(pCallInfo->Function)
-        hs_free_stable_ptr(pCallInfo->Function);
-}
+    if(pCallInfo->ReturnSet)
+    {
+        if(pCallInfo->List)
+            hs_free_stable_ptr(pCallInfo->List);
 
-// Delete temp module file and free List and Iterator
-void DestroyCallInfoIterator(void* arg)
-{
-    struct CallInfo *pCallInfo = arg;
-
-    if(pCallInfo->ModFileName)
-        unlink(pCallInfo->ModFileName);
-
-    if(pCallInfo->List)
-        hs_free_stable_ptr(pCallInfo->List);
-
-    if(pCallInfo->Iterator)
-        hs_free_stable_ptr(pCallInfo->Iterator);
+        if(pCallInfo->Iterator)
+            hs_free_stable_ptr(pCallInfo->Iterator);
+    }
+    else
+        if(pCallInfo->Function)
+            hs_free_stable_ptr(pCallInfo->Function);
 }
 
 // Populate the value and isNull fields of pValueInfo
