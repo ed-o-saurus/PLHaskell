@@ -243,7 +243,7 @@ void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet)
     if(ARR_NDIM(proargtypes_arr) != 1)
         ereport(ERROR, errmsg("pg_proc.proargtypes has %d dimensions.", ARR_NDIM(proargtypes_arr)));
 
-    if(ARR_LBOUND(proargtypes_arr)[0] != 0 || ARR_DIMS(proargtypes_arr)[0] == pCallInfo->nargs-1)
+    if(ARR_LBOUND(proargtypes_arr)[0] != 0 || ARR_DIMS(proargtypes_arr)[0] != pCallInfo->nargs)
         ereport(ERROR, errmsg("pg_proc.proargtypes has unexpected size"));
 
     if(ARR_NULLBITMAP(proargtypes_arr) != NULL)
