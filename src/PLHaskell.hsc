@@ -4,7 +4,7 @@
 
 #include "plhaskell.h"
 
-module PLHaskell (getVarSize, getDataLocation) where
+module PLHaskell () where
 
 import Control.Exception            (ErrorCall, catch)
 import Control.Monad                (join, (>=>))
@@ -276,7 +276,7 @@ read read' pValueInfo = do
     then return Nothing
     else read' pValueInfo <&> Just
 
--- Set size of variable length array
+-- Get the size of a variable length array
 foreign import capi safe "postgres.h VARSIZE_ANY_EXHDR"
     c_GetVarSize :: Ptr () -> IO CInt
 
