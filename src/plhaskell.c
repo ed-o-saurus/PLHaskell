@@ -28,7 +28,10 @@ static void Enter(void);
 void gcDoneHook(const struct GCDetails_ *stats);
 void exit_function(void);
 
-int stderr_pipe_fn;
+int redirect_stderr(void);
+void restore_stderr(int bak);
+
+int stderr_pipefd[2] = {-1, -1};
 
 PG_MODULE_MAGIC;
 
@@ -36,6 +39,7 @@ PG_MODULE_MAGIC;
 PG_FUNCTION_INFO_V1(plhaskell_call_handler);
 Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 {
+    int next_stderr_fn;
     struct CallInfo* pCallInfo;
     Oid funcoid = fcinfo->flinfo->fn_oid; // OID of the function being handled
     HeapTuple proctup;
@@ -56,6 +60,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     if(DatumGetBool(proretset))
     {
         FuncCallContext *funcctx;
+        bool noMoreResults;
 
         if(SRF_IS_FIRSTCALL())
         {
@@ -81,7 +86,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             for(short i=0; i<pCallInfo->nargs; i++)
                 WriteValueInfo(pCallInfo->Args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
+            next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
             mkIterator(pCallInfo); // Setup the iterator and list
+            restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
             MemoryContextSwitchTo(oldcontext);
         }
@@ -89,13 +96,19 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         funcctx = SRF_PERCALL_SETUP();
         pCallInfo = funcctx->user_fctx;
 
-        if(listEmpty(pCallInfo)) // Are there no more values to return?
+        next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
+        noMoreResults = listEmpty(pCallInfo); // Are there no more values to return?
+        restore_stderr(next_stderr_fn); // Stop redirection of stderr
+
+        if(noMoreResults)
             SRF_RETURN_DONE(funcctx);
         else
         {
             Datum result;
 
+            next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
             runFunction(pCallInfo->Iterator); // Load next value into result ValueInfo struct
+            restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
             result = ReadValueInfo(pCallInfo->Result, &isNull); // Get the next result
 
@@ -132,7 +145,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         for(short i=0; i<pCallInfo->nargs; i++)
             WriteValueInfo(pCallInfo->Args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
+        next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
         runFunction(pCallInfo->Function); // Run the function
+        restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
         return ReadValueInfo(pCallInfo->Result, &fcinfo->isnull);
     }
@@ -535,8 +550,6 @@ Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull)
 static void Enter(void) __attribute__((constructor));
 static void Enter(void)
 {
-    int new_fn;
-    int stderr_pipefd[2];
     char GHC_PackagePath[MAXPGPATH+18];
     static char *argv[] = {"PLHaskell", "+RTS", "--install-signal-handlers=no", "-RTS"}; // Configuration for the RTS
     static int argc = sizeof(argv) / sizeof(char*);
@@ -551,17 +564,6 @@ static void Enter(void)
     conf.gcDoneHook = gcDoneHook; // Called on every garbage collections to monitor memory usage
     hs_init_ghc(&argc, &argv_rts, conf);
 
-    // Redirect stderr to pipe
-    if(pipe2(stderr_pipefd, O_NONBLOCK) < 0)
-        ereport(FATAL, errmsg("Unable to open pipe"));
-
-    stderr_pipe_fn = stderr_pipefd[0];
-
-    fflush(stderr);
-
-    dup2(stderr_pipefd[1], STDERR_FILENO);
-    close(stderr_pipefd[1]);
-
     atexit(exit_function); // Used to collect error information if the RTS terminates the process. 
 }
 
@@ -575,16 +577,48 @@ void gcDoneHook(const struct GCDetails_ *stats)
 // Called if the RTS terminates the process
 void exit_function(void)
 {
-    char buf[4097];
-    int len = read(stderr_pipe_fn, buf, 4096); // Read stderr into buf
-    if(len > 0)
+    if(stderr_pipefd[0] > -1) // If stderr is being redirrected
     {
-        buf[len] = '\0';
-        if(buf[len-1] == '\n')
-            buf[len-1] = '\0';
+        char buf[4097];
+        int len = read(stderr_pipefd[0], buf, 4096); // Read stderr into buf
+        if(len > 0)
+        {
+            buf[len] = '\0';
+            if(buf[len-1] == '\n')
+                buf[len-1] = '\0';
 
-        ereport(FATAL, errmsg("%s", buf)); // Use the ereport mechanism to report the terminating error. 
+            ereport(FATAL, errmsg("%s", buf)); // Use the ereport mechanism to report the terminating error.
+        }
     }
+}
+
+// Redirect stderr to the pipe
+int redirect_stderr(void)
+{
+    int bak_fn, new_fn;
+
+    if(pipe2(stderr_pipefd, O_NONBLOCK) < 0)
+        ereport(FATAL, errmsg("Unable to open pipe"));
+
+    fflush(stderr);
+    bak_fn = dup(STDERR_FILENO);
+    new_fn = stderr_pipefd[1];
+
+    dup2(new_fn, STDERR_FILENO);
+    close(new_fn);
+
+    return bak_fn;
+}
+
+// Close the pipe and restore stderr
+void restore_stderr(int bak_fn)
+{
+    close(stderr_pipefd[0]); close(stderr_pipefd[1]);
+    stderr_pipefd[0] = -1; stderr_pipefd[1] = -1;
+
+    fflush(stderr);
+    dup2(bak_fn, STDERR_FILENO);
+    close(bak_fn);
 }
 
 // Used by Haskell
