@@ -351,7 +351,7 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"           (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "String", "(.)", "(>>=)"]),
+    setImportsF [ModuleImport "Prelude"           (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "String", "return", "(.)", "(>>=)"]),
                  ModuleImport "Foreign.Ptr"       (QualifiedAs Nothing) (ImportList ["Ptr", "wordPtrToPtr"]),
                  ModuleImport "Foreign.Storable"  (QualifiedAs Nothing) (ImportList ["peek", "poke"]),
                  ModuleImport "Foreign.StablePtr" (QualifiedAs Nothing) (ImportList ["castPtrToStablePtr", "deRefStablePtr", "freeStablePtr", "newStablePtr"]),
