@@ -16,7 +16,7 @@ import Foreign.C.String             (CString, peekCString, peekCStringLen, withC
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Array        (peekArray, pokeArray)
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
-import Foreign.Ptr                  (Ptr, nullPtr, plusPtr, ptrToWordPtr)
+import Foreign.Ptr                  (Ptr, castPtr, nullPtr, plusPtr, ptrToWordPtr)
 import Foreign.StablePtr            (StablePtr, castStablePtrToPtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable             (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
 import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecksWithDetails)
@@ -204,13 +204,15 @@ writeBytea result pValueInfo = do
     let len = length result
     pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
     setVarSize pResult len
-    pokeArray (plusPtr pResult (#const VARHDRSZ)) result 
+    pData <- getVarData pResult
+    pokeArray (castPtr pData) result
 
 writeText :: String -> Ptr ValueInfo -> IO ()
 writeText result pValueInfo = withCStringLen result (\(src, len) -> do 
     pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
     setVarSize pResult len
-    copyBytes (plusPtr pResult (#const VARHDRSZ)) src len)
+    pData <- getVarData pResult
+    copyBytes (castPtr pData) src len)
 
 writeChar :: Char -> Ptr ValueInfo -> IO ()
 writeChar result = writeText [result]
@@ -285,18 +287,24 @@ getVarSize pArg = do
     CInt size <- c_GetVarSize pArg
     return size
 
+-- Get the start of a variable length array
+foreign import capi safe "postgres.h VARDATA_ANY"
+    getVarData :: Ptr () -> IO (Ptr ())
+
 -- Functions to read Haskell types from ValueInfo structs
 readBytea :: Ptr ValueInfo -> IO [Word8]
 readBytea pValueInfo = do
     pArg <- getDataLocation pValueInfo
     len <- getVarSize pArg
-    peekArray (fromIntegral len) (plusPtr pArg (#const VARHDRSZ))
+    pData <- getVarData pArg
+    peekArray (fromIntegral len) (castPtr pData)
 
 readText :: Ptr ValueInfo -> IO String
 readText pValueInfo = do
     pArg <- getDataLocation pValueInfo
     len <- getVarSize pArg
-    peekCStringLen (plusPtr pArg (#const VARHDRSZ), fromIntegral len)
+    pData <- getVarData pArg
+    peekCStringLen (castPtr pData, fromIntegral len)
 
 readChar :: Ptr ValueInfo -> IO Char
 readChar pValueInfo = readText pValueInfo <&> head

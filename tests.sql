@@ -219,6 +219,17 @@ $$
 $$
 LANGUAGE plhaskell;
 
+CREATE FUNCTION plhaskell_test.echo(plhaskell_test.delta) RETURNS plhaskell_test.delta AS
+$$
+    import Data.Int (Int32)
+    
+    import PGutils (PGm)
+    
+    echo :: Maybe (Maybe (Maybe (Maybe String, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()) -> PGm (Maybe (Maybe (Maybe (Maybe String, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
+    echo = return
+$$
+LANGUAGE plhaskell;
+
 CREATE TYPE plhaskell_test.n_p AS (n int, p int);
 
 CREATE FUNCTION plhaskell_test.primes(int) RETURNS SETOF plhaskell_test.n_p AS
@@ -332,6 +343,14 @@ BEGIN
     
     IF plhaskell_test.echo(NULL::float) is not NULL THEN
         raise EXCEPTION 'echo NULL float failed';
+    END IF;
+    
+    IF plhaskell_test.echo((((('abc', 42, 42.3), 0), '()'::plhaskell_test.charlie))::plhaskell_test.delta) <> (((('abc', 42, 42.3), 0), '()'::plhaskell_test.charlie))::plhaskell_test.delta THEN
+        raise EXCEPTION 'echo delta failed';
+    END IF;
+    
+    IF plhaskell_test.echo(NULL::plhaskell_test.delta) is not NULL THEN
+        raise EXCEPTION 'echo NULL delta failed';
     END IF;
     
     IF plhaskell_test.nan() != 'nan'::float THEN
