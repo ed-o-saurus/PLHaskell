@@ -22,13 +22,13 @@ struct ValueInfo
         struct { // BASE
             Oid TypeOid; // OID of the type
             bool ByVal; // Is the type passed by value?
-            Datum Value; // value or pointer depeding on ByVal
+            Datum Value; // value or pointer depending on ByVal
         };
 
         struct { // COMPOSITE
             int16 Count; // Number of fields of the composite
             int16 natts; // Number of attributes
-            int16* attnums; // Atribute numbers of the members
+            int16* attnums; // Attribute numbers of the members
             TupleDesc tupdesc; // Tuple Descriptor
             struct ValueInfo** Fields; // Fields of the composite type
         };
@@ -53,7 +53,7 @@ struct CallInfo
 
         // Used if ReturnSet if true
         struct {
-            HsStablePtr List; // Stable pointer to list of reults
+            HsStablePtr List; // Stable pointer to list of results
             HsStablePtr Iterator; // Stable pointer to function to iterator through list
 
         };

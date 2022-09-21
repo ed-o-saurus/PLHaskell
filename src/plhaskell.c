@@ -56,7 +56,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
     ReleaseSysCache(proctup);
 
-    // If we're returing a set
+    // If we're returning a set
     if(DatumGetBool(proretset))
     {
         FuncCallContext *funcctx;
@@ -567,7 +567,7 @@ static void Enter(void)
     atexit(exit_function); // Used to collect error information if the RTS terminates the process. 
 }
 
-// Called on every garbage collections to monitor memory usage
+// Called on every garbage collection to monitor memory usage
 void gcDoneHook(const struct GCDetails_ *stats)
 {
     if(stats->mem_in_use_bytes > MAX_MEMORY)
@@ -577,7 +577,7 @@ void gcDoneHook(const struct GCDetails_ *stats)
 // Called if the RTS terminates the process
 void exit_function(void)
 {
-    if(stderr_pipefd[0] > -1) // If stderr is being redirrected
+    if(stderr_pipefd[0] > -1) // If stderr is being redirected
     {
         char buf[4097];
         int len = read(stderr_pipefd[0], buf, 4096); // Read stderr into buf

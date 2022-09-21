@@ -366,11 +366,11 @@ BEGIN
     END IF;
     
     IF plhaskell_test.len('\xabcdef'::bytea) <> 3 THEN
-    	raise EXCEPTION 'len failed';
+        raise EXCEPTION 'len failed';
     END IF;
 
     IF plhaskell_test.len('          ') <> 10 THEN
-    	raise EXCEPTION 'len failed';
+        raise EXCEPTION 'len failed';
     END IF;
     
     IF plhaskell_test.make_length_bytea(10) <> '\x00000000000000000000'::bytea THEN
