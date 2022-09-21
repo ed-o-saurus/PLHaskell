@@ -6,7 +6,6 @@
 
 module PLHaskell () where
 
-import Control.Exception            (ErrorCall, catch)
 import Control.Monad                (join, (>=>))
 import Data.Functor                 ((<&>))
 import Data.Int                     (Int16, Int32, Int64)
@@ -16,12 +15,11 @@ import Foreign.C.String             (CString, peekCString, peekCStringLen, withC
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Array        (peekArray, pokeArray)
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
-import Foreign.Ptr                  (Ptr, castPtr, nullPtr, plusPtr, ptrToWordPtr)
+import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
 import Foreign.StablePtr            (StablePtr, castStablePtrToPtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable             (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
 import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecksWithDetails)
 import Prelude                      (Bool (False, True), Char, Double, Either (Left, Right), Float, Int, IO, Maybe (Just, Nothing), String, concat, concatMap, error, flip, foldl, fromIntegral, head, length, map, mapM, null, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>), (>>=))
-import System.Directory             (removeFile)
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -110,10 +108,6 @@ readFunctionName _ = error "Bad Oid"
 getModFileName :: Ptr CallInfo -> Interpreter String
 getModFileName pCallInfo = liftIO ((#peek struct CallInfo, ModFileName) pCallInfo >>= peekCString)
 
--- Set module file name from CallInfo struct to NULL
-nullModFileName :: Ptr CallInfo -> Interpreter ()
-nullModFileName pCallInfo = liftIO ((#poke struct CallInfo, ModFileName) pCallInfo nullPtr)
-
 -- Extract function name from CallInfo struct
 getFuncName :: Ptr CallInfo -> Interpreter String
 getFuncName pCallInfo = liftIO ((#peek struct CallInfo, FuncName) pCallInfo >>= peekCString)
@@ -182,10 +176,6 @@ getSignature pCallInfo = liftIO $ do
     if toBool returnSet
         then return (intercalate " -> " (argTypeNames ++ ["PGutils.PGm [" ++ resultTypeName ++ "]"]))
         else return (intercalate " -> " (argTypeNames ++ ["PGutils.PGm (" ++ resultTypeName ++ ")"]))
-
--- Used to ignore error from deleting temp module files
-ignore :: ErrorCall -> IO ()
-ignore _ = return ()
 
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
@@ -368,9 +358,6 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Data.Int"          (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Word"         (QualifiedAs Nothing) (ImportList ["Word8"])]
 
-    liftIO (catch (removeFile modFileName) ignore) -- Delete the temp file
-    nullModFileName pCallInfo -- null out the temp file name
-
     -- Copy functions into interpreted environment
     #transfer getField, getField, Foreign.Ptr.Ptr () -> Data.Int.Int16 -> Prelude.IO (Foreign.Ptr.Ptr ())
 
@@ -445,9 +432,6 @@ checkSignature pCallInfo = execute $ do
                  ModuleImport "PGutils"   (QualifiedAs Nothing) (ImportList ["PGm"]),
                  ModuleImport "Data.Int"  (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Word" (QualifiedAs Nothing) (ImportList ["Word8"])]
-
-    liftIO (catch (removeFile modFileName) ignore)
-    nullModFileName pCallInfo -- null out the temp file name
 
     signature <- getSignature pCallInfo
     r <- typeChecksWithDetails ("PGmodule." ++ funcName ++ "::" ++ signature)
