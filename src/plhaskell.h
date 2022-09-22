@@ -55,7 +55,6 @@ struct CallInfo
         struct {
             HsStablePtr List; // Stable pointer to list of results
             HsStablePtr Iterator; // Stable pointer to function to iterator through list
-
         };
     };
 };

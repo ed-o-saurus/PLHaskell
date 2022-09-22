@@ -6,7 +6,7 @@
 
 module PLHaskell () where
 
-import Control.Monad                (join, (>=>))
+import Control.Monad                (forM, forM_, join, (>=>))
 import Data.Functor                 ((<&>))
 import Data.Int                     (Int16, Int32, Int64)
 import Data.List                    (intercalate)
@@ -18,8 +18,14 @@ import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
 import Foreign.StablePtr            (StablePtr, castStablePtrToPtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable             (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
-import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecksWithDetails)
-import Prelude                      (Bool (False, True), Char, Double, Either (Left, Right), Float, Int, IO, Maybe (Just, Nothing), String, concat, concatMap, error, flip, foldl, fromIntegral, head, length, map, mapM, null, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>), (>>=))
+import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException,
+                                     NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport),
+                                     ModuleQualification (QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope,
+                                     languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF,
+                                     typeChecksWithDetails)
+import Prelude                      (Bool (False, True), Char, Double, Either (Left, Right), Float, Int, IO,
+                                     Maybe (Just, Nothing), String, concat, concatMap, error, flip, fromIntegral, head,
+                                     length, map, null, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -154,7 +160,7 @@ getTypeName pValueInfo = do
                      return ("Prelude.Maybe " ++ baseName typeOid)
                  | typ == (#const COMPOSITE_TYPE) = do
                      CShort count <- (#peek struct ValueInfo, Count) pValueInfo
-                     names <- mapM (getField pValueInfo >=> getTypeName) [0 .. count-1]
+                     names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
                      return ("Prelude.Maybe (" ++ intercalate ", " names ++ ")")
                  | otherwise = error "Bad Type"
     typeName
@@ -169,7 +175,7 @@ getArgValueInfo pCallInfo i = do
 getSignature :: Ptr CallInfo -> Interpreter String
 getSignature pCallInfo = liftIO $ do
     CShort nargs <- (#peek struct CallInfo, nargs) pCallInfo
-    argTypeNames <- mapM (getArgValueInfo pCallInfo >=> getTypeName) [0 .. nargs-1]
+    argTypeNames <- forM [0 .. nargs-1] (getArgValueInfo pCallInfo >=> getTypeName)
     resultTypeName <- (#peek struct CallInfo, Result) pCallInfo >>= getTypeName
 
     CBool returnSet <- (#peek struct CallInfo, ReturnSet) pCallInfo
@@ -241,9 +247,12 @@ writeResultDef pValueInfo = do
                 return (writeFunctionName typeOid)
             | typ == (#const COMPOSITE_TYPE) = do
                 CShort count <- (#peek struct ValueInfo, Count) pValueInfo
-                fieldsDef <- mapM getFieldDef [0 .. count-1]
-                return ("\\result pValueInfo -> case result of Prelude.Nothing -> writeNull pValueInfo; Prelude.Just (" ++
-                    intercalate ", "  (map (interpolate "field?") [0 .. count-1]) ++ ") -> do; writeNotNull pValueInfo; " ++ concat fieldsDef)
+                fieldsDef <- forM [0 .. count-1] getFieldDef
+                let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
+                return ("\\result pValueInfo -> case result of Prelude.Nothing -> writeNull pValueInfo;\
+                \                                              Prelude.Just (" ++ fieldsList ++ ") -> do;\
+                \                                                                              writeNotNull pValueInfo;" ++
+                                                                                               concat fieldsDef)
             | otherwise = error "Bad Type"
     def
 
@@ -334,11 +343,30 @@ readArgDef pValueInfo = do
                 return (readFunctionName typeOid)
             | typ == (#const COMPOSITE_TYPE) = do
                 CShort count <- (#peek struct ValueInfo, Count) pValueInfo
-                fieldsDef <- mapM getFieldDef [0 .. count-1]
-                return ("\\pValueInfo -> do {isNull <- readIsNull pValueInfo; if isNull; then Prelude.return Prelude.Nothing; else do {" ++
-                    concat fieldsDef ++ "Prelude.return (Prelude.Just (" ++ intercalate ", " (map (interpolate "field?") [0 .. count-1]) ++ "))}}")
+                fieldsDef <- forM [0 .. count-1] getFieldDef
+                let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
+                return ("\\pValueInfo -> do {\
+                \                                isNull <- readIsNull pValueInfo;\
+                \                                if isNull; \
+                \                                    then Prelude.return Prelude.Nothing;\
+                \                                    else do {" ++
+                                                         concat fieldsDef ++
+                                                         "Prelude.return (Prelude.Just (" ++ fieldsList ++ "))\
+                \                                    }\
+                \                        }")
             | otherwise = error "Bad Type"
     def
+
+defineReadArg :: Ptr CallInfo -> Int16 -> Interpreter ()
+defineReadArg pCallInfo i = do
+    pArgValueInfo <- liftIO (getArgValueInfo pCallInfo i)
+    argDef <- liftIO (readArgDef pArgValueInfo )
+    runStmt (interpolate ("let readArg? = " ++ argDef) i)
+
+definePArgValueInfo :: Ptr CallInfo -> Int16 -> Interpreter ()
+definePArgValueInfo pCallInfo i = do
+    pArgValueInfo <- liftIO (getArgValueInfo pCallInfo i)
+    runStmt (interpolate "let pArgValueInfo? = Foreign.Ptr.wordPtrToPtr " i ++ (show . ptrToWordPtr) pArgValueInfo)
 
 -- Set up interpreter to evaluate a function
 setUpEvalInt :: Ptr CallInfo -> Interpreter (Int16, String)
@@ -349,10 +377,13 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"           (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "String", "return", "(.)", "(>>=)"]),
+    setImportsF [ModuleImport "Prelude"           (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float",
+                                                                                     "IO", "Maybe(Just, Nothing)", "String",
+                                                                                     "return", "(.)", "(>>=)"]),
                  ModuleImport "Foreign.Ptr"       (QualifiedAs Nothing) (ImportList ["Ptr", "wordPtrToPtr"]),
                  ModuleImport "Foreign.Storable"  (QualifiedAs Nothing) (ImportList ["peek", "poke"]),
-                 ModuleImport "Foreign.StablePtr" (QualifiedAs Nothing) (ImportList ["castPtrToStablePtr", "deRefStablePtr", "freeStablePtr", "newStablePtr"]),
+                 ModuleImport "Foreign.StablePtr" (QualifiedAs Nothing) (ImportList ["castPtrToStablePtr", "deRefStablePtr",
+                                                                                     "freeStablePtr", "newStablePtr"]),
                  ModuleImport "PGmodule"          (QualifiedAs Nothing) (ImportList [funcName]),
                  ModuleImport "PGutils"           (QualifiedAs Nothing) (ImportList ["unPGm"]),
                  ModuleImport "Data.Int"          (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
@@ -390,8 +421,7 @@ setUpEvalInt pCallInfo = do
     CShort nargs <- (liftIO . (#peek struct CallInfo, nargs)) pCallInfo
 
     -- Fill all readArg? values with functions to read arguments from ValueInfo structs
-    foldl (>>) (return ()) [liftIO (getArgValueInfo pCallInfo i) >>=
-        (liftIO . readArgDef) >>= (\argDef -> runStmt (interpolate ("let readArg? = " ++ argDef) i))| i <- [0 .. nargs-1]]
+    forM_ [0 .. nargs-1] (defineReadArg pCallInfo)
 
     -- Fill writeResult value with function to write result to ValueInfo struct
     pResultValueInfo <- (liftIO . (#peek struct CallInfo, Result)) pCallInfo
@@ -399,8 +429,7 @@ setUpEvalInt pCallInfo = do
     runStmt ("let writeResult = " ++ resultDef)
 
     -- Set pArgValueInfo? and pResultValueInfo to point to ValueInfo structs
-    foldl (>>) (return ()) [liftIO (getArgValueInfo pCallInfo i) >>=
-        (\pArgValueInfo -> runStmt (interpolate "let pArgValueInfo? = Foreign.Ptr.wordPtrToPtr " i ++ (show . ptrToWordPtr) pArgValueInfo)) | i <- [0 .. nargs-1]]
+    forM_ [0 .. nargs-1] (definePArgValueInfo pCallInfo)
     runStmt ("let pResultValueInfo = Foreign.Ptr.wordPtrToPtr " ++ (show . ptrToWordPtr) pResultValueInfo)
 
     return (nargs, funcName)
@@ -427,7 +456,8 @@ checkSignature pCallInfo = execute $ do
     loadModules [modFileName]
 
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"   (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float", "Maybe", "String"]),
+    setImportsF [ModuleImport "Prelude"   (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float", "Maybe",
+                                                                             "String"]),
                  ModuleImport "PGmodule"  (QualifiedAs Nothing) (ImportList [funcName]),
                  ModuleImport "PGutils"   (QualifiedAs Nothing) (ImportList ["PGm"]),
                  ModuleImport "Data.Int"  (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
@@ -440,19 +470,22 @@ checkSignature pCallInfo = execute $ do
         Left (err:_) -> (liftIO . raiseError) (errMsg err)
         Right _      -> return ()
 
--- Set the Function field of the CallInfo struct to a function that will read the arguments, call the function, and write the result
+-- Set the Function field of the CallInfo struct to a function that
+-- will read the arguments, call the function, and write the result
 foreign export capi mkFunction :: Ptr CallInfo -> IO ()
 mkFunction :: Ptr CallInfo -> IO ()
 mkFunction pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
 
     let prog_read_args = concatMap (interpolate "arg? <- readArg? pArgValueInfo?;") [0 .. nargs-1]
-    let prog_call = "result <- PGutils.unPGm (PGmodule." ++ funcName ++ concatMap (interpolate " arg?") [0 .. nargs-1] ++ ");"
+    let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
+    let prog_call = "result <- PGutils.unPGm (PGmodule." ++ funcName ++ argsNames ++ ");"
     let prog_write_result = "writeResult result pResultValueInfo"
     runStmt ("spFunction <- Foreign.StablePtr.newStablePtr (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})")
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
-    runStmt ("Foreign.Storable.poke (Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo) ++ ") spFunction")
+    runStmt ("let pFunction = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
+    runStmt ("Foreign.Storable.poke pFunction spFunction")
 
 -- Set the List field of the CallInfo struct to the list returns by the function
 -- Set the Iterator field of the CallInfo struct to a function that will iterate through the list
@@ -465,18 +498,28 @@ mkIterator pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
 
     -- Get the arguments
-    foldl (>>) (return ()) [runStmt (interpolate "arg? <- readArg? pArgValueInfo?" i) | i <- [0 .. nargs-1]]
+    forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgValueInfo?"))
 
     -- Get a stable pointer to the list
-    runStmt ("spList <- PGutils.unPGm (PGmodule." ++ funcName ++ concatMap (interpolate " arg?") [0 .. nargs-1] ++ ") Prelude.>>= Foreign.StablePtr.newStablePtr")
+    let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
+    runStmt ("spList <- PGutils.unPGm (PGmodule." ++ funcName ++ argsNames ++ ") Prelude.>>= Foreign.StablePtr.newStablePtr")
 
     -- poke the stable pointer value into the List field of the CallInfo struct
     runStmt ("let pList = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, List) pCallInfo))
     runStmt "Foreign.Storable.poke pList spList"
 
     -- poke the iterator into the Iterator field of the CallInfo struct
-    runStmt "spIterator <- Foreign.StablePtr.newStablePtr (do {spList <- Foreign.Storable.peek pList; head:tail <- Foreign.StablePtr.deRefStablePtr spList; Foreign.StablePtr.freeStablePtr spList; spTail <- Foreign.StablePtr.newStablePtr tail; Foreign.Storable.poke pList spTail; writeResult head pResultValueInfo})"
-    runStmt ("Foreign.Storable.poke (Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, Iterator) pCallInfo) ++ ") spIterator")
+    runStmt "spIterator <- Foreign.StablePtr.newStablePtr (\
+        \do {\
+        \    spList <- Foreign.Storable.peek pList;\
+        \    head:tail <- Foreign.StablePtr.deRefStablePtr spList;\
+        \    Foreign.StablePtr.freeStablePtr spList;\
+        \    spTail <- Foreign.StablePtr.newStablePtr tail;\
+        \    Foreign.Storable.poke pList spTail;\
+        \    writeResult head pResultValueInfo\
+        \})"
+    runStmt ("let pIterator = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, Iterator) pCallInfo))
+    runStmt ("Foreign.Storable.poke pIterator spIterator")
 
 -- Is the list that has the remaining data from a set returning function empty?
 foreign export capi listEmpty :: Ptr CallInfo -> IO CBool
