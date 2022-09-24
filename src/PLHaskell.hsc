@@ -16,7 +16,7 @@ import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt)
 import Foreign.Marshal.Array        (peekArray, pokeArray)
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
-import Foreign.StablePtr            (StablePtr, castStablePtrToPtr, deRefStablePtr, freeStablePtr, newStablePtr)
+import Foreign.StablePtr            (castStablePtrToPtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable             (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
 import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException,
                                      NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport),
@@ -25,7 +25,7 @@ import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), 
                                      typeChecksWithDetails)
 import Prelude                      (Bool (False, True), Char, Double, Either (Left, Right), Float, Int, IO,
                                      Maybe (Just, Nothing), String, concat, concatMap, error, flip, fromIntegral, head,
-                                     length, map, null, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
+                                     length, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -377,17 +377,22 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"           (QualifiedAs Nothing) (ImportList ["Bool", "Char", "Double", "Float",
-                                                                                     "IO", "Maybe(Just, Nothing)", "String",
-                                                                                     "return", "(.)", "(>>=)"]),
-                 ModuleImport "Foreign.Ptr"       (QualifiedAs Nothing) (ImportList ["Ptr", "wordPtrToPtr"]),
-                 ModuleImport "Foreign.Storable"  (QualifiedAs Nothing) (ImportList ["peek", "poke"]),
-                 ModuleImport "Foreign.StablePtr" (QualifiedAs Nothing) (ImportList ["castPtrToStablePtr", "deRefStablePtr",
-                                                                                     "freeStablePtr", "newStablePtr"]),
-                 ModuleImport "PGmodule"          (QualifiedAs Nothing) (ImportList [funcName]),
-                 ModuleImport "PGutils"           (QualifiedAs Nothing) (ImportList ["unPGm"]),
-                 ModuleImport "Data.Int"          (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
-                 ModuleImport "Data.Word"         (QualifiedAs Nothing) (ImportList ["Word8"])]
+    setImportsF [ModuleImport "Prelude"               (QualifiedAs Nothing) (ImportList ["Bool(False, True)", "Char",
+                                                                                         "Double", "Float", "IO",
+                                                                                         "Maybe(Just, Nothing)", "String",
+                                                                                         "flip", "map", "return", "(>>=)"]),
+                 ModuleImport "Foreign.C.Types"       (QualifiedAs Nothing) (ImportList ["CBool(CBool)"]),
+                 ModuleImport "Foreign.Marshal.Utils" (QualifiedAs Nothing) (ImportList ["fromBool"]),
+                 ModuleImport "Foreign.Ptr"           (QualifiedAs Nothing) (ImportList ["Ptr", "wordPtrToPtr"]),
+                 ModuleImport "Foreign.Storable"      (QualifiedAs Nothing) (ImportList ["peek", "poke"]),
+                 ModuleImport "Foreign.StablePtr"     (QualifiedAs Nothing) (ImportList ["castPtrToStablePtr",
+                                                                                         "deRefStablePtr",
+                                                                                         "freeStablePtr",
+                                                                                         "newStablePtr"]),
+                 ModuleImport "PGmodule"              (QualifiedAs Nothing) (ImportList [funcName]),
+                 ModuleImport "PGutils"               (QualifiedAs Nothing) (ImportList ["unPGm"]),
+                 ModuleImport "Data.Int"              (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
+                 ModuleImport "Data.Word"             (QualifiedAs Nothing) (ImportList ["Word8"])]
 
     -- Copy functions into interpreted environment
     #transfer getField, getField, Foreign.Ptr.Ptr () -> Data.Int.Int16 -> Prelude.IO (Foreign.Ptr.Ptr ())
@@ -477,6 +482,7 @@ mkFunction :: Ptr CallInfo -> IO ()
 mkFunction pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
 
+    -- Build the Function
     let prog_read_args = concatMap (interpolate "arg? <- readArg? pArgValueInfo?;") [0 .. nargs-1]
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     let prog_call = "result <- PGutils.unPGm (PGmodule." ++ funcName ++ argsNames ++ ");"
@@ -488,8 +494,8 @@ mkFunction pCallInfo = execute $ do
     runStmt ("Foreign.Storable.poke pFunction spFunction")
 
 -- Set the List field of the CallInfo struct to the list returns by the function
--- Set the Iterator field of the CallInfo struct to a function that will iterate through the list
--- Each call of the iterator :
+-- Set the Function field of the CallInfo struct to a function that will iterate through the list
+-- Each call of Function :
 --     Writes the head of the list to the Result ValueInfo struct
 --     Advances the List pointer
 foreign export capi mkIterator :: Ptr CallInfo -> IO ()
@@ -500,35 +506,41 @@ mkIterator pCallInfo = execute $ do
     -- Get the arguments
     forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgValueInfo?"))
 
-    -- Get a stable pointer to the list
+    -- Set writeResultList to be a list of actions each of which loads a result into the result ValueInfo struct
+    -- writeResultList :: [IO ()]  TODO : remove this line?
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
-    runStmt ("spList <- PGutils.unPGm (PGmodule." ++ funcName ++ argsNames ++ ") Prelude.>>= Foreign.StablePtr.newStablePtr")
+    runStmt ("results <- PGutils.unPGm (PGmodule." ++ funcName ++ argsNames ++ ")")
+    runStmt "let writeResultList = Prelude.map ((Prelude.flip writeResult) pResultValueInfo) results"
 
     -- poke the stable pointer value into the List field of the CallInfo struct
+    runStmt ("spList <- Foreign.StablePtr.newStablePtr writeResultList")
     runStmt ("let pList = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, List) pCallInfo))
     runStmt "Foreign.Storable.poke pList spList"
 
-    -- poke the iterator into the Iterator field of the CallInfo struct
-    runStmt "spIterator <- Foreign.StablePtr.newStablePtr (\
-        \do {\
-        \    spList <- Foreign.Storable.peek pList;\
-        \    head:tail <- Foreign.StablePtr.deRefStablePtr spList;\
-        \    Foreign.StablePtr.freeStablePtr spList;\
-        \    spTail <- Foreign.StablePtr.newStablePtr tail;\
-        \    Foreign.Storable.poke pList spTail;\
-        \    writeResult head pResultValueInfo\
-        \})"
-    runStmt ("let pIterator = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, Iterator) pCallInfo))
-    runStmt ("Foreign.Storable.poke pIterator spIterator")
+    runStmt ("let pMoreResults = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, MoreResults) pCallInfo))
 
--- Is the list that has the remaining data from a set returning function empty?
-foreign export capi listEmpty :: Ptr CallInfo -> IO CBool
-listEmpty :: Ptr CallInfo -> IO CBool
-listEmpty pCallInfo = do
-    list <- (#peek struct CallInfo, List) pCallInfo >>= deRefStablePtr :: IO ([a])
-    return $ CBool $ fromBool (null list)
+    -- poke the iterator into the Function field of the CallInfo struct
+    runStmt "spFunction <- Foreign.StablePtr.newStablePtr (\
+    \do {\
+    \    spList <- Foreign.Storable.peek pList;\
+    \    writeResultList <- Foreign.StablePtr.deRefStablePtr spList;\
+    \    Foreign.StablePtr.freeStablePtr spList;\
+    \    case writeResultList of\
+    \        [] -> do {\
+    \            Foreign.Storable.poke pMoreResults (Foreign.C.Types.CBool (Foreign.Marshal.Utils.fromBool Prelude.False));\
+    \            spTail <- Foreign.StablePtr.newStablePtr [];\
+    \            Foreign.Storable.poke pList spTail};\
+    \        (writeResult:tail) -> do {\
+    \            Foreign.Storable.poke pMoreResults (Foreign.C.Types.CBool (Foreign.Marshal.Utils.fromBool Prelude.True));\
+    \            spTail <- Foreign.StablePtr.newStablePtr tail;\
+    \            Foreign.Storable.poke pList spTail;\
+    \            writeResult}})"
+    runStmt ("let pFunction = Foreign.Ptr.wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
+    runStmt ("Foreign.Storable.poke pFunction spFunction")
 
--- Run the function pointed to by the stable pointer
-foreign export capi runFunction :: StablePtr (IO ()) -> IO ()
-runFunction :: StablePtr (IO ()) -> IO ()
-runFunction = join . deRefStablePtr
+-- Run the function pointed to by the Function stable pointer
+foreign export capi runFunction :: Ptr CallInfo -> IO ()
+runFunction :: Ptr CallInfo -> IO ()
+runFunction pCallInfo = do
+    spFunction <- (#peek struct CallInfo, Function) pCallInfo
+    (join . deRefStablePtr) spFunction

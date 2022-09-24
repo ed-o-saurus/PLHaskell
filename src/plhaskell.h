@@ -44,19 +44,9 @@ struct CallInfo
     struct ValueInfo** Args; // Arguments
     struct ValueInfo* Result; // Returned result
     bool ReturnSet; // Does the function return a set of values?
-
-    union
-    {
-        // Stable pointer to the function to be called to read Args and populate Result
-        // Used if ReturnSet is false
-        HsStablePtr Function;
-
-        // Used if ReturnSet if true
-        struct {
-            HsStablePtr List; // Stable pointer to list of results
-            HsStablePtr Iterator; // Stable pointer to function to iterator through list
-        };
-    };
+    bool MoreResults; // Are there more results to return from a set?
+    HsStablePtr Function; // Stable pointer to the function to be called to read Args and populate Result
+    HsStablePtr List; // Stable pointer to list of results
 };
 
 // Report a message or error

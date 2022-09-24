@@ -60,7 +60,6 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     if(DatumGetBool(proretset))
     {
         FuncCallContext *funcctx;
-        bool noMoreResults;
 
         if(SRF_IS_FIRSTCALL())
         {
@@ -97,26 +96,20 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         pCallInfo = funcctx->user_fctx;
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-        noMoreResults = listEmpty(pCallInfo); // Are there no more values to return?
+        runFunction(pCallInfo); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
-        if(noMoreResults)
-            SRF_RETURN_DONE(funcctx);
-        else
+        if(pCallInfo->MoreResults)
         {
-            Datum result;
-
-            next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-            runFunction(pCallInfo->Iterator); // Load next value into result ValueInfo struct
-            restore_stderr(next_stderr_fn); // Stop redirection of stderr
-
-            result = ReadValueInfo(pCallInfo->Result, &isNull); // Get the next result
+            Datum result = ReadValueInfo(pCallInfo->Result, &isNull); // Get the next result
 
             if(isNull)
                 SRF_RETURN_NEXT_NULL(funcctx);
             else
                 SRF_RETURN_NEXT(funcctx, result);
         }
+        else
+            SRF_RETURN_DONE(funcctx);
     }
     else
     {
@@ -146,7 +139,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             WriteValueInfo(pCallInfo->Args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-        runFunction(pCallInfo->Function); // Run the function
+        runFunction(pCallInfo); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
         return ReadValueInfo(pCallInfo->Result, &fcinfo->isnull);
@@ -454,17 +447,11 @@ void DestroyCallInfo(void* arg)
     if(pCallInfo->ModFileName)
         unlink(pCallInfo->ModFileName);
 
-    if(pCallInfo->ReturnSet)
-    {
-        if(pCallInfo->List)
-            hs_free_stable_ptr(pCallInfo->List);
+    if(pCallInfo->List)
+        hs_free_stable_ptr(pCallInfo->List);
 
-        if(pCallInfo->Iterator)
-            hs_free_stable_ptr(pCallInfo->Iterator);
-    }
-    else
-        if(pCallInfo->Function)
-            hs_free_stable_ptr(pCallInfo->Function);
+    if(pCallInfo->Function)
+        hs_free_stable_ptr(pCallInfo->Function);
 }
 
 // Populate the value and isNull fields of pValueInfo
