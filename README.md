@@ -33,7 +33,7 @@ This document assumes that the reader is familiar with PostgreSQL (specifically 
 
 ## Build and Install
 
-This extension is intended to be build and installed in a Linux environment. It has only been tested on the x86-64 architecture. 
+This extension is intended to be build and installed in a Linux environment. It has only been tested on the x86-64 architecture.
 
 The following are needed to build and install PL/Haskell:
 * PostgreSQL server
@@ -83,9 +83,9 @@ As such, unprivileged users are permitted to write and execute functions without
 
 ## Usage
 
-Functions in PL/Haskell are created the same manner as other PostgreSQL functions. The code must be valid Haskell. It must import the `PGm` monad type from the `PGutils` module. 
+Functions in PL/Haskell are created the same manner as other PostgreSQL functions. The code must be valid Haskell. It must import the `PGm` monad type from the `PGutils` module.
 
-The code must contain a function with the same name as the PostgreSQL function. Each of its arguments must be of the type `Maybe `*`arg`* where *`arg`* is the Haskell type as determined by the PostgreSQL type as indicated by the following table. 
+The code must contain a function with the same name as the PostgreSQL function. Each of its arguments must be of the type `Maybe `*`arg`* where *`arg`* is the Haskell type as determined by the PostgreSQL type as indicated by the following table.
 
 PostgreSQL Type |   Module    | Haskell Type
 --------------- | ----------- | ------------
@@ -93,19 +93,19 @@ PostgreSQL Type |   Module    | Haskell Type
 `text`          | `Prelude`   | `String`
 `char`          | `Prelude`   | `Char`
 `bool`          | `Prelude`   | `Bool`
-`smallint`      | `Data.Int`  | `Int16`  
+`smallint`      | `Data.Int`  | `Int16`
 `integer`       | `Data.Int`  | `Int32`
 `bigint`        | `Data.Int`  | `Int64`
 `real`          | `Prelude`   | `Float`
 `float`         | `Prelude`   | `Double`
 
-The function must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function. 
+The function must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function.
 
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
 ### Returning Sets
 
-Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]` where *`result`* is the appropriate Haskell type as determined by the return type of function. 
+Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]` where *`result`* is the appropriate Haskell type as determined by the return type of function.
 
 ### Reporting Messages and Raising Error
 
@@ -135,9 +135,9 @@ CREATE FUNCTION add(int, int) RETURNS int AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
-   
+
     add :: Maybe Int32 -> Maybe Int32 -> PGm (Maybe Int32)
-   
+
     add Nothing Nothing = return Nothing
     add (Just a) (Just b) = return (Just (a+b))
     add a Nothing = return a
@@ -161,11 +161,11 @@ CREATE FUNCTION primes(int) RETURNS SETOF n_p AS
 $$
     import PGutils (PGm, raiseError)
     import Data.Int (Int32)
-    
+
     sieve :: [Int32] -> [Int32]
     sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
     sieve [] = []
-    
+
     primes :: Maybe Int32 -> PGm [Maybe (Maybe Int32, Maybe Int32)]
     primes Nothing = raiseError "Invalid Null"
     primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
@@ -203,10 +203,10 @@ CREATE FUNCTION primes() RETURNS SETOF int AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
-    
+
     sieve :: [Int32] -> [Int32]
     sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
-    
+
     primes :: PGm [Maybe Int32]
     primes = return (map Just (sieve [2..]))
 $$
@@ -247,7 +247,7 @@ LIMIT 25
  83      |
  89      |
  97      |
- 
+
 ### Message
 
 The following demonstrates how to show a notice from within a function.
@@ -257,7 +257,7 @@ CREATE FUNCTION forty_two() RETURNS int AS
 $$
     import PGutils (PGm, report, notice)
     import Data.Int (Int32)
-    
+
     forty_two :: PGm (Maybe Int32)
     forty_two = do
         report notice "Don't Panic"

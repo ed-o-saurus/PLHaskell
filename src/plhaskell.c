@@ -569,7 +569,7 @@ static void Enter(void)
     conf.gcDoneHook = gcDoneHook; // Called on every garbage collections to monitor memory usage
     hs_init_ghc(&argc, &argv_rts, conf);
 
-    atexit(exit_function); // Used to collect error information if the RTS terminates the process. 
+    atexit(exit_function); // Used to collect error information if the RTS terminates the process.
 }
 
 // Called on every garbage collection to monitor memory usage

@@ -38,7 +38,7 @@ unPGm :: PGm a -> IO a
 unPGm (PGm x) = x
 
 newtype ErrorLevel = ErrorLevel { unErrorLevel :: CInt }
-#{enum ErrorLevel, ErrorLevel, 
+#{enum ErrorLevel, ErrorLevel,
     debug5    = DEBUG5,
     debug4    = DEBUG4,
     debug3    = DEBUG3,

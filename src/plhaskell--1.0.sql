@@ -23,7 +23,7 @@ do $$
 DECLARE
   r int;
 BEGIN
-  FOR r in 
+  FOR r in
     SELECT 1
     FROM pg_database
     WHERE datname = current_database() AND pg_encoding_to_char(encoding) != 'UTF8'

@@ -60,7 +60,7 @@ foreign import capi safe "plhaskell.h Report"
     c_Report :: CInt -> CString -> IO ()
 
 raiseError :: String -> IO ()
-raiseError str = withCString str (c_Report (#const ERROR)) 
+raiseError str = withCString str (c_Report (#const ERROR))
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "plhaskell.h palloc"
@@ -222,7 +222,7 @@ writeBytea result pValueInfo = do
     pokeArray (castPtr pData) result
 
 writeText :: String -> Ptr ValueInfo -> IO ()
-writeText result pValueInfo = withCStringLen result (\(src, len) -> do 
+writeText result pValueInfo = withCStringLen result (\(src, len) -> do
     pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
     setVarSize pResult len
     pData <- getVarData pResult
