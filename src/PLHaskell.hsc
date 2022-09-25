@@ -56,7 +56,7 @@ interpolate ('?':ss) i = show i ++ interpolate ss i
 interpolate (s:ss) i = s : interpolate ss i
 
 -- Function to record message or raise exception
-foreign import capi safe "plhaskell.h Report"
+foreign import capi safe "plhaskell.h PLHaskell_Report"
     c_Report :: CInt -> CString -> IO ()
 
 raiseError :: String -> IO ()

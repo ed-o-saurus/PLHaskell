@@ -68,6 +68,6 @@ struct CallInfo
 };
 
 // Report a message or error
-void Report(int32 elevel, char* msg);
+void PLHaskell_Report(int32 elevel, char* msg);
 
 #endif

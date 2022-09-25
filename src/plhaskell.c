@@ -34,22 +34,22 @@
 
 extern char pkglib_path[];
 
-void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet);
-void BuildValueInfo(struct ValueInfo* pValueInfo, Oid typeoid);
+static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet);
+static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid typeoid);
 
-void DestroyCallInfo(void* arg);
+static void DestroyCallInfo(void* arg);
 
-void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull);
-Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull);
+static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull);
+static Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull);
 
 static void Enter(void);
-void gcDoneHook(const struct GCDetails_ *stats);
-void exit_function(void);
+static void gcDoneHook(const struct GCDetails_ *stats);
+static void exit_function(void);
 
-int redirect_stderr(void);
-void restore_stderr(int bak);
+static int redirect_stderr(void);
+static void restore_stderr(int bak);
 
-int stderr_pipefd[2] = {-1, -1};
+static int stderr_pipefd[2] = {-1, -1};
 
 PG_MODULE_MAGIC;
 
@@ -211,7 +211,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 }
 
 // Fill CallInfo struct
-void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet)
+static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet)
 {
     HeapTuple proctup;
     Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname;
@@ -329,7 +329,7 @@ void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet)
 }
 
 // Fill ValueInfo struct
-void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
+static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
 {
     HeapTuple typetup, reltup, atttup;
     Datum typtype, typname, typbasetype, typrelid, typbyval;
@@ -458,7 +458,7 @@ void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
 }
 
 // Delete temp module file and free Function or List and Iterator
-void DestroyCallInfo(void* arg)
+static void DestroyCallInfo(void* arg)
 {
     struct CallInfo *pCallInfo = arg;
 
@@ -473,7 +473,7 @@ void DestroyCallInfo(void* arg)
 }
 
 // Populate the value and isNull fields of pValueInfo
-void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull)
+static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull)
 {
     HeapTupleHeader tuple;
     Oid tupType;
@@ -520,7 +520,7 @@ void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull)
 }
 
 // Get the value from pValueInfo
-Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull)
+static Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull)
 {
     Datum *values;
     bool *isNulls;
@@ -573,14 +573,14 @@ static void Enter(void)
 }
 
 // Called on every garbage collection to monitor memory usage
-void gcDoneHook(const struct GCDetails_ *stats)
+static void gcDoneHook(const struct GCDetails_ *stats)
 {
     if(stats->mem_in_use_bytes > MAX_MEMORY)
         ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d bytes)", MAX_MEMORY));
 }
 
 // Called if the RTS terminates the process
-void exit_function(void)
+static void exit_function(void)
 {
     if(stderr_pipefd[0] > -1) // If stderr is being redirected
     {
@@ -598,7 +598,7 @@ void exit_function(void)
 }
 
 // Redirect stderr to the pipe
-int redirect_stderr(void)
+static int redirect_stderr(void)
 {
     int bak_fn, new_fn;
 
@@ -616,7 +616,7 @@ int redirect_stderr(void)
 }
 
 // Close the pipe and restore stderr
-void restore_stderr(int bak_fn)
+static void restore_stderr(int bak_fn)
 {
     close(stderr_pipefd[0]); close(stderr_pipefd[1]);
     stderr_pipefd[0] = -1; stderr_pipefd[1] = -1;
@@ -627,7 +627,8 @@ void restore_stderr(int bak_fn)
 }
 
 // Used by Haskell
-void Report(int32 elevel, char* msg)
+void PLHaskell_Report(int32 elevel, char* msg) __attribute__((visibility ("hidden")));
+void PLHaskell_Report(int32 elevel, char* msg)
 {
     ereport(elevel, errmsg("%s", msg));
 }

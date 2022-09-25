@@ -51,7 +51,7 @@ newtype ErrorLevel = ErrorLevel { unErrorLevel :: CInt }
     exception = ERROR
 }
 
-foreign import capi safe "plhaskell.h Report"
+foreign import capi safe "plhaskell.h PLHaskell_Report"
     c_Report :: CInt -> CString -> IO ()
 
 report :: ErrorLevel -> String -> PGm ()
