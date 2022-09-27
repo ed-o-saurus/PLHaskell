@@ -40,7 +40,7 @@ import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), 
                                      NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport),
                                      ModuleQualification (QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope,
                                      languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF,
-                                     typeChecksWithDetails)
+                                     typeChecks)
 import Prelude                      (Bool (False, True), Char, Double, Either (Left, Right), Float, Int, IO,
                                      Maybe (Just, Nothing), String, concat, concatMap, error, flip, fromIntegral, head,
                                      length, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
@@ -200,6 +200,12 @@ getSignature pCallInfo = liftIO $ do
     if toBool returnSet
         then return (intercalate " -> " (argTypeNames ++ ["PGutils.PGm [" ++ resultTypeName ++ "]"]))
         else return (intercalate " -> " (argTypeNames ++ ["PGutils.PGm (" ++ resultTypeName ++ ")"]))
+
+-- Remove "Prelude." from type signature
+cleanPrelude :: String -> String
+cleanPrelude ('P':'r':'e':'l':'u':'d':'e':'.':tail) = cleanPrelude tail
+cleanPrelude (c:tail) = c:(cleanPrelude tail)
+cleanPrelude "" = ""
 
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
@@ -408,9 +414,16 @@ setUpEvalInt pCallInfo = do
                                                                                          "freeStablePtr",
                                                                                          "newStablePtr"]),
                  ModuleImport "PGmodule"              (QualifiedAs Nothing) (ImportList [funcName]),
-                 ModuleImport "PGutils"               (QualifiedAs Nothing) (ImportList ["unPGm"]),
+                 ModuleImport "PGutils"               (QualifiedAs Nothing) (ImportList ["PGm", "unPGm"]),
                  ModuleImport "Data.Int"              (QualifiedAs Nothing) (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Word"             (QualifiedAs Nothing) (ImportList ["Word8"])]
+
+    -- Check signature
+    signature <- getSignature pCallInfo
+    r <- typeChecks ("PGmodule." ++ funcName ++ "::" ++ signature)
+    if r
+        then return ()
+        else (liftIO . raiseError) ("Expected Signature : " ++ funcName ++ " :: " ++ (cleanPrelude signature))
 
     -- Copy functions into interpreted environment
     #transfer getField, getField, Foreign.Ptr.Ptr () -> Data.Int.Int16 -> Prelude.IO (Foreign.Ptr.Ptr ())
@@ -487,11 +500,10 @@ checkSignature pCallInfo = execute $ do
                  ModuleImport "Data.Word" (QualifiedAs Nothing) (ImportList ["Word8"])]
 
     signature <- getSignature pCallInfo
-    r <- typeChecksWithDetails ("PGmodule." ++ funcName ++ "::" ++ signature)
-    case r of
-        Left []      -> (liftIO . raiseError) "Unknown Signature Error"
-        Left (err:_) -> (liftIO . raiseError) (errMsg err)
-        Right _      -> return ()
+    r <- typeChecks ("PGmodule." ++ funcName ++ "::" ++ signature)
+    if r
+        then return ()
+        else (liftIO . raiseError) ("Expected Signature : " ++ funcName ++ " :: " ++ (cleanPrelude signature))
 
 -- Set the Function field of the CallInfo struct to a function that
 -- will read the arguments, call the function, and write the result
