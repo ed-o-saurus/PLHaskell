@@ -407,7 +407,7 @@ setUpEvalInt pCallInfo = do
                                                                                          "flip", "map", "return", "(>>=)"]),
                  ModuleImport "Foreign.C.Types"       (QualifiedAs Nothing) (ImportList ["CBool(CBool)"]),
                  ModuleImport "Foreign.Marshal.Utils" (QualifiedAs Nothing) (ImportList ["fromBool"]),
-                 ModuleImport "Foreign.Ptr"           (QualifiedAs Nothing) (ImportList ["Ptr", "wordPtrToPtr"]),
+                 ModuleImport "Foreign.Ptr"           (QualifiedAs Nothing) (ImportList ["Ptr", "nullPtr", "wordPtrToPtr"]),
                  ModuleImport "Foreign.Storable"      (QualifiedAs Nothing) (ImportList ["peek", "poke"]),
                  ModuleImport "Foreign.StablePtr"     (QualifiedAs Nothing) (ImportList ["castPtrToStablePtr",
                                                                                          "deRefStablePtr",
@@ -558,8 +558,7 @@ mkIterator pCallInfo = execute $ do
     \    case writeResultList of\
     \        [] -> do {\
     \            Foreign.Storable.poke pMoreResults (Foreign.C.Types.CBool (Foreign.Marshal.Utils.fromBool Prelude.False));\
-    \            spTail <- Foreign.StablePtr.newStablePtr [];\
-    \            Foreign.Storable.poke pList spTail};\
+    \            Foreign.Storable.poke pList Foreign.Ptr.nullPtr};\
     \        (writeResult:tail) -> do {\
     \            Foreign.Storable.poke pMoreResults (Foreign.C.Types.CBool (Foreign.Marshal.Utils.fromBool Prelude.True));\
     \            spTail <- Foreign.StablePtr.newStablePtr tail;\
