@@ -575,8 +575,8 @@ static void Enter(void)
 // Called on every garbage collection to monitor memory usage
 static void gcDoneHook(const struct GCDetails_ *stats)
 {
-    if(stats->mem_in_use_bytes > MAX_MEMORY)
-        ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d bytes)", MAX_MEMORY));
+    if(stats->mem_in_use_bytes > (uint64_t)0x100000 * MAX_MEMORY) // 0x100000 B = 1 MiB
+        ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d MiB)", MAX_MEMORY));
 }
 
 // Called if the RTS terminates the process
