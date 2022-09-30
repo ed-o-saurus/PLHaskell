@@ -146,6 +146,26 @@ $$
 LANGUAGE plhaskell;
 ```
 
+### Fibonacci Sequence
+
+```
+CREATE FUNCTION fibonacci(int) RETURNS int AS
+$$
+    import PGutils (PGm)
+    import Data.Int (Int32)
+
+    fibonacci' :: Int32 -> Int32
+    fibonacci' 0 = 0
+    fibonacci' 1 = 1
+    fibonacci' n = fibonacci' (n-2) + fibonacci' (n-1)
+
+    fibonacci :: Maybe Int32 -> PGm (Maybe Int32)
+    fibonacci Nothing = return Nothing
+    fibonacci (Just n) = return (Just (fibonacci' n))
+$$
+LANGUAGE plhaskell;
+```
+
 ### Primes
 
 This section shows how to return a set of results. The functions listed produce lists of prime numbers using the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes).
