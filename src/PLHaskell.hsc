@@ -33,8 +33,9 @@ import Foreign.C.String             (CString, peekCString, peekCStringLen, withC
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Array        (peekArray, pokeArray)
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
-import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
-import Foreign.StablePtr            (castStablePtrToPtr, deRefStablePtr, freeStablePtr, newStablePtr)
+import Foreign.Ptr                  (Ptr, castPtr, nullPtr, plusPtr, ptrToWordPtr)
+import Foreign.StablePtr            (StablePtr, castPtrToStablePtr, castStablePtrToPtr, deRefStablePtr, freeStablePtr,
+                                     newStablePtr)
 import Foreign.Storable             (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
 import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException,
                                      NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport),
@@ -403,9 +404,10 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Data.Word"             NotQualified (ImportList ["Word8"]),
                  ModuleImport "Foreign.C.Types"       NotQualified (ImportList ["CBool(CBool)"]),
                  ModuleImport "Foreign.Marshal.Utils" NotQualified (ImportList ["fromBool"]),
-                 ModuleImport "Foreign.Ptr"           NotQualified (ImportList ["Ptr", "nullPtr", "wordPtrToPtr"]),
-                 ModuleImport "Foreign.StablePtr"     NotQualified (ImportList ["castPtrToStablePtr", "deRefStablePtr",
-                                                                                "freeStablePtr", "newStablePtr"]),
+                 ModuleImport "Foreign.Ptr"           NotQualified (ImportList ["Ptr", "wordPtrToPtr"]),
+                 ModuleImport "Foreign.StablePtr"     NotQualified (ImportList ["StablePtr", "castPtrToStablePtr",
+                                                                                "deRefStablePtr", "freeStablePtr",
+                                                                                "newStablePtr"]),
                  ModuleImport "Foreign.Storable"      NotQualified (ImportList ["peek", "poke"]),
                  ModuleImport "PGutils"               NotQualified (ImportList ["PGm", "unPGm"]),
                  ModuleImport "PGmodule"              (QualifiedAs Nothing) (ImportList [funcName])]
@@ -514,6 +516,21 @@ mkFunction pCallInfo = execute $ do
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
     runStmt ("poke pFunction spFunction")
 
+iterate :: Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
+iterate pList pMoreResults = do
+    spList <- peek pList
+    writeResultList <- deRefStablePtr spList
+    freeStablePtr spList
+    case writeResultList of
+        [] -> do
+            poke pMoreResults (CBool (fromBool False))
+            poke pList (castPtrToStablePtr nullPtr)
+        (writeResult:tail) -> do
+            poke pMoreResults (CBool (fromBool True))
+            spTail <- newStablePtr tail
+            poke pList spTail
+            writeResult
+
 -- Set the List field of the CallInfo struct to the list returns by the function
 -- Set the Function field of the CallInfo struct to a function that will iterate through the list
 -- Each call of Function :
@@ -523,6 +540,8 @@ foreign export capi mkIterator :: Ptr CallInfo -> IO ()
 mkIterator :: Ptr CallInfo -> IO ()
 mkIterator pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
+
+    #transfer iterate, iterate, Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
 
     -- Get the arguments
     forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgValueInfo?"))
@@ -541,20 +560,7 @@ mkIterator pCallInfo = execute $ do
     runStmt ("let pMoreResults = wordPtrToPtr " ++ show ((#ptr struct CallInfo, MoreResults) pCallInfo))
 
     -- poke the iterator into the Function field of the CallInfo struct
-    runStmt "spFunction <- newStablePtr (\
-    \do {\
-    \    spList <- peek pList;\
-    \    writeResultList <- deRefStablePtr spList;\
-    \    freeStablePtr spList;\
-    \    case writeResultList of\
-    \        [] -> do {\
-    \            poke pMoreResults (CBool (fromBool False));\
-    \            poke pList nullPtr};\
-    \        (writeResult:tail) -> do {\
-    \            poke pMoreResults (CBool (fromBool True));\
-    \            spTail <- newStablePtr tail;\
-    \            poke pList spTail;\
-    \            writeResult}})"
+    runStmt "spFunction <- newStablePtr (iterate pList pMoreResults)"
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
     runStmt ("poke pFunction spFunction")
 
