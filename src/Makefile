@@ -42,7 +42,7 @@ PLHaskell.o PLHaskell_stub.h PLHaskell.hi : PLHaskell.hs plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PLHaskell.hs -o PLHaskell.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC
 
 PGutils.o PGutils.hi : PGutils.hs
-	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp                           -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
 
 %.hs : %.hsc
 	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/ -t template-hsc-plhaskell.h

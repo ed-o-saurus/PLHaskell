@@ -29,7 +29,7 @@ import Data.Functor                 ((<&>))
 import Data.Int                     (Int16, Int32, Int64)
 import Data.List                    (intercalate)
 import Data.Word                    (Word8)
-import Foreign.C.String             (CString, peekCString, peekCStringLen, withCString, withCStringLen)
+import Foreign.C.String             (CString, peekCString, peekCStringLen, withCStringLen)
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Array        (peekArray, pokeArray)
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
@@ -60,8 +60,14 @@ interpolate (s:ss) i = s : interpolate ss i
 foreign import capi safe "plhaskell.h PLHaskell_Report"
     c_Report :: CInt -> CString -> IO ()
 
+raise :: Int32 -> String -> IO ()
+raise level str = do
+    ptr <- palloc_string str
+    c_Report (CInt level) ptr
+    pfree ptr
+
 raiseError :: String -> IO ()
-raiseError str = withCString str (c_Report (#const ERROR))
+raiseError = raise (#const ERROR)
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "plhaskell.h palloc"
@@ -69,6 +75,26 @@ foreign import capi safe "plhaskell.h palloc"
 
 palloc :: Int -> IO (Ptr a)
 palloc size = c_palloc (CSize (fromIntegral size))
+
+-- Allocate memory using postgres' mechanism and zero the contents
+foreign import capi safe "plhaskell.h palloc0"
+    c_palloc0 :: CSize -> IO (Ptr a)
+
+palloc0 :: Int -> IO (Ptr a)
+palloc0 size = c_palloc0 (CSize (fromIntegral size))
+
+-- Palloc CString
+-- Copy a String's contents to palloc'd memory
+palloc_string :: String -> IO (Ptr a)
+palloc_string str = do
+    withCStringLen str (\(ptr, len) -> do
+        pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
+        copyBytes pallocPtr ptr len
+        return (castPtr pallocPtr))
+
+-- Free memory using postgres' mechanism
+foreign import capi safe "plhaskell.h pfree"
+    pfree :: Ptr a -> IO ()
 
 -- Is a type supported
 typeAvailable :: Int32 -> Bool
