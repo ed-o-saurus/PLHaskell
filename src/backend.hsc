@@ -25,26 +25,16 @@
 module PLHaskell () where
 
 import Control.Monad                (forM, forM_, join, (>=>))
-import Data.Functor                 ((<&>))
-import Data.Int                     (Int16, Int32, Int64)
+import Data.Int                     (Int16, Int32)
 import Data.List                    (intercalate)
-import Data.Word                    (Word8)
-import Foreign.C.String             (CString, peekCString, peekCStringLen, withCStringLen)
+import Foreign.C.String             (CString, peekCString, withCStringLen)
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
-import Foreign.Marshal.Array        (peekArray, pokeArray)
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
-import Foreign.Ptr                  (Ptr, castPtr, nullPtr, plusPtr, ptrToWordPtr)
-import Foreign.StablePtr            (StablePtr, castPtrToStablePtr, castStablePtrToPtr, deRefStablePtr, freeStablePtr,
-                                     newStablePtr)
-import Foreign.Storable             (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
-import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException,
-                                     NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport),
-                                     ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg,
-                                     installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter,
-                                     runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Char, Double, Either (Left, Right), Float, Int, IO,
-                                     Maybe (Just, Nothing), String, concat, concatMap, error, flip, fromIntegral, head,
-                                     length, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
+import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
+import Foreign.StablePtr            (deRefStablePtr)
+import Foreign.Storable             (peek, peekByteOff)
+import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
+import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -68,13 +58,6 @@ raise level str = do
 
 raiseError :: String -> IO ()
 raiseError = raise (#const ERROR)
-
--- Allocate memory using postgres' mechanism
-foreign import capi safe "plhaskell.h palloc"
-    c_palloc :: CSize -> IO (Ptr a)
-
-palloc :: Int -> IO (Ptr a)
-palloc size = c_palloc (CSize (fromIntegral size))
 
 -- Allocate memory using postgres' mechanism and zero the contents
 foreign import capi safe "plhaskell.h palloc0"
@@ -163,32 +146,6 @@ getModFileName pCallInfo = liftIO ((#peek struct CallInfo, ModFileName) pCallInf
 getFuncName :: Ptr CallInfo -> Interpreter String
 getFuncName pCallInfo = liftIO ((#peek struct CallInfo, FuncName) pCallInfo >>= peekCString)
 
--- Allocate memory only if the type is not ByVal and return pointer to location of data
-allocDataLocation :: Ptr ValueInfo -> Int -> IO (Ptr a)
-allocDataLocation pValueInfo size = do
-    CBool byVal <- (#peek struct ValueInfo, ByVal) pValueInfo
-    if toBool byVal
-    then return ((#ptr struct ValueInfo, Value) pValueInfo)
-    else do
-        address <- palloc size
-        (#poke struct ValueInfo, Value) pValueInfo address
-        return address
-
--- Write a Haskell type to a ValueInfo struct
-write :: (a -> Ptr ValueInfo -> IO ()) -> Maybe a -> Ptr ValueInfo -> IO ()
-write _ Nothing pValueInfo = writeNull pValueInfo -- Set isNull if passed Nothing
-write write' (Just result) pValueInfo = do -- Use write' if passed Just ...
-    writeNotNull pValueInfo
-    write' result pValueInfo
-
--- Set isNull to true
-writeNull :: Ptr ValueInfo -> IO ()
-writeNull pValueInfo = (#poke struct ValueInfo, isNull) pValueInfo (CBool (fromBool True))
-
--- Set isNull to false
-writeNotNull :: Ptr ValueInfo -> IO ()
-writeNotNull pValueInfo = (#poke struct ValueInfo, isNull) pValueInfo (CBool (fromBool False))
-
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo i = do
@@ -228,57 +185,6 @@ getSignature pCallInfo = liftIO $ do
         then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
         else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
 
--- Do nothing when returning void
-writeVoid :: () -> Ptr ValueInfo -> IO ()
-writeVoid () _ = return ()
-
--- Set the size of a variable length array
-foreign import capi safe "postgres.h SET_VARSIZE"
-    c_SetVarSize :: Ptr () -> CInt -> IO ()
-
-setVarSize :: Ptr () -> Int -> IO ()
-setVarSize pResult len = c_SetVarSize pResult (CInt ((#const VARHDRSZ) + fromIntegral len))
-
--- Functions to write Haskell types to ValueInfo structs
-writeBytea :: [Word8] -> Ptr ValueInfo -> IO ()
-writeBytea result pValueInfo = do
-    let len = length result
-    pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
-    setVarSize pResult len
-    pData <- getVarData pResult
-    pokeArray (castPtr pData) result
-
-writeText :: String -> Ptr ValueInfo -> IO ()
-writeText result pValueInfo = withCStringLen result (\(src, len) -> do
-    pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
-    setVarSize pResult len
-    pData <- getVarData pResult
-    copyBytes (castPtr pData) src len)
-
-writeChar :: Char -> Ptr ValueInfo -> IO ()
-writeChar result = writeText [result]
-
-writeBool :: Bool -> Ptr ValueInfo -> IO ()
-writeBool result pValueInfo = allocDataLocation pValueInfo 1 >>= (flip poke) ((CBool . fromBool) result)
-
-writeNumber :: Storable a => a -> Ptr ValueInfo -> IO ()
-writeNumber result pValueInfo = allocDataLocation pValueInfo (sizeOf result) >>= (flip poke) result
-
-writeInt2 :: Int16 -> Ptr ValueInfo -> IO ()
-writeInt2 = writeNumber
-
-writeInt4 :: Int32 -> Ptr ValueInfo -> IO ()
-writeInt4 = writeNumber
-
-writeInt8 :: Int64 -> Ptr ValueInfo -> IO ()
-writeInt8 = writeNumber
-
-writeFloat4 :: Float -> Ptr ValueInfo -> IO ()
-writeFloat4 = writeNumber
-
-writeFloat8 :: Double -> Ptr ValueInfo -> IO ()
-writeFloat8 = writeNumber
-
 -- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
 writeResultDef :: Ptr ValueInfo -> IO String
 writeResultDef pValueInfo = do
@@ -300,81 +206,6 @@ writeResultDef pValueInfo = do
                                                                                                concat fieldsDef)
             | otherwise = error "Bad Type"
     def
-
-readIsNull :: Ptr ValueInfo -> IO Bool
-readIsNull pValueInfo = do
-    CBool isNull <- (#peek struct ValueInfo, isNull) pValueInfo
-    return (toBool isNull)
-
--- Get Location where data is stored
-getDataLocation :: Ptr ValueInfo -> IO (Ptr a)
-getDataLocation pValueInfo = do
-    CBool byVal <- (#peek struct ValueInfo, ByVal) pValueInfo
-    if toBool byVal
-    then return ((#ptr struct ValueInfo, Value) pValueInfo)
-    else (#peek struct ValueInfo, Value) pValueInfo
-
--- Read a Haskell type from a ValueInfo struct
-read :: (Ptr ValueInfo -> IO a) -> Ptr ValueInfo -> IO (Maybe a)
-read read' pValueInfo = do
-    isNull <- readIsNull pValueInfo
-    if isNull
-    then return Nothing
-    else read' pValueInfo <&> Just
-
--- Get the size of a variable length array
-foreign import capi safe "postgres.h VARSIZE_ANY_EXHDR"
-    c_GetVarSize :: Ptr () -> IO CInt
-
-getVarSize :: Ptr () -> IO Int32
-getVarSize pArg = do
-    CInt size <- c_GetVarSize pArg
-    return size
-
--- Get the start of a variable length array
-foreign import capi safe "postgres.h VARDATA_ANY"
-    getVarData :: Ptr () -> IO (Ptr ())
-
--- Functions to read Haskell types from ValueInfo structs
-readBytea :: Ptr ValueInfo -> IO [Word8]
-readBytea pValueInfo = do
-    pArg <- getDataLocation pValueInfo
-    len <- getVarSize pArg
-    pData <- getVarData pArg
-    peekArray (fromIntegral len) (castPtr pData)
-
-readText :: Ptr ValueInfo -> IO String
-readText pValueInfo = do
-    pArg <- getDataLocation pValueInfo
-    len <- getVarSize pArg
-    pData <- getVarData pArg
-    peekCStringLen (castPtr pData, fromIntegral len)
-
-readChar :: Ptr ValueInfo -> IO Char
-readChar pValueInfo = readText pValueInfo <&> head
-
-readNumber :: Storable a => Ptr ValueInfo -> IO a
-readNumber pValueInfo = getDataLocation pValueInfo >>= peek
-
-readBool :: Ptr ValueInfo -> IO Bool
-readBool pValueInfo = do
-    CBool arg <- readNumber pValueInfo
-    return (toBool arg)
-
-readInt2 :: Ptr ValueInfo -> IO Int16
-readInt2 = readNumber
-
-readInt4 :: Ptr ValueInfo -> IO Int32
-readInt4 = readNumber
-
-readInt8 :: Ptr ValueInfo -> IO Int64
-readInt8 = readNumber
-
-readFloat4 :: Ptr ValueInfo -> IO Float
-readFloat4 = readNumber
-
-readFloat8 :: Ptr ValueInfo -> IO Double
-readFloat8 = readNumber
 
 -- Return a string representing a function to take and argument from a ValueInfo struct and return the Haskell value
 readArgDef :: Ptr ValueInfo -> IO String
@@ -422,20 +253,14 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"               NotQualified (ImportList ["Bool(False, True)", "Char", "Double",
-                                                                                "Float", "IO", "Maybe(Just, Nothing)", 
-                                                                                "String", "flip", "map", "return",
-                                                                                "(>>=)"]),
+    setImportsF [ModuleImport "Prelude"               NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "String", "flip", "map", "return", "(>>=)"]),
                  ModuleImport "Data.Int"              NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Word"             NotQualified (ImportList ["Word8"]),
-                 ModuleImport "Foreign.C.Types"       NotQualified (ImportList ["CBool(CBool)"]),
-                 ModuleImport "Foreign.Marshal.Utils" NotQualified (ImportList ["fromBool"]),
-                 ModuleImport "Foreign.Ptr"           NotQualified (ImportList ["Ptr", "wordPtrToPtr"]),
-                 ModuleImport "Foreign.StablePtr"     NotQualified (ImportList ["StablePtr", "castPtrToStablePtr",
-                                                                                "deRefStablePtr", "freeStablePtr",
-                                                                                "newStablePtr"]),
-                 ModuleImport "Foreign.Storable"      NotQualified (ImportList ["peek", "poke"]),
+                 ModuleImport "Foreign.Ptr"           NotQualified (ImportList ["wordPtrToPtr"]),
+                 ModuleImport "Foreign.StablePtr"     NotQualified (ImportList ["newStablePtr"]),
+                 ModuleImport "Foreign.Storable"      NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"               NotQualified (ImportList ["PGm", "unPGm"]),
+                 ModuleImport "PGsupport"             NotQualified (ImportList ["getField", "readIsNull", "readBytea", "readText", "readChar", "readBool", "readInt2", "readInt4", "readInt8", "readFloat4", "readFloat8", "writeNull", "writeNotNull", "writeVoid", "writeBytea", "writeText", "writeChar", "writeBool", "writeInt2", "writeInt4", "writeInt8", "writeFloat4", "writeFloat8", "iterate"]),
                  ModuleImport "PGmodule"              (QualifiedAs Nothing) (ImportList [funcName])]
 
     -- Check signature
@@ -444,34 +269,6 @@ setUpEvalInt pCallInfo = do
     if r
         then return ()
         else (liftIO . raiseError) ("Expected Signature : " ++ funcName ++ " :: " ++ signature)
-
-    -- Copy functions into interpreted environment
-    #transfer getField, getField, Ptr () -> Int16 -> IO (Ptr ())
-
-    #transfer readIsNull, readIsNull, Ptr () -> IO Bool
-    #transfer read readBytea,  readBytea,  Ptr () -> IO (Maybe [Word8])
-    #transfer read readText,   readText,   Ptr () -> IO (Maybe String)
-    #transfer read readChar,   readChar,   Ptr () -> IO (Maybe Char)
-    #transfer read readBool,   readBool,   Ptr () -> IO (Maybe Bool)
-    #transfer read readInt2,   readInt2,   Ptr () -> IO (Maybe Int16)
-    #transfer read readInt4,   readInt4,   Ptr () -> IO (Maybe Int32)
-    #transfer read readInt8,   readInt8,   Ptr () -> IO (Maybe Int64)
-    #transfer read readFloat4, readFloat4, Ptr () -> IO (Maybe Float)
-    #transfer read readFloat8, readFloat8, Ptr () -> IO (Maybe Double)
-
-    #transfer writeNull,    writeNull,    Ptr () -> IO ()
-    #transfer writeNotNull, writeNotNull, Ptr () -> IO ()
-    #transfer writeVoid, writeVoid, () -> Ptr () -> IO ()
-
-    #transfer write writeBytea,  writeBytea,   Maybe [Word8] -> Ptr () -> IO ()
-    #transfer write writeText,   writeText,    Maybe String  -> Ptr () -> IO ()
-    #transfer write writeChar,   writeChar,    Maybe Char    -> Ptr () -> IO ()
-    #transfer write writeBool,   writeBool,    Maybe Bool    -> Ptr () -> IO ()
-    #transfer write writeInt2,   writeInt2,    Maybe Int16   -> Ptr () -> IO ()
-    #transfer write writeInt4,   writeInt4,    Maybe Int32   -> Ptr () -> IO ()
-    #transfer write writeInt8,   writeInt8,    Maybe Int64   -> Ptr () -> IO ()
-    #transfer write writeFloat4, writeFloat4,  Maybe Float   -> Ptr () -> IO ()
-    #transfer write writeFloat8, writeFloat8,  Maybe Double  -> Ptr () -> IO ()
 
     -- Number of arguments
     CShort nargs <- (liftIO . (#peek struct CallInfo, nargs)) pCallInfo
@@ -542,21 +339,6 @@ mkFunction pCallInfo = execute $ do
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
     runStmt ("poke pFunction spFunction")
 
-iterate :: Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
-iterate pList pMoreResults = do
-    spList <- peek pList
-    writeResultList <- deRefStablePtr spList
-    freeStablePtr spList
-    case writeResultList of
-        [] -> do
-            poke pMoreResults (CBool (fromBool False))
-            poke pList (castPtrToStablePtr nullPtr)
-        (writeResult:tail) -> do
-            poke pMoreResults (CBool (fromBool True))
-            spTail <- newStablePtr tail
-            poke pList spTail
-            writeResult
-
 -- Set the List field of the CallInfo struct to the list returns by the function
 -- Set the Function field of the CallInfo struct to a function that will iterate through the list
 -- Each call of Function :
@@ -566,8 +348,6 @@ foreign export capi mkIterator :: Ptr CallInfo -> IO ()
 mkIterator :: Ptr CallInfo -> IO ()
 mkIterator pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
-
-    #transfer iterate, iterate, Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
 
     -- Get the arguments
     forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgValueInfo?"))

@@ -42,6 +42,6 @@ key:             pgutils-1.0
 license:         GPL
 synopsis:        PL/Haskell Utilities
 exposed:         True
-exposed-modules: PGutils
+exposed-modules: PGutils PGsupport
 import-dirs:     $PKG_LIB_DIR
 EOF

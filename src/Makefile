@@ -27,25 +27,28 @@ HINT_NAME = $(shell ghc-pkg describe hint | grep hs-libraries | awk '{print $$2}
 PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 
 .PHONY: all clean
-all : PGutils.dyn_hi plhaskell.so
+all : PGutils.dyn_hi PGsupport.dyn_hi plhaskell.so
 
 clean :
 	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so
 
-plhaskell.so : plhaskell.o backend.o PGutils.o
+plhaskell.so : plhaskell.o backend.o PGutils.o PGsupport.o
 	ghc -Weverything -Werror -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION)
 
 plhaskell.o : plhaskell.c backend_stub.h plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -c plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
 backend.o backend_stub.h backend.hi : backend.hs plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c backend.hs -o backend.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c backend.hs   -o backend.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC
 
 PGutils.o PGutils.hi : PGutils.hs
-	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs -o PGutils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
+
+PGsupport.o PGsupport.hi : PGsupport.hs
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGsupport.hs -o PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
 
 %.hs : %.hsc
-	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/ -t template-hsc-plhaskell.h
+	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/
 
 %.dyn_hi : %.hi
 	cp $^ $@
