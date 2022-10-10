@@ -109,7 +109,7 @@ Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]`
 
 ### Reporting Messages and Raising Error
 
-To report a message or raise an error, use the function `report :: ErrorLevel -> String -> PGm ()`. `ErrorLevel` is any of the following:
+To report a message or raise an error, use the function `report :: ErrorLevel -> Text -> PGm ()`. `ErrorLevel` is any of the following:
 
   Level   |
 --------- |
@@ -124,7 +124,7 @@ debug3    |
 debug4    |
 debug5    |
 
-In addition, the function `raiseError :: String -> a` stops execution and raises an error.
+In addition, the function `raiseError :: Text -> a` stops execution and raises an error.
 
 ## Examples
 

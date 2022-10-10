@@ -81,13 +81,6 @@ pallocString str = useAsCStringLen (encodeUtf8 str) (\(ptr, len) -> do
     copyBytes pallocPtr ptr len
     return (castPtr pallocPtr))
 
-
-
---withCStringLen str (\(ptr, len) -> do
---        pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
---        copyBytes pallocPtr ptr len
---        return (castPtr pallocPtr))
-
 -- Free memory using postgres' mechanism
 foreign import capi safe "plhaskell.h pfree"
     pfree :: Ptr a -> IO ()

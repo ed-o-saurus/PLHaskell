@@ -253,16 +253,16 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"               NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "flip", "map", "return", "(>>=)"]),
-                 ModuleImport "Data.ByteString"       NotQualified (ImportList ["ByteString"]),
-                 ModuleImport "Data.Int"              NotQualified (ImportList ["Int16", "Int32", "Int64"]),
-                 ModuleImport "Data.Text"             NotQualified (ImportList ["Text"]),
-                 ModuleImport "Foreign.Ptr"           NotQualified (ImportList ["wordPtrToPtr"]),
-                 ModuleImport "Foreign.StablePtr"     NotQualified (ImportList ["newStablePtr"]),
-                 ModuleImport "Foreign.Storable"      NotQualified (ImportList ["poke"]),
-                 ModuleImport "PGutils"               NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"             NotQualified (ImportList ["getField", "readIsNull", "readBytea", "readText", "readChar", "readBool", "readInt2", "readInt4", "readInt8", "readFloat4", "readFloat8", "writeNull", "writeNotNull", "writeVoid", "writeBytea", "writeText", "writeChar", "writeBool", "writeInt2", "writeInt4", "writeInt8", "writeFloat4", "writeFloat8", "iterate"]),
-                 ModuleImport "PGmodule"              (QualifiedAs Nothing) (ImportList [funcName])]
+    setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "flip", "map", "return", "(>>=)"]),
+                 ModuleImport "Data.ByteString"   NotQualified (ImportList ["ByteString"]),
+                 ModuleImport "Data.Int"          NotQualified (ImportList ["Int16", "Int32", "Int64"]),
+                 ModuleImport "Data.Text"         NotQualified (ImportList ["Text"]),
+                 ModuleImport "Foreign.Ptr"       NotQualified (ImportList ["wordPtrToPtr"]),
+                 ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
+                 ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
+                 ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["getField", "readIsNull", "readBytea", "readText", "readChar", "readBool", "readInt2", "readInt4", "readInt8", "readFloat4", "readFloat8", "writeNull", "writeNotNull", "writeVoid", "writeBytea", "writeText", "writeChar", "writeBool", "writeInt2", "writeInt4", "writeInt8", "writeFloat4", "writeFloat8", "iterate"]),
+                 ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     -- Check signature
     signature <- getSignature pCallInfo
@@ -310,12 +310,12 @@ checkSignature pCallInfo = execute $ do
     loadModules [modFileName]
 
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"   NotQualified (ImportList ["Bool", "Char", "Double", "Float", "Maybe"]),
+    setImportsF [ModuleImport "Prelude"         NotQualified (ImportList ["Bool", "Char", "Double", "Float", "Maybe"]),
                  ModuleImport "Data.ByteString" NotQualified (ImportList ["ByteString"]),
-                 ModuleImport "Data.Int"  NotQualified (ImportList ["Int16", "Int32", "Int64"]),
-                 ModuleImport "Data.Text" NotQualified (ImportList ["Text"]),
-                 ModuleImport "PGutils"   NotQualified (ImportList ["PGm"]),
-                 ModuleImport "PGmodule"  (QualifiedAs Nothing) (ImportList [funcName])]
+                 ModuleImport "Data.Int"        NotQualified (ImportList ["Int16", "Int32", "Int64"]),
+                 ModuleImport "Data.Text"       NotQualified (ImportList ["Text"]),
+                 ModuleImport "PGutils"         NotQualified (ImportList ["PGm"]),
+                 ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     signature <- getSignature pCallInfo
     r <- typeChecks ("PGmodule." ++ funcName ++ "::" ++ signature)
