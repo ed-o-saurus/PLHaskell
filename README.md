@@ -87,17 +87,17 @@ Functions in PL/Haskell are created the same manner as other PostgreSQL function
 
 The code must contain a function with the same name as the PostgreSQL function. Each of its arguments must be of the type `Maybe `*`arg`* where *`arg`* is the Haskell type as determined by the PostgreSQL type as indicated by the following table.
 
-PostgreSQL Type |   Module    | Haskell Type
---------------- | ----------- | ------------
-`bytea`         | `Data.Word` | `[Word8]`
-`text`          | `Prelude`   | `String`
-`char`          | `Prelude`   | `Char`
-`bool`          | `Prelude`   | `Bool`
-`smallint`      | `Data.Int`  | `Int16`
-`integer`       | `Data.Int`  | `Int32`
-`bigint`        | `Data.Int`  | `Int64`
-`real`          | `Prelude`   | `Float`
-`float`         | `Prelude`   | `Double`
+PostgreSQL Type |   Module          | Haskell Type
+--------------- | ----------------- | ------------
+`bytea`         | `Data.ByteString` | `ByteString`
+`text`          | `Data.Text`       | `Text`
+`char`          | `Prelude`         | `Char`
+`bool`          | `Prelude`         | `Bool`
+`smallint`      | `Data.Int`        | `Int16`
+`integer`       | `Data.Int`        | `Int32`
+`bigint`        | `Data.Int`        | `Int64`
+`real`          | `Prelude`         | `Float`
+`float`         | `Prelude`         | `Double`
 
 The function must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function.
 

@@ -27,12 +27,15 @@
 
 module PGutils (PGm, ErrorLevel, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, unPGm) where
 
+import Data.ByteString       (useAsCStringLen)
 import Data.Int              (Int32)
-import Foreign.C.String      (CString, withCStringLen)
+import Data.Text             (Text)
+import Data.Text.Encoding    (encodeUtf8)
+import Foreign.C.String      (CString)
 import Foreign.C.Types       (CInt(CInt), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes)
 import Foreign.Ptr           (Ptr, castPtr)
-import Prelude               (Applicative, Functor, Int, IO, Monad, String, fromIntegral, return, undefined, ($), (+))
+import Prelude               (Applicative, Functor, Int, IO, Monad, fromIntegral, return, undefined, ($), (+))
 import System.IO.Unsafe      (unsafePerformIO)
 
 newtype PGm a = PGm (IO a) deriving newtype (Functor, Applicative, Monad)
@@ -57,7 +60,7 @@ newtype ErrorLevel = ErrorLevel { unErrorLevel :: CInt }
 foreign import capi safe "plhaskell.h PLHaskell_Report"
     c_Report :: CInt -> CString -> IO ()
 
-raise :: Int32 -> String -> IO ()
+raise :: Int32 -> Text -> IO ()
 raise level str = do
     ptr <- pallocString str
     c_Report (CInt level) ptr
@@ -72,23 +75,29 @@ palloc0 size = c_palloc0 (CSize (fromIntegral size))
 
 -- Palloc CString
 -- Copy a String's contents to palloc'd memory
-pallocString :: String -> IO (Ptr a)
-pallocString str = do
-    withCStringLen str (\(ptr, len) -> do
-        pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
-        copyBytes pallocPtr ptr len
-        return (castPtr pallocPtr))
+pallocString :: Text -> IO (Ptr a)
+pallocString str = useAsCStringLen (encodeUtf8 str) (\(ptr, len) -> do
+    pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
+    copyBytes pallocPtr ptr len
+    return (castPtr pallocPtr))
+
+
+
+--withCStringLen str (\(ptr, len) -> do
+--        pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
+--        copyBytes pallocPtr ptr len
+--        return (castPtr pallocPtr))
 
 -- Free memory using postgres' mechanism
 foreign import capi safe "plhaskell.h pfree"
     pfree :: Ptr a -> IO ()
 
-report :: ErrorLevel -> String -> PGm ()
+report :: ErrorLevel -> Text -> PGm ()
 report elevel msg = do
     let CInt level = unErrorLevel elevel
     PGm (raise level msg)
 
-raiseError :: String -> a
+raiseError :: Text -> a
 raiseError msg = unsafePerformIO $ do
     unPGm (report exception msg)
     undefined

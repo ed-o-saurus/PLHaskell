@@ -33,7 +33,7 @@ import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
 import Foreign.StablePtr            (deRefStablePtr)
 import Foreign.Storable             (peek, peekByteOff)
-import Language.Haskell.Interpreter (Extension (Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
+import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
 import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
 
 -- Dummy types to make pointers
@@ -101,8 +101,8 @@ c_TypeAvailable oid = do
 
 -- Name of corresponding Haskell types
 baseName :: Int32 -> String
-baseName (#const BYTEAOID)  = "[Word8]"
-baseName (#const TEXTOID)   = "String"
+baseName (#const BYTEAOID)  = "ByteString"
+baseName (#const TEXTOID)   = "Text"
 baseName (#const BPCHAROID) = "Char"
 baseName (#const BOOLOID)   = "Bool"
 baseName (#const INT2OID)   = "Int16"
@@ -247,15 +247,16 @@ definePArgValueInfo pCallInfo i = do
 -- Set up interpreter to evaluate a function
 setUpEvalInt :: Ptr CallInfo -> Interpreter (Int16, String)
 setUpEvalInt pCallInfo = do
-    set [languageExtensions := [Safe], installedModulesInScope := False]
+    set [languageExtensions := [OverloadedStrings, Safe], installedModulesInScope := False]
     modFileName <- getModFileName pCallInfo
     loadModules [modFileName]
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"               NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "String", "flip", "map", "return", "(>>=)"]),
+    setImportsF [ModuleImport "Prelude"               NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "flip", "map", "return", "(>>=)"]),
+                 ModuleImport "Data.ByteString"       NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"              NotQualified (ImportList ["Int16", "Int32", "Int64"]),
-                 ModuleImport "Data.Word"             NotQualified (ImportList ["Word8"]),
+                 ModuleImport "Data.Text"             NotQualified (ImportList ["Text"]),
                  ModuleImport "Foreign.Ptr"           NotQualified (ImportList ["wordPtrToPtr"]),
                  ModuleImport "Foreign.StablePtr"     NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"      NotQualified (ImportList ["poke"]),
@@ -304,14 +305,15 @@ execute int = do
 foreign export capi checkSignature :: Ptr CallInfo -> IO ()
 checkSignature :: Ptr CallInfo -> IO ()
 checkSignature pCallInfo = execute $ do
-    set [languageExtensions := [Safe], installedModulesInScope := False]
+    set [languageExtensions := [OverloadedStrings, Safe], installedModulesInScope := False]
     modFileName <- getModFileName pCallInfo
     loadModules [modFileName]
 
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"   NotQualified (ImportList ["Bool", "Char", "Double", "Float", "Maybe", "String"]),
+    setImportsF [ModuleImport "Prelude"   NotQualified (ImportList ["Bool", "Char", "Double", "Float", "Maybe"]),
+                 ModuleImport "Data.ByteString" NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"  NotQualified (ImportList ["Int16", "Int32", "Int64"]),
-                 ModuleImport "Data.Word" NotQualified (ImportList ["Word8"]),
+                 ModuleImport "Data.Text" NotQualified (ImportList ["Text"]),
                  ModuleImport "PGutils"   NotQualified (ImportList ["PGm"]),
                  ModuleImport "PGmodule"  (QualifiedAs Nothing) (ImportList [funcName])]
 

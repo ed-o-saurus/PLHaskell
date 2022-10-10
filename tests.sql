@@ -125,8 +125,9 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.shrug() RETURNS text AS
 $$
     import PGutils (PGm)
+    import Data.Text (Text)
 
-    shrug :: PGm (Maybe String)
+    shrug :: PGm (Maybe Text)
     shrug = return (Just "¯\\_(ツ)_/¯")
 $$
 LANGUAGE plhaskell;
@@ -134,11 +135,12 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.len(bytea) RETURNS int AS
 $$
     import PGutils (PGm)
+    import Data.ByteString (length, ByteString)
     import Data.Int (Int32)
 
-    len :: Maybe [a] -> PGm (Maybe Int32)
+    len :: Maybe ByteString -> PGm (Maybe Int32)
     len Nothing = return Nothing
-    len (Just s) = return $ Just $ fromIntegral $ length s
+    len (Just s) = return $ Just $ fromIntegral $ Data.ByteString.length s
 $$
 LANGUAGE plhaskell;
 
@@ -146,22 +148,27 @@ CREATE FUNCTION plhaskell_test.len(text) RETURNS int AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
+    import Data.Text (length, Text)
 
-    len :: Maybe [a] -> PGm (Maybe Int32)
+    len :: Maybe Text -> PGm (Maybe Int32)
     len Nothing = return Nothing
-    len (Just s) = return $ Just $ fromIntegral $ length s
+    len (Just s) = return $ Just $ fromIntegral $ Data.Text.length s
 $$
 LANGUAGE plhaskell;
 
 CREATE FUNCTION plhaskell_test.make_length_bytea(int) RETURNS bytea AS
 $$
     import PGutils (PGm)
+    import Data.ByteString (pack, ByteString)
     import Data.Int (Int32)
     import Data.Word (Word8)
 
-    make_length_bytea :: Maybe Int32 -> PGm (Maybe [Word8])
+    make_length :: Int32 -> [Word8]
+    make_length n = take (fromIntegral n) (repeat 0)
+
+    make_length_bytea :: Maybe Int32 -> PGm (Maybe ByteString)
     make_length_bytea Nothing = return Nothing
-    make_length_bytea (Just n) = return $ Just (take (fromIntegral n) (repeat 0))
+    make_length_bytea (Just n) = return $ Just (pack (make_length n))
 $$
 LANGUAGE plhaskell;
 
@@ -169,10 +176,11 @@ CREATE FUNCTION plhaskell_test.make_length_text(int) RETURNS text AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
+    import Data.Text (pack, Text)
 
-    make_length_text :: Maybe Int32 -> PGm (Maybe String)
+    make_length_text :: Maybe Int32 -> PGm (Maybe Text)
     make_length_text Nothing = return Nothing
-    make_length_text (Just n) = return $ Just (take (fromIntegral n) (repeat '_'))
+    make_length_text (Just n) = return $ Just $ pack (take (fromIntegral n) (repeat '_'))
 $$
 LANGUAGE plhaskell;
 
@@ -207,6 +215,7 @@ CREATE TYPE plhaskell_test.delta AS (f plhaskell_test.bravo, g plhaskell_test.ch
 CREATE FUNCTION plhaskell_test.alpha_test(int) RETURNS plhaskell_test.alpha AS
 $$
     import Data.Int (Int32)
+    import Data.Text (Text)
 
     import PGutils (PGm, raiseError)
 
@@ -216,7 +225,7 @@ $$
     r :: Double
     r = 32.1
 
-    alpha_test :: Maybe Int32 -> PGm (Maybe (Maybe String, Maybe Int32, Maybe Double))
+    alpha_test :: Maybe Int32 -> PGm (Maybe (Maybe Text, Maybe Int32, Maybe Double))
     alpha_test (Just 1) = return (Just (Just "abc", Just 42, Nothing))
     alpha_test (Just 2) = return (Just (Just "cde", Nothing, Just p))
     alpha_test (Just 3) = return (Just (Nothing, Just 42, Just r))
@@ -229,10 +238,11 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.delta_test() RETURNS plhaskell_test.delta AS
 $$
     import Data.Int (Int32)
+    import Data.Text (Text)
 
     import PGutils (PGm)
 
-    delta_test :: PGm (Maybe (Maybe (Maybe (Maybe String, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
+    delta_test :: PGm (Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
     delta_test = return (Just (Just (Just (Just "abc", Just 42, Just (42.3)), Just 0), Just ()))
 $$
 LANGUAGE plhaskell;
@@ -240,10 +250,11 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.echo(plhaskell_test.delta) RETURNS plhaskell_test.delta AS
 $$
     import Data.Int (Int32)
+    import Data.Text (Text)
 
     import PGutils (PGm)
 
-    echo :: Maybe (Maybe (Maybe (Maybe String, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()) -> PGm (Maybe (Maybe (Maybe (Maybe String, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
+    echo :: Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()) -> PGm (Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
     echo = return
 $$
 LANGUAGE plhaskell;

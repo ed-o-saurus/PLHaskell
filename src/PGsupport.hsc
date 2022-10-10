@@ -27,17 +27,17 @@
 
 module PGsupport (getField, readIsNull, readBytea, readText, readChar, readBool, readInt2, readInt4, readInt8, readFloat4, readFloat8, writeNull, writeNotNull, writeVoid, writeBytea, writeText, writeChar, writeBool, writeInt2, writeInt4, writeInt8, writeFloat4, writeFloat8, iterate) where
 
+import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<&>))
 import Data.Int              (Int16, Int32, Int64)
-import Data.Word             (Word8)
-import Foreign.C.String      (peekCStringLen, withCStringLen)
+import Data.Text             (head, singleton, Text)
+import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
 import Foreign.C.Types       (CBool (CBool), CInt (CInt), CSize (CSize))
-import Foreign.Marshal.Array (peekArray, pokeArray)
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable      (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), String, flip, fromIntegral, head, length, return, (*), (+), (.), (>>=))
+import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), flip, fromIntegral, return, (*), (+), (.), (>>=))
 
 type ValueInfo = ()
 
@@ -97,24 +97,22 @@ foreign import capi safe "postgres.h VARDATA_ANY"
     getVarData :: Ptr () -> IO (Ptr ())
 
 -- Functions to read Haskell types from ValueInfo structs
-readBytea' :: Ptr ValueInfo -> IO [Word8]
+readBytea' :: Ptr ValueInfo -> IO ByteString
 readBytea' pValueInfo = do
     pArg <- getDataLocation pValueInfo
     len <- getVarSize pArg
     pData <- getVarData pArg
-    peekArray (fromIntegral len) (castPtr pData)
+    packCStringLen (castPtr pData, fromIntegral len)
 
-readBytea :: Ptr ValueInfo -> IO (Maybe [Word8])
+readBytea :: Ptr ValueInfo -> IO (Maybe ByteString)
 readBytea = read readBytea'
 
-readText' :: Ptr ValueInfo -> IO String
+readText' :: Ptr ValueInfo -> IO Text
 readText' pValueInfo = do
-    pArg <- getDataLocation pValueInfo
-    len <- getVarSize pArg
-    pData <- getVarData pArg
-    peekCStringLen (castPtr pData, fromIntegral len)
+    byteString <- readBytea' pValueInfo
+    return (decodeUtf8 byteString)
 
-readText :: Ptr ValueInfo -> IO (Maybe String)
+readText :: Ptr ValueInfo -> IO (Maybe Text)
 readText = read readText'
 
 readChar' :: Ptr ValueInfo -> IO Char
@@ -180,29 +178,24 @@ write write' (Just result) pValueInfo = do -- Use write' if passed Just ...
     write' result pValueInfo
 
 -- Functions to write Haskell types to ValueInfo structs
-writeBytea' :: [Word8] -> Ptr ValueInfo -> IO ()
-writeBytea' result pValueInfo = do
-    let len = length result
-    pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
-    setVarSize pResult len
-    pData <- getVarData pResult
-    pokeArray (castPtr pData) result
-
-writeBytea :: Maybe [Word8] -> Ptr ValueInfo -> IO ()
-writeBytea = write writeBytea'
-
-writeText' :: String -> Ptr ValueInfo -> IO ()
-writeText' result pValueInfo = withCStringLen result (\(src, len) -> do
+writeBytea' :: ByteString -> Ptr ValueInfo -> IO ()
+writeBytea' result pValueInfo = useAsCStringLen result (\(src, len) -> do
     pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
     setVarSize pResult len
     pData <- getVarData pResult
     copyBytes (castPtr pData) src len)
 
-writeText :: Maybe String -> Ptr ValueInfo -> IO ()
+writeBytea :: Maybe ByteString -> Ptr ValueInfo -> IO ()
+writeBytea = write writeBytea'
+
+writeText' :: Text -> Ptr ValueInfo -> IO ()
+writeText' result = writeBytea' (encodeUtf8 result)
+
+writeText :: Maybe Text -> Ptr ValueInfo -> IO ()
 writeText = write writeText'
 
 writeChar' :: Char -> Ptr ValueInfo -> IO ()
-writeChar' result = writeText' [result]
+writeChar' result = writeText' (singleton result)
 
 writeChar :: Maybe Char -> Ptr ValueInfo -> IO ()
 writeChar = write writeChar'
@@ -231,7 +224,6 @@ writeFloat4 = write writeNumber
 writeFloat8 :: Maybe Double -> Ptr ValueInfo -> IO ()
 writeFloat8 = write writeNumber
 
-
 iterate :: Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
 iterate pList pMoreResults = do
     spList <- peek pList
@@ -246,6 +238,3 @@ iterate pList pMoreResults = do
             spTail <- newStablePtr tail
             poke pList spTail
             writeResult
-
-
-

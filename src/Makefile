@@ -23,6 +23,7 @@ GHC_VERSION = $(shell ghc --numeric-version)
 
 RTS_NAME  = $(shell ghc-pkg describe rts  | grep hs-libraries | awk '{print $$2}')
 HINT_NAME = $(shell ghc-pkg describe hint | grep hs-libraries | awk '{print $$2}')
+TEXT_NAME = $(shell ghc-pkg describe text | grep hs-libraries | awk '{print $$2}')
 
 PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 
@@ -33,7 +34,7 @@ clean :
 	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so
 
 plhaskell.so : plhaskell.o backend.o PGutils.o PGsupport.o
-	ghc -Weverything -Werror -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION)
+	ghc -Weverything -Werror -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION)
 
 plhaskell.o : plhaskell.c backend_stub.h plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -c plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
