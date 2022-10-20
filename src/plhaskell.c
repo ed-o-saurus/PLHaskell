@@ -556,7 +556,7 @@ static void Enter(void) __attribute__((constructor));
 static void Enter(void)
 {
     char GHC_PackagePath[MAXPGPATH+18];
-    static char *argv[] = {"PLHaskell", "+RTS", "--install-signal-handlers=no", "-RTS"}; // Configuration for the RTS
+    static char *argv[] = {"PLHaskell", "+RTS", "--install-signal-handlers=no", "-V0", "-RTS"}; // Configuration for the RTS
     static int argc = sizeof(argv) / sizeof(char*);
     static char **argv_rts = argv;
     RtsConfig conf = defaultRtsConfig;
