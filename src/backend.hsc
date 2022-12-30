@@ -52,7 +52,7 @@ foreign import capi safe "plhaskell.h PLHaskell_Report"
 
 raise :: Int32 -> String -> IO ()
 raise level str = do
-    ptr <- palloc_string str
+    ptr <- pallocString str
     c_Report (CInt level) ptr
     pfree ptr
 
@@ -68,8 +68,8 @@ palloc0 size = c_palloc0 (CSize (fromIntegral size))
 
 -- Palloc CString
 -- Copy a String's contents to palloc'd memory
-palloc_string :: String -> IO (Ptr a)
-palloc_string str = do
+pallocString :: String -> IO (Ptr a)
+pallocString str = do
     withCStringLen str (\(ptr, len) -> do
         pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
         copyBytes pallocPtr ptr len
