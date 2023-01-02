@@ -78,13 +78,19 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     if(DatumGetBool(proretset))
     {
         FuncCallContext *funcctx;
+        ReturnSetInfo *rsi = (ReturnSetInfo *) fcinfo->resultinfo;
 
-        if(SRF_IS_FIRSTCALL())
+        if(fcinfo->flinfo->fn_extra == NULL)
         {
             MemoryContext oldcontext;
             MemoryContextCallback *cb;
 
-            funcctx = SRF_FIRSTCALL_INIT();
+            if(!(rsi->allowedModes & SFRM_ValuePerCall))
+                ereport(ERROR, errmsg("Bad return mode"));
+
+            rsi->returnMode = SFRM_ValuePerCall;
+
+            funcctx = init_MultiFuncCall(fcinfo);
             oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
             cb = palloc(sizeof(MemoryContextCallback));
@@ -110,7 +116,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             MemoryContextSwitchTo(oldcontext);
         }
 
-        funcctx = SRF_PERCALL_SETUP();
+        funcctx = per_MultiFuncCall(fcinfo);
         pCallInfo = funcctx->user_fctx;
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
@@ -119,15 +125,17 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
         if(pCallInfo->MoreResults)
         {
-            Datum result = ReadValueInfo(pCallInfo->Result, &isNull); // Get the next result
-
-            if(isNull)
-                SRF_RETURN_NEXT_NULL(funcctx);
-            else
-                SRF_RETURN_NEXT(funcctx, result);
+            rsi->isDone = ExprMultipleResult;
+            return ReadValueInfo(pCallInfo->Result, &fcinfo->isnull); // Get the next result
         }
         else
-            SRF_RETURN_DONE(funcctx);
+        {
+            end_MultiFuncCall(fcinfo, funcctx);
+            rsi->isDone = ExprEndResult;
+
+            fcinfo->isnull = true;
+            return (Datum)0;
+        }
     }
     else
     {

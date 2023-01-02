@@ -31,7 +31,7 @@ PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 all : PGutils.dyn_hi PGsupport.dyn_hi plhaskell.so
 
 clean :
-	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so
+	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so *_hsc_make.c
 
 plhaskell.so : plhaskell.o backend.o PGutils.o PGsupport.o
 	ghc -Weverything -Werror -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION)
