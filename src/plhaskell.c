@@ -120,7 +120,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         pCallInfo = funcctx->user_fctx;
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-        runFunction(pCallInfo); // Run the function
+        (*pCallInfo->Function)(); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
         if(pCallInfo->MoreResults)
@@ -165,7 +165,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             WriteValueInfo(pCallInfo->Args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-        runFunction(pCallInfo); // Run the function
+        (*pCallInfo->Function)(); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
         return ReadValueInfo(pCallInfo->Result, &fcinfo->isnull);
@@ -465,7 +465,7 @@ static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
     ReleaseSysCache(typetup);
 }
 
-// Delete temp module file and free Function or List and Iterator
+// Delete temp module file and free Function and List if necessary
 static void DestroyCallInfo(void* arg)
 {
     struct CallInfo *pCallInfo = arg;
@@ -477,7 +477,7 @@ static void DestroyCallInfo(void* arg)
         hs_free_stable_ptr(pCallInfo->List);
 
     if(pCallInfo->Function)
-        hs_free_stable_ptr(pCallInfo->Function);
+        hs_free_fun_ptr(pCallInfo->Function);
 }
 
 // Populate the value and isNull fields of pValueInfo

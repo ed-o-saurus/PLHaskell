@@ -25,14 +25,13 @@
 
 module PLHaskell () where
 
-import Control.Monad                (forM, forM_, join, (>=>))
+import Control.Monad                (forM, forM_, (>=>))
 import Data.Int                     (Int16, Int32)
 import Data.List                    (intercalate)
 import Foreign.C.String             (CString, peekCString, withCStringLen)
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
-import Foreign.StablePtr            (deRefStablePtr)
 import Foreign.Storable             (peek, peekByteOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
 import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
@@ -262,7 +261,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["getField", "readIsNull", "readBytea", "readText", "readChar", "readBool", "readInt2", "readInt4", "readInt8", "readFloat4", "readFloat8", "writeNull", "writeNotNull", "writeVoid", "writeBytea", "writeText", "writeChar", "writeBool", "writeInt2", "writeInt4", "writeInt8", "writeFloat4", "writeFloat8", "iterate"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["getField", "readIsNull", "readBytea", "readText", "readChar", "readBool", "readInt2", "readInt4", "readInt8", "readFloat4", "readFloat8", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "writeBytea", "writeText", "writeChar", "writeBool", "writeInt2", "writeInt4", "writeInt8", "writeFloat4", "writeFloat8", "iterate"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     -- Check signature
@@ -336,11 +335,11 @@ mkFunction pCallInfo = execute $ do
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     let prog_call = "result <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ");"
     let prog_write_result = "writeResult result pResultValueInfo"
-    runStmt ("spFunction <- newStablePtr (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})")
+    runStmt ("function <- wrapVoidFunc (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})")
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
-    runStmt ("poke pFunction spFunction")
+    runStmt ("poke pFunction function")
 
 -- Set the List field of the CallInfo struct to the list returns by the function
 -- Set the Function field of the CallInfo struct to a function that will iterate through the list
@@ -369,13 +368,6 @@ mkIterator pCallInfo = execute $ do
     runStmt ("let pMoreResults = wordPtrToPtr " ++ show ((#ptr struct CallInfo, MoreResults) pCallInfo))
 
     -- poke the iterator into the Function field of the CallInfo struct
-    runStmt "spFunction <- newStablePtr (iterate pList pMoreResults)"
+    runStmt "function <- wrapVoidFunc (iterate pList pMoreResults)"
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
-    runStmt ("poke pFunction spFunction")
-
--- Run the function pointed to by the Function stable pointer
-foreign export capi runFunction :: Ptr CallInfo -> IO ()
-runFunction :: Ptr CallInfo -> IO ()
-runFunction pCallInfo = do
-    spFunction <- (#peek struct CallInfo, Function) pCallInfo
-    (join . deRefStablePtr) spFunction
+    runStmt ("poke pFunction function")

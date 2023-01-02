@@ -63,7 +63,7 @@ struct CallInfo
     struct ValueInfo* Result; // Returned result
     bool ReturnSet; // Does the function return a set of values?
     bool MoreResults; // Are there more results to return from a set?
-    HsStablePtr Function; // Stable pointer to the function to be called to read Args and populate Result
+    void (*Function)(void); // Stable pointer to the function to be called to read Args and populate Result
     HsStablePtr List; // Stable pointer to list of results
 };
 

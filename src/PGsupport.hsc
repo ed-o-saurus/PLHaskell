@@ -23,7 +23,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (getField, readIsNull, readBytea, readText, readChar, readBool, readInt2, readInt4, readInt8, readFloat4, readFloat8, writeNull, writeNotNull, writeVoid, writeBytea, writeText, writeChar, writeBool, writeInt2, writeInt4, writeInt8, writeFloat4, writeFloat8, iterate) where
+module PGsupport (getField, readIsNull, readBytea, readText, readChar, readBool, readInt2, readInt4, readInt8, readFloat4, readFloat8, wrapVoidFunc, writeNull, writeNotNull, writeVoid, writeBytea, writeText, writeChar, writeBool, writeInt2, writeInt4, writeInt8, writeFloat4, writeFloat8, iterate) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<&>))
@@ -32,7 +32,7 @@ import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
 import Foreign.C.Types       (CBool (CBool), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
-import Foreign.Ptr           (Ptr, castPtr, nullPtr, plusPtr)
+import Foreign.Ptr           (FunPtr, Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable      (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
 import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), flip, fromIntegral, return, (*), (+), (.), (>>=))
@@ -236,3 +236,6 @@ iterate pList pMoreResults = do
             spTail <- newStablePtr tail
             poke pList spTail
             writeResult
+
+foreign import ccall "wrapper"
+    wrapVoidFunc :: (IO ()) -> IO (FunPtr (IO ()))
