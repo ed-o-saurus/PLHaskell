@@ -34,8 +34,8 @@ import Foreign.C.Types       (CBool (CBool), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, castPtr, nullPtr, plusPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
-import Foreign.Storable      (Storable, sizeOf, peek, peekByteOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), flip, fromIntegral, return, (*), (+), (.), (>>=))
+import Foreign.Storable      (Storable, sizeOf, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
+import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), flip, fromIntegral, return, (+), (.), (>>=))
 
 type ValueInfo = ()
 
@@ -50,7 +50,7 @@ palloc size = c_palloc (CSize (fromIntegral size))
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo i = do
     fields <- (#peek struct ValueInfo, Fields) pValueInfo
-    peek (plusPtr fields (fromIntegral i * (#size struct ValueInfo*)))
+    peekElemOff fields (fromIntegral i)
 
 -- Determine the value of the isNull field of a ValueInfo struct
 readIsNull :: Ptr ValueInfo -> IO Bool

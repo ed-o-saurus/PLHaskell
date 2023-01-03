@@ -32,9 +32,9 @@ import Foreign.C.String             (CString, peekCString, withCStringLen)
 import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
-import Foreign.Storable             (peek, peekByteOff)
+import Foreign.Storable             (peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (*), (+), (++), (-), (.), (==), (>>=))
+import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (+), (++), (-), (.), (==), (>>=))
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -150,7 +150,7 @@ getFuncName pCallInfo = liftIO ((#peek struct CallInfo, FuncName) pCallInfo >>= 
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo i = do
     fields <- (#peek struct ValueInfo, Fields) pValueInfo
-    peek (plusPtr fields (fromIntegral i * (#size struct ValueInfo*)))
+    peekElemOff fields (fromIntegral i)
 
 -- Get Haskell type name based on ValueInfo struct
 getTypeName :: Ptr ValueInfo -> IO String
@@ -171,7 +171,7 @@ getTypeName pValueInfo = do
 getArgValueInfo :: Ptr CallInfo -> Int16 -> IO (Ptr ValueInfo)
 getArgValueInfo pCallInfo i = do
     pArgs <- (#peek struct CallInfo, Args) pCallInfo
-    peek (plusPtr pArgs (fromIntegral i * (#size struct ValueInfo*)))
+    peekElemOff pArgs (fromIntegral i)
 
 -- Get type signature of function needed based on CallInfo struct
 getSignature :: Ptr CallInfo -> Interpreter String
