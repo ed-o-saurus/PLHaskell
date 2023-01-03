@@ -484,9 +484,6 @@ static void DestroyCallInfo(void* arg)
 static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull)
 {
     HeapTupleHeader tuple;
-    Oid tupType;
-    int32 tupTypmod;
-    TupleDesc tupDesc;
     HeapTupleData tmptup;
 
     if((pValueInfo->isNull=isNull))
@@ -504,10 +501,6 @@ static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNul
         // If pValueInfo is a tuple, populate the fields recursively.
         tuple = DatumGetHeapTupleHeader(value);
 
-        tupType = HeapTupleHeaderGetTypeId(tuple);
-        tupTypmod = HeapTupleHeaderGetTypMod(tuple);
-        tupDesc = lookup_rowtype_tupdesc(tupType, tupTypmod);
-
         tmptup.t_len = HeapTupleHeaderGetDatumLength(tuple);
         ItemPointerSetInvalid(&(tmptup.t_self));
         tmptup.t_tableOid = InvalidOid;
@@ -515,11 +508,9 @@ static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNul
 
         for(int16 i=0; i<pValueInfo->Count; i++)
         {
-            Datum value = heap_getattr(&tmptup, pValueInfo->attnums[i], tupDesc, &isNull);
+            Datum value = heap_getattr(&tmptup, pValueInfo->attnums[i], pValueInfo->tupdesc, &isNull);
             WriteValueInfo(pValueInfo->Fields[i], value, isNull);
         }
-
-        ReleaseTupleDesc(tupDesc);
 
         break;
     default :
