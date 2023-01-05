@@ -38,10 +38,7 @@ import Foreign.Ptr           (Ptr, castPtr)
 import Prelude               (Applicative, Functor, Int, IO, Monad, fromIntegral, return, undefined, ($), (+))
 import System.IO.Unsafe      (unsafePerformIO)
 
-newtype PGm a = PGm (IO a) deriving newtype (Functor, Applicative, Monad)
-
-unPGm :: PGm a -> IO a
-unPGm (PGm x) = x
+newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
 
 newtype ErrorLevel = ErrorLevel { unErrorLevel :: CInt }
 #{enum ErrorLevel, ErrorLevel,
