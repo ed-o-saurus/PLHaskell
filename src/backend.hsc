@@ -34,7 +34,7 @@ import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
 import Foreign.Storable             (peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (+), (++), (-), (.), (==), (>>=))
+import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Just, Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (+), (++), (-), (.), (==), (>>=))
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -79,18 +79,26 @@ pallocString str = do
 foreign import capi safe "plhaskell.h pfree"
     pfree :: Ptr a -> IO ()
 
+data DataType = DataType {name          :: String,
+                          writeFunction :: String,
+                          readFunction  :: String}
+
+getDataType :: Int32 -> Maybe DataType
+getDataType (#const BYTEAOID)  = Just (DataType {name = "ByteString", writeFunction="writeBytea",  readFunction="readBytea"})
+getDataType (#const TEXTOID)   = Just (DataType {name = "Text",       writeFunction="writeText",   readFunction="readText"})
+getDataType (#const BPCHAROID) = Just (DataType {name = "Char",       writeFunction="writeChar",   readFunction="readChar"})
+getDataType (#const BOOLOID)   = Just (DataType {name = "Bool",       writeFunction="writeBool",   readFunction="readBool"})
+getDataType (#const INT2OID)   = Just (DataType {name = "Int16",      writeFunction="writeInt2",   readFunction="readInt2"})
+getDataType (#const INT4OID)   = Just (DataType {name = "Int32",      writeFunction="writeInt4",   readFunction="readInt4"})
+getDataType (#const INT8OID)   = Just (DataType {name = "Int64",      writeFunction="writeInt8",   readFunction="readInt8"})
+getDataType (#const FLOAT4OID) = Just (DataType {name = "Float",      writeFunction="writeFloat4", readFunction="readFloat4"})
+getDataType (#const FLOAT8OID) = Just (DataType {name = "Double",     writeFunction="writeFloat8", readFunction="readFloat8"})
+getDataType _ = Nothing
+
 -- Is a type supported
 typeAvailable :: Int32 -> Bool
-typeAvailable (#const BYTEAOID)  = True
-typeAvailable (#const TEXTOID)   = True
-typeAvailable (#const BPCHAROID) = True
-typeAvailable (#const BOOLOID)   = True
-typeAvailable (#const INT2OID)   = True
-typeAvailable (#const INT4OID)   = True
-typeAvailable (#const INT8OID)   = True
-typeAvailable (#const FLOAT4OID) = True
-typeAvailable (#const FLOAT8OID) = True
-typeAvailable _ = False
+typeAvailable oid = case (getDataType oid) of Just _  -> True
+                                              Nothing -> False
 
 -- Run the function pointed to by the stable pointer
 foreign export capi "TypeAvailable" c_TypeAvailable :: CInt -> IO CBool
@@ -101,42 +109,18 @@ c_TypeAvailable oid = do
 
 -- Name of corresponding Haskell types
 baseName :: Int32 -> String
-baseName (#const BYTEAOID)  = "ByteString"
-baseName (#const TEXTOID)   = "Text"
-baseName (#const BPCHAROID) = "Char"
-baseName (#const BOOLOID)   = "Bool"
-baseName (#const INT2OID)   = "Int16"
-baseName (#const INT4OID)   = "Int32"
-baseName (#const INT8OID)   = "Int64"
-baseName (#const FLOAT4OID) = "Float"
-baseName (#const FLOAT8OID) = "Double"
-baseName _ = error "Bad Oid"
+baseName oid = case (getDataType oid) of Just dt -> name dt
+                                         Nothing -> error "Bad Oid"
 
 -- Name of function to write Haskell type to ValueInfo struct
 writeFunctionName :: Int32 -> String
-writeFunctionName (#const BYTEAOID)  = "writeBytea"
-writeFunctionName (#const TEXTOID)   = "writeText"
-writeFunctionName (#const BPCHAROID) = "writeChar"
-writeFunctionName (#const BOOLOID)   = "writeBool"
-writeFunctionName (#const INT2OID)   = "writeInt2"
-writeFunctionName (#const INT4OID)   = "writeInt4"
-writeFunctionName (#const INT8OID)   = "writeInt8"
-writeFunctionName (#const FLOAT4OID) = "writeFloat4"
-writeFunctionName (#const FLOAT8OID) = "writeFloat8"
-writeFunctionName _ = error "Bad Oid"
+writeFunctionName oid = case (getDataType oid) of Just dt -> writeFunction dt
+                                                  Nothing -> error "Bad Oid"
 
 -- Name of function to read Haskell type from ValueInfo struct
 readFunctionName :: Int32 -> String
-readFunctionName (#const BYTEAOID)  = "readBytea"
-readFunctionName (#const TEXTOID)   = "readText"
-readFunctionName (#const BPCHAROID) = "readChar"
-readFunctionName (#const BOOLOID)   = "readBool"
-readFunctionName (#const INT2OID)   = "readInt2"
-readFunctionName (#const INT4OID)   = "readInt4"
-readFunctionName (#const INT8OID)   = "readInt8"
-readFunctionName (#const FLOAT4OID) = "readFloat4"
-readFunctionName (#const FLOAT8OID) = "readFloat8"
-readFunctionName _ = error "Bad Oid"
+readFunctionName oid = case (getDataType oid) of Just dt -> readFunction dt
+                                                 Nothing -> error "Bad Oid"
 
 -- Extract module file name from CallInfo struct
 getModFileName :: Ptr CallInfo -> Interpreter String
@@ -236,7 +220,7 @@ readArgDef pValueInfo = do
 defineReadArg :: Ptr CallInfo -> Int16 -> Interpreter ()
 defineReadArg pCallInfo i = do
     pArgValueInfo <- liftIO (getArgValueInfo pCallInfo i)
-    argDef <- liftIO (readArgDef pArgValueInfo )
+    argDef <- liftIO (readArgDef pArgValueInfo)
     runStmt (interpolate ("let readArg? = " ++ argDef) i)
 
 definePArgValueInfo :: Ptr CallInfo -> Int16 -> Interpreter ()
@@ -355,13 +339,12 @@ mkIterator pCallInfo = execute $ do
     forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgValueInfo?"))
 
     -- Set writeResultList to be a list of actions each of which loads a result into the result ValueInfo struct
-    -- writeResultList :: [IO ()]  TODO : remove this line?
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     runStmt ("results <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ")")
     runStmt "let writeResultList = map ((flip writeResult) pResultValueInfo) results"
 
     -- poke the stable pointer value into the List field of the CallInfo struct
-    runStmt ("spList <- newStablePtr writeResultList")
+    runStmt "spList <- newStablePtr writeResultList"
     runStmt ("let pList = wordPtrToPtr " ++ show ((#ptr struct CallInfo, List) pCallInfo))
     runStmt "poke pList spList"
 
@@ -370,4 +353,4 @@ mkIterator pCallInfo = execute $ do
     -- poke the iterator into the Function field of the CallInfo struct
     runStmt "function <- wrapVoidFunc (iterate pList pMoreResults)"
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
-    runStmt ("poke pFunction function")
+    runStmt "poke pFunction function"

@@ -340,7 +340,7 @@ static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSe
 static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
 {
     HeapTuple typetup, reltup, atttup;
-    Datum typtype, typname, typbasetype, typrelid, typbyval;
+    Datum typtype, typname, typbasetype, typrelid;
     Datum relnatts;
     Datum atttypid;
     char* type_name;
@@ -375,12 +375,6 @@ static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
 
         pValueInfo->TypeOid = TypeOid;
         pValueInfo->Type = BASE_TYPE;
-
-        typbyval = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typbyval, &isNull);
-        if(isNull)
-            ereport(ERROR, errmsg("pg_type.typbyval is NULL."));
-
-        pValueInfo->ByVal = DatumGetBool(typbyval);
 
         break;
     case TYPTYPE_COMPOSITE :
@@ -420,6 +414,9 @@ static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
             if((attroid = DatumGetObjectId(atttypid)))
             {
                 pValueInfo->Count++;
+
+                if(pValueInfo->Count > 63)
+                    ereport(ERROR, errmsg("Tuple size too large"));
 
                 pValueInfo->attnums = repalloc(pValueInfo->attnums, pValueInfo->Count * sizeof(int16));
                 pValueInfo->attnums[pValueInfo->Count-1] = i+1;

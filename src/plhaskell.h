@@ -39,7 +39,6 @@ struct ValueInfo
     union {
         struct { // BASE
             Oid TypeOid; // OID of the type
-            bool ByVal; // Is the type passed by value?
             Datum Value; // value or pointer depending on ByVal
         };
 
@@ -63,7 +62,7 @@ struct CallInfo
     struct ValueInfo* Result; // Returned result
     bool ReturnSet; // Does the function return a set of values?
     bool MoreResults; // Are there more results to return from a set?
-    void (*Function)(void); // Stable pointer to the function to be called to read Args and populate Result
+    void (*Function)(void); // Pointer to the function to be called to read Args and populate Result
     HsStablePtr List; // Stable pointer to list of results
 };
 

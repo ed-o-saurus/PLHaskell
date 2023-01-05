@@ -30,14 +30,15 @@ import Data.Functor          ((<&>))
 import Data.Int              (Int16, Int32, Int64)
 import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
-import Foreign.C.Types       (CBool (CBool), CInt (CInt), CSize (CSize))
+import Foreign.C.Types       (CBool (CBool), CShort (CShort), CInt (CInt), CLong (CLong), CFloat (CFloat), CDouble (CDouble), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
-import Foreign.Ptr           (FunPtr, Ptr, castPtr, nullPtr, plusPtr)
+import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), castPtr, nullPtr, ptrToWordPtr, wordPtrToPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
-import Foreign.Storable      (Storable, sizeOf, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), flip, fromIntegral, return, (+), (.), (>>=))
+import Foreign.Storable      (peek, peekByteOff, peekElemOff, poke, pokeByteOff)
+import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), fromIntegral, return, ($), (+), (.), (>>=))
 
 type ValueInfo = ()
+type Datum = WordPtr
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "plhaskell.h palloc"
@@ -58,92 +59,174 @@ readIsNull pValueInfo = do
     CBool isNull <- (#peek struct ValueInfo, isNull) pValueInfo
     return (toBool isNull)
 
--- Read a Haskell type from a ValueInfo struct
-read :: (Ptr ValueInfo -> IO a) -> Ptr ValueInfo -> IO (Maybe a)
-read read' pValueInfo = do
-    isNull <- readIsNull pValueInfo
-    if isNull
-    then return Nothing
-    else read' pValueInfo <&> Just
+class ReadWrite a where
+    read :: Datum -> IO a
+    write :: a -> IO Datum
 
--- Get Location where data is stored
-getDataLocation :: Ptr ValueInfo -> IO (Ptr a)
-getDataLocation pValueInfo = do
-    CBool byVal <- (#peek struct ValueInfo, ByVal) pValueInfo
-    if toBool byVal
-    then return ((#ptr struct ValueInfo, Value) pValueInfo)
-    else (#peek struct ValueInfo, Value) pValueInfo
+    readType :: Ptr ValueInfo -> IO (Maybe a)
+    readType pValueInfo = do
+        value <- (#peek struct ValueInfo, Value) pValueInfo
+        CBool isNull <- (#peek struct ValueInfo, isNull) pValueInfo
+        if (toBool isNull)
+        then return Nothing
+        else read value <&> Just
+
+    writeType :: Maybe a -> Ptr ValueInfo -> IO ()
+    writeType Nothing pValueInfo = do
+        (#poke struct ValueInfo, Value) pValueInfo (ptrToWordPtr nullPtr)
+        (#poke struct ValueInfo, isNull) pValueInfo (CBool $ fromBool True)
+
+    writeType (Just result) pValueInfo = do
+        value <- write result
+        (#poke struct ValueInfo, Value) pValueInfo value
+        (#poke struct ValueInfo, isNull) pValueInfo (CBool $ fromBool False)
 
 -- Get the size of a variable length array
 foreign import capi safe "postgres.h VARSIZE_ANY_EXHDR"
     c_GetVarSize :: Ptr () -> IO CInt
 
-getVarSize :: Ptr () -> IO Int32
-getVarSize pArg = do
-    CInt size <- c_GetVarSize pArg
+getVarSize :: Datum -> IO Int32
+getVarSize value = do
+    CInt size <- c_GetVarSize (wordPtrToPtr value)
     return size
 
 -- Set the size of a variable length array
 foreign import capi safe "postgres.h SET_VARSIZE"
     c_SetVarSize :: Ptr () -> CInt -> IO ()
 
-setVarSize :: Ptr () -> Int -> IO ()
-setVarSize pResult len = c_SetVarSize pResult (CInt ((#const VARHDRSZ) + fromIntegral len))
+setVarSize :: Datum -> Int32 -> IO ()
+setVarSize value len = c_SetVarSize (wordPtrToPtr value) (CInt ((#const VARHDRSZ) + len))
 
 -- Get the start of a variable length array
 foreign import capi safe "postgres.h VARDATA_ANY"
-    getVarData :: Ptr () -> IO (Ptr ())
+    c_GetVarData :: Ptr () -> IO (Ptr ())
 
--- Functions to read Haskell types from ValueInfo structs
-readBytea' :: Ptr ValueInfo -> IO ByteString
-readBytea' pValueInfo = do
-    pArg <- getDataLocation pValueInfo
-    len <- getVarSize pArg
-    pData <- getVarData pArg
-    packCStringLen (castPtr pData, fromIntegral len)
+getVarData :: Datum -> IO (Ptr ())
+getVarData = c_GetVarData . wordPtrToPtr
+
+instance ReadWrite ByteString where
+    read value = do
+        len <- getVarSize value
+        pData <- getVarData value
+        packCStringLen (castPtr pData, fromIntegral len)
+
+    write result = useAsCStringLen result (\(src, len) -> do
+        ptr <- palloc (len + (#const VARHDRSZ))
+        let value = ptrToWordPtr ptr
+        setVarSize value (fromIntegral len)
+        pData <- getVarData value
+        copyBytes (castPtr pData) src len
+        return value)
+
+instance ReadWrite Text where
+    read value = read value <&> decodeUtf8
+    write = write . encodeUtf8
+
+instance ReadWrite Char where
+    read value = read value <&> head
+    write = write . singleton
+
+foreign import capi safe "postgres.h DatumGetBool"
+    c_DatumGetBool :: Datum -> IO CBool
+
+foreign import capi safe "postgres.h BoolGetDatum"
+    c_BoolGetDatum :: CBool -> IO Datum
+
+instance ReadWrite Bool where
+    read value = c_DatumGetBool value <&> toBool
+    write = c_BoolGetDatum . CBool . fromBool
+
+foreign import capi safe "postgres.h DatumGetInt16"
+    c_DatumGetInt16 :: Datum -> IO CShort
+
+foreign import capi safe "postgres.h Int16GetDatum"
+    c_Int16GetDatum :: CShort -> IO Datum
+
+instance ReadWrite Int16 where
+    read value = do
+        CShort arg <- c_DatumGetInt16 value
+        return arg
+
+    write = c_Int16GetDatum . CShort
+
+foreign import capi safe "postgres.h DatumGetInt32"
+    c_DatumGetInt32 :: Datum -> IO CInt
+
+foreign import capi safe "postgres.h Int32GetDatum"
+    c_Int32GetDatum :: CInt -> IO Datum
+
+instance ReadWrite Int32 where
+    read value = do
+        CInt arg <- c_DatumGetInt32 value
+        return arg
+
+    write = c_Int32GetDatum . CInt
+
+foreign import capi safe "postgres.h DatumGetInt64"
+    c_DatumGetInt64 :: Datum -> IO CLong
+
+foreign import capi safe "postgres.h Int64GetDatum"
+    c_Int64GetDatum :: CLong -> IO Datum
+
+instance ReadWrite Int64 where
+    read value = do
+        CLong arg <- c_DatumGetInt64 value
+        return arg
+
+    write = c_Int64GetDatum . CLong
+
+foreign import capi safe "postgres.h DatumGetFloat4"
+    c_DatumGetFloat4 :: Datum -> IO CFloat
+
+foreign import capi safe "postgres.h Float4GetDatum"
+    c_Float4GetDatum :: CFloat -> IO Datum
+
+instance ReadWrite Float where
+    read value = do
+        CFloat arg <- c_DatumGetFloat4 value
+        return arg
+
+    write = c_Float4GetDatum . CFloat
+
+foreign import capi safe "postgres.h DatumGetFloat8"
+    c_DatumGetFloat8 :: Datum -> IO CDouble
+
+foreign import capi safe "postgres.h Float8GetDatum"
+    c_Float8GetDatum :: CDouble -> IO Datum
+
+instance ReadWrite Double where
+    read value = do
+        CDouble arg <- c_DatumGetFloat8 value
+        return arg
+
+    write  = c_Float8GetDatum . CDouble
 
 readBytea :: Ptr ValueInfo -> IO (Maybe ByteString)
-readBytea = read readBytea'
-
-readText' :: Ptr ValueInfo -> IO Text
-readText' pValueInfo = do
-    byteString <- readBytea' pValueInfo
-    return (decodeUtf8 byteString)
+readBytea = readType
 
 readText :: Ptr ValueInfo -> IO (Maybe Text)
-readText = read readText'
-
-readChar' :: Ptr ValueInfo -> IO Char
-readChar' pValueInfo = readText' pValueInfo <&> head
+readText = readType
 
 readChar :: Ptr ValueInfo -> IO (Maybe Char)
-readChar = read readChar'
-
-readNumber :: Storable a => Ptr ValueInfo -> IO a
-readNumber pValueInfo = getDataLocation pValueInfo >>= peek
-
-readBool' :: Ptr ValueInfo -> IO Bool
-readBool' pValueInfo = do
-    CBool arg <- readNumber pValueInfo
-    return (toBool arg)
+readChar = readType
 
 readBool :: Ptr ValueInfo -> IO (Maybe Bool)
-readBool = read readBool'
+readBool = readType
 
 readInt2 :: Ptr ValueInfo -> IO (Maybe Int16)
-readInt2 = read readNumber
+readInt2 = readType
 
 readInt4 :: Ptr ValueInfo -> IO (Maybe Int32)
-readInt4 = read readNumber
+readInt4 = readType
 
 readInt8 :: Ptr ValueInfo -> IO (Maybe Int64)
-readInt8 = read readNumber
+readInt8 = readType
 
 readFloat4 :: Ptr ValueInfo -> IO (Maybe Float)
-readFloat4 = read readNumber
+readFloat4 = readType
 
 readFloat8 :: Ptr ValueInfo -> IO (Maybe Double)
-readFloat8 = read readNumber
+readFloat8 = readType
 
 -- Set isNull to true
 writeNull :: Ptr ValueInfo -> IO ()
@@ -157,70 +240,32 @@ writeNotNull pValueInfo = (#poke struct ValueInfo, isNull) pValueInfo (CBool (fr
 writeVoid :: () -> Ptr ValueInfo -> IO ()
 writeVoid () _ = return ()
 
--- Allocate memory only if the type is not ByVal and return pointer to location of data
-allocDataLocation :: Ptr ValueInfo -> Int -> IO (Ptr a)
-allocDataLocation pValueInfo size = do
-    CBool byVal <- (#peek struct ValueInfo, ByVal) pValueInfo
-    if toBool byVal
-    then return ((#ptr struct ValueInfo, Value) pValueInfo)
-    else do
-        address <- palloc size
-        (#poke struct ValueInfo, Value) pValueInfo address
-        return address
-
--- Write a Haskell type to a ValueInfo struct
-write :: (a -> Ptr ValueInfo -> IO ()) -> Maybe a -> Ptr ValueInfo -> IO ()
-write _ Nothing pValueInfo = writeNull pValueInfo -- Set isNull if passed Nothing
-write write' (Just result) pValueInfo = do -- Use write' if passed Just ...
-    writeNotNull pValueInfo
-    write' result pValueInfo
-
--- Functions to write Haskell types to ValueInfo structs
-writeBytea' :: ByteString -> Ptr ValueInfo -> IO ()
-writeBytea' result pValueInfo = useAsCStringLen result (\(src, len) -> do
-    pResult <- allocDataLocation pValueInfo (len + (#const VARHDRSZ))
-    setVarSize pResult len
-    pData <- getVarData pResult
-    copyBytes (castPtr pData) src len)
-
 writeBytea :: Maybe ByteString -> Ptr ValueInfo -> IO ()
-writeBytea = write writeBytea'
-
-writeText' :: Text -> Ptr ValueInfo -> IO ()
-writeText' result = writeBytea' (encodeUtf8 result)
+writeBytea = writeType
 
 writeText :: Maybe Text -> Ptr ValueInfo -> IO ()
-writeText = write writeText'
-
-writeChar' :: Char -> Ptr ValueInfo -> IO ()
-writeChar' result = writeText' (singleton result)
+writeText = writeType
 
 writeChar :: Maybe Char -> Ptr ValueInfo -> IO ()
-writeChar = write writeChar'
-
-writeBool' :: Bool -> Ptr ValueInfo -> IO ()
-writeBool' result pValueInfo = allocDataLocation pValueInfo 1 >>= flip poke ((CBool . fromBool) result)
+writeChar = writeType
 
 writeBool :: Maybe Bool -> Ptr ValueInfo -> IO ()
-writeBool = write writeBool'
-
-writeNumber :: Storable a => a -> Ptr ValueInfo -> IO ()
-writeNumber result pValueInfo = allocDataLocation pValueInfo (sizeOf result) >>= flip poke result
+writeBool = writeType
 
 writeInt2 :: Maybe Int16 -> Ptr ValueInfo -> IO ()
-writeInt2 = write writeNumber
+writeInt2 = writeType
 
 writeInt4 :: Maybe Int32 -> Ptr ValueInfo -> IO ()
-writeInt4 = write writeNumber
+writeInt4 = writeType
 
 writeInt8 :: Maybe Int64 -> Ptr ValueInfo -> IO ()
-writeInt8 = write writeNumber
+writeInt8 = writeType
 
 writeFloat4 :: Maybe Float -> Ptr ValueInfo -> IO ()
-writeFloat4 = write writeNumber
+writeFloat4 = writeType
 
 writeFloat8 :: Maybe Double -> Ptr ValueInfo -> IO ()
-writeFloat8 = write writeNumber
+writeFloat8 = writeType
 
 iterate :: Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
 iterate pList pMoreResults = do
@@ -233,8 +278,7 @@ iterate pList pMoreResults = do
             poke pList (castPtrToStablePtr nullPtr)
         (writeResult:tail) -> do
             poke pMoreResults (CBool (fromBool True))
-            spTail <- newStablePtr tail
-            poke pList spTail
+            (newStablePtr tail) >>= (poke pList)
             writeResult
 
 foreign import ccall "wrapper"
