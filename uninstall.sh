@@ -27,7 +27,7 @@ export EXTENSION_DIR=$SHARE_DIR/extension
 export GHC_PACKAGE_PATH=$PKG_LIB_DIR/plhaskell_pkg_db
 
 rm -vf $EXTENSION_DIR/plhaskell.control
-rm -vf $EXTENSION_DIR/plhaskell--1.0.sql
+rm -vf $EXTENSION_DIR/plhaskell--1.1.sql
 rm -vf $PKG_LIB_DIR/plhaskell.so
 rm -vf $PKG_LIB_DIR/PGutils.dyn_hi
 

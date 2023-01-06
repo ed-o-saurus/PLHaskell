@@ -43,10 +43,10 @@ backend.o backend_stub.h backend.hi : backend.hs plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c backend.hs   -o backend.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC
 
 PGutils.o PGutils.hi : PGutils.hs
-	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
 PGsupport.o PGsupport.hi : PGsupport.hs
-	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGsupport.hs -o PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.0
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGsupport.hs -o PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
 %.hs : %.hsc
 	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/
