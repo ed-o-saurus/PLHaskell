@@ -34,7 +34,7 @@ import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
 import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
 import Foreign.Storable             (peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Just, Nothing), String, concat, concatMap, error,  fromIntegral, map, otherwise, return, show, ($), (+), (++), (-), (.), (==), (>>=))
+import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, maybe, return, show, undefined, ($), (+), (++), (-), (.), (>>=))
 
 -- Dummy types to make pointers
 type CallInfo = ()
@@ -109,18 +109,15 @@ c_TypeAvailable oid = do
 
 -- Name of corresponding Haskell types
 baseName :: Int32 -> String
-baseName oid = case (getDataType oid) of Just dt -> name dt
-                                         Nothing -> error "Bad Oid"
+baseName oid = maybe undefined name (getDataType oid)
 
 -- Name of function to write Haskell type to ValueInfo struct
 writeFunctionName :: Int32 -> String
-writeFunctionName oid = case (getDataType oid) of Just dt -> writeFunction dt
-                                                  Nothing -> error "Bad Oid"
+writeFunctionName oid = maybe undefined writeFunction (getDataType oid)
 
 -- Name of function to read Haskell type from ValueInfo struct
 readFunctionName :: Int32 -> String
-readFunctionName oid = case (getDataType oid) of Just dt -> readFunction dt
-                                                 Nothing -> error "Bad Oid"
+readFunctionName oid = maybe undefined readFunction (getDataType oid)
 
 -- Extract module file name from CallInfo struct
 getModFileName :: Ptr CallInfo -> Interpreter String
@@ -136,20 +133,25 @@ getField pValueInfo i = do
     fields <- (#peek struct ValueInfo, Fields) pValueInfo
     peekElemOff fields (fromIntegral i)
 
+getTypeNameTyp :: CInt -> Ptr ValueInfo -> IO String
+getTypeNameTyp (#const VOID_TYPE) _pValueInfo = return "()"
+
+getTypeNameTyp (#const BASE_TYPE) pValueInfo = do
+    CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
+    return ("Maybe " ++ baseName typeOid)
+
+getTypeNameTyp (#const COMPOSITE_TYPE) pValueInfo = do
+    CShort count <- (#peek struct ValueInfo, Count) pValueInfo
+    names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
+    return ("Maybe (" ++ intercalate ", " names ++ ")")
+
+getTypeNameTyp _typ _pValueInfo = undefined
+
 -- Get Haskell type name based on ValueInfo struct
 getTypeName :: Ptr ValueInfo -> IO String
 getTypeName pValueInfo = do
-    CInt typ <- (#peek struct ValueInfo, Type) pValueInfo
-    let typeName | typ == (#const VOID_TYPE) = return "()"
-                 | typ == (#const BASE_TYPE) = do
-                     CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
-                     return ("Maybe " ++ baseName typeOid)
-                 | typ == (#const COMPOSITE_TYPE) = do
-                     CShort count <- (#peek struct ValueInfo, Count) pValueInfo
-                     names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
-                     return ("Maybe (" ++ intercalate ", " names ++ ")")
-                 | otherwise = error "Bad Type"
-    typeName
+    typ <- (#peek struct ValueInfo, Type) pValueInfo
+    getTypeNameTyp typ pValueInfo
 
 -- Get argument ValueInfo struct from CallInfo struct
 getArgValueInfo :: Ptr CallInfo -> Int16 -> IO (Ptr ValueInfo)
@@ -169,53 +171,62 @@ getSignature pCallInfo = liftIO $ do
         then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
         else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
 
--- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
-writeResultDef :: Ptr ValueInfo -> IO String
-writeResultDef pValueInfo = do
-    CInt typ <- (#peek struct ValueInfo, Type) pValueInfo
+writeResultDefTyp :: CInt -> Ptr ValueInfo -> IO String
+writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
+
+writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
+    CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
+    return (writeFunctionName typeOid)
+
+writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
         writeFieldDef <- getField pValueInfo i >>= writeResultDef
         return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") i
-    let def | typ == (#const VOID_TYPE) = return "writeVoid"
-            | typ == (#const BASE_TYPE) = do
-                CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
-                return (writeFunctionName typeOid)
-            | typ == (#const COMPOSITE_TYPE) = do
-                CShort count <- (#peek struct ValueInfo, Count) pValueInfo
-                fieldsDef <- forM [0 .. count-1] getFieldDef
-                let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-                return ("\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
-                \                                              Just (" ++ fieldsList ++ ") -> do;\
-                \                                                                              writeNotNull pValueInfo;" ++
-                                                                                               concat fieldsDef)
-            | otherwise = error "Bad Type"
-    def
+    CShort count <- (#peek struct ValueInfo, Count) pValueInfo
+    fieldsDef <- forM [0 .. count-1] getFieldDef
+    let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
+    return ("\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
+    \                                              Just (" ++ fieldsList ++ ") -> do;\
+    \                                                                              writeNotNull pValueInfo;" ++
+                                                                                   concat fieldsDef)
+
+writeResultDefTyp _typ _pValueInfo = undefined
+
+-- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
+writeResultDef :: Ptr ValueInfo -> IO String
+writeResultDef pValueInfo = do
+    typ <- (#peek struct ValueInfo, Type) pValueInfo
+    writeResultDefTyp typ pValueInfo
+
+readArgDefTyp :: CInt -> Ptr ValueInfo -> IO String
+readArgDefTyp (#const BASE_TYPE) pValueInfo = do
+    CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
+    return (readFunctionName typeOid)
+
+readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
+    let getFieldDef i = do
+        readFieldDef <- getField pValueInfo i >>= readArgDef
+        return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i
+    CShort count <- (#peek struct ValueInfo, Count) pValueInfo
+    fieldsDef <- forM [0 .. count-1] getFieldDef
+    let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
+    return ("\\pValueInfo -> do {\
+    \                                isNull <- readIsNull pValueInfo;\
+    \                                if isNull; \
+    \                                    then return Nothing;\
+    \                                    else do {" ++
+                                             concat fieldsDef ++
+                                             "return (Just (" ++ fieldsList ++ "))\
+    \                                    }\
+    \                        }")
+
+readArgDefTyp _typ _pValueInfo = undefined
 
 -- Return a string representing a function to take and argument from a ValueInfo struct and return the Haskell value
 readArgDef :: Ptr ValueInfo -> IO String
 readArgDef pValueInfo = do
-    CInt typ <- (#peek struct ValueInfo, Type) pValueInfo
-    let getFieldDef i = do
-        readFieldDef <- getField pValueInfo i >>= readArgDef
-        return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i
-    let def | typ == (#const BASE_TYPE) = do
-                CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
-                return (readFunctionName typeOid)
-            | typ == (#const COMPOSITE_TYPE) = do
-                CShort count <- (#peek struct ValueInfo, Count) pValueInfo
-                fieldsDef <- forM [0 .. count-1] getFieldDef
-                let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-                return ("\\pValueInfo -> do {\
-                \                                isNull <- readIsNull pValueInfo;\
-                \                                if isNull; \
-                \                                    then return Nothing;\
-                \                                    else do {" ++
-                                                         concat fieldsDef ++
-                                                         "return (Just (" ++ fieldsList ++ "))\
-                \                                    }\
-                \                        }")
-            | otherwise = error "Bad Type"
-    def
+    typ <- (#peek struct ValueInfo, Type) pValueInfo
+    readArgDefTyp typ pValueInfo
 
 defineReadArg :: Ptr CallInfo -> Int16 -> Interpreter ()
 defineReadArg pCallInfo i = do
