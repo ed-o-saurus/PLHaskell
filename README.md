@@ -6,7 +6,7 @@ The extension allows users, even unprivileged ones, to write, install, and run f
 
 ## Copyright
 
-Copyright (C) 2022 Edward F. Behn, Jr.
+Copyright (C) 2023 Edward F. Behn, Jr.
 
 ## License
 
