@@ -34,15 +34,15 @@
 
 extern char pkglib_path[];
 
-static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet);
-static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid typeoid);
+static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set);
+static void build_value_info(struct ValueInfo *p_value_info, Oid typeoid);
 
-static void DestroyCallInfo(void* arg);
+static void destroy_call_info(void *arg);
 
-static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull);
-static Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull);
+static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool is_null);
+static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
 
-static void Enter(void);
+static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 static void exit_function(void);
 
@@ -58,18 +58,18 @@ PG_FUNCTION_INFO_V1(plhaskell_call_handler);
 Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 {
     int next_stderr_fn;
-    struct CallInfo* pCallInfo;
+    struct CallInfo *p_call_info;
     Oid funcoid = fcinfo->flinfo->fn_oid; // OID of the function being handled
     HeapTuple proctup;
     Datum proretset;
-    bool isNull;
+    bool is_null;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
         ereport(ERROR, errmsg("Cache lookup failed for function %u.", funcoid));
 
-    proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &isNull);
-    if(isNull)
+    proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.proretset is NULL."));
 
     ReleaseSysCache(proctup);
@@ -78,11 +78,11 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     if(DatumGetBool(proretset))
     {
         FuncCallContext *funcctx;
-        ReturnSetInfo *rsi = (ReturnSetInfo *) fcinfo->resultinfo;
+        ReturnSetInfo *rsi = (ReturnSetInfo*)fcinfo->resultinfo;
 
         if(fcinfo->flinfo->fn_extra == NULL)
         {
-            MemoryContext oldcontext;
+            MemoryContext old_context;
             MemoryContextCallback *cb;
 
             if(!(rsi->allowedModes & SFRM_ValuePerCall))
@@ -91,42 +91,42 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             rsi->returnMode = SFRM_ValuePerCall;
 
             funcctx = init_MultiFuncCall(fcinfo);
-            oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+            old_context = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
             cb = palloc(sizeof(MemoryContextCallback));
 
             // Allocate, setup, and Build CallInfo
-            pCallInfo = funcctx->user_fctx = palloc0(sizeof(struct CallInfo));
+            p_call_info = funcctx->user_fctx = palloc0(sizeof(struct CallInfo));
 
             // Register callback to free List and Iterator and delete temp module file
-            cb->func = DestroyCallInfo;
-            cb->arg = pCallInfo;
+            cb->func = destroy_call_info;
+            cb->arg = p_call_info;
             MemoryContextRegisterResetCallback(funcctx->multi_call_memory_ctx, cb);
 
-            BuildCallInfo(pCallInfo, funcoid, true);
+            build_call_info(p_call_info, funcoid, true);
 
             // Write the argument to their ValueInfo structs
-            for(short i=0; i<pCallInfo->nargs; i++)
-                WriteValueInfo(pCallInfo->Args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
+            for(short i=0; i<p_call_info->nargs; i++)
+                write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
             next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-            mkIterator(pCallInfo); // Setup the iterator and list
+            mk_iterator(p_call_info); // Setup the iterator and list
             restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
-            MemoryContextSwitchTo(oldcontext);
+            MemoryContextSwitchTo(old_context);
         }
 
         funcctx = per_MultiFuncCall(fcinfo);
-        pCallInfo = funcctx->user_fctx;
+        p_call_info = funcctx->user_fctx;
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-        (*pCallInfo->Function)(); // Run the function
+        (*p_call_info->function)(); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
-        if(pCallInfo->MoreResults)
+        if(p_call_info->more_results)
         {
             rsi->isDone = ExprMultipleResult;
-            return ReadValueInfo(pCallInfo->Result, &fcinfo->isnull); // Get the next result
+            return read_value_info(p_call_info->result, &fcinfo->isnull); // Get the next result
         }
         else
         {
@@ -141,34 +141,34 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     {
         if(fcinfo->flinfo->fn_extra == NULL)
         {
-            MemoryContext OldContext = MemoryContextSwitchTo(fcinfo->flinfo->fn_mcxt);
+            MemoryContext old_context = MemoryContextSwitchTo(fcinfo->flinfo->fn_mcxt);
             MemoryContextCallback *cb = palloc(sizeof(MemoryContextCallback));
 
             // Allocate, setup, and Build CallInfo
-            pCallInfo = fcinfo->flinfo->fn_extra = palloc0(sizeof(struct CallInfo));
+            p_call_info = fcinfo->flinfo->fn_extra = palloc0(sizeof(struct CallInfo));
 
-            // Register callback to free Function and delete temp module file
-            cb->func = DestroyCallInfo;
-            cb->arg = pCallInfo;
+            // Register callback to free function and delete temp module file
+            cb->func = destroy_call_info;
+            cb->arg = p_call_info;
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
-            BuildCallInfo(pCallInfo, funcoid, false);
-            mkFunction(pCallInfo);
+            build_call_info(p_call_info, funcoid, false);
+            mk_function(p_call_info);
 
-            MemoryContextSwitchTo(OldContext);
+            MemoryContextSwitchTo(old_context);
         }
 
-        pCallInfo = fcinfo->flinfo->fn_extra;
+        p_call_info = fcinfo->flinfo->fn_extra;
 
         // Write the argument to their ValueInfo structs
-        for(short i=0; i<pCallInfo->nargs; i++)
-            WriteValueInfo(pCallInfo->Args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
+        for(short i=0; i<p_call_info->nargs; i++)
+            write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
-        (*pCallInfo->Function)(); // Run the function
+        (*p_call_info->function)(); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
-        return ReadValueInfo(pCallInfo->Result, &fcinfo->isnull);
+        return read_value_info(p_call_info->result, &fcinfo->isnull);
     }
 }
 
@@ -176,13 +176,13 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(plhaskell_validator);
 Datum plhaskell_validator(PG_FUNCTION_ARGS)
 {
-    struct CallInfo* pCallInfo;
+    struct CallInfo *p_call_info;
     Oid funcoid = PG_GETARG_OID(0);
     MemoryContextCallback *cb;
 
     HeapTuple proctup;
     Datum proretset;
-    bool isNull;
+    bool is_null;
 
     if (!CheckFunctionValidatorAccess(fcinfo->flinfo->fn_oid, funcoid))
         PG_RETURN_VOID();
@@ -194,8 +194,8 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     if(!HeapTupleIsValid(proctup))
         ereport(ERROR, errmsg("Cache lookup failed for function %u.", funcoid));
 
-    proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &isNull);
-    if(isNull)
+    proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.proretset is NULL."));
 
     ReleaseSysCache(proctup);
@@ -203,71 +203,71 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     cb = palloc(sizeof(MemoryContextCallback));
 
     // Allocate, setup, and Build CallInfo
-    pCallInfo = palloc0(sizeof(struct CallInfo));
+    p_call_info = palloc0(sizeof(struct CallInfo));
 
     // Register callback to delete temp module file
-    cb->func = DestroyCallInfo;
-    cb->arg = pCallInfo;
+    cb->func = destroy_call_info;
+    cb->arg = p_call_info;
     MemoryContextRegisterResetCallback(CurrentMemoryContext, cb);
 
-    BuildCallInfo(pCallInfo, funcoid, DatumGetBool(proretset));
+    build_call_info(p_call_info, funcoid, DatumGetBool(proretset));
 
     // Raise error if the function's signature is incorrect
-    checkSignature(pCallInfo);
+    check_signature(p_call_info);
 
     PG_RETURN_VOID();
 }
 
 // Fill CallInfo struct
-static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSet)
+static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set)
 {
     HeapTuple proctup;
     Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname;
     ArrayType *proargtypes_arr;
-    Oid* argtypes;
-    bool isNull;
-    text* src;
+    Oid *argtypes;
+    bool is_null;
+    text *src;
     int modfd;
 
-    pCallInfo->ReturnSet = ReturnSet;
+    p_call_info->return_set = return_set;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
         ereport(ERROR, errmsg("Cache lookup failed for function %u.", funcoid));
 
-    provariadic = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provariadic, &isNull);
-    if(isNull)
+    provariadic = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provariadic, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.provariadic is NULL."));
 
     if(DatumGetObjectId(provariadic) != 0)
         ereport(ERROR, errmsg("Variadic types not allowed"));
 
-    prokind = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prokind, &isNull);
-    if(isNull)
+    prokind = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prokind, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.prokind is NULL."));
 
     if(DatumGetChar(prokind) != PROKIND_FUNCTION)
         ereport(ERROR, errmsg("Only normal function allowed."));
 
-    pCallInfo->nargs = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &isNull);
-    if(isNull)
+    p_call_info->nargs = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.pronargs is NULL."));
 
-    pCallInfo->Args = palloc(pCallInfo->nargs * sizeof(struct ValueInfo*));
+    p_call_info->args = palloc(p_call_info->nargs * sizeof(struct ValueInfo*));
 
-    SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargmodes, &isNull);
-    if(!isNull)
+    SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargmodes, &is_null);
+    if(!is_null)
         ereport(ERROR, errmsg("Only IN arguments allowed."));
 
-    prorettype = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prorettype, &isNull);
-    if(isNull)
+    prorettype = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prorettype, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.prorettype is NULL."));
 
-    pCallInfo->Result = palloc(sizeof(struct ValueInfo));
-    BuildValueInfo(pCallInfo->Result, prorettype);
+    p_call_info->result = palloc(sizeof(struct ValueInfo));
+    build_value_info(p_call_info->result, prorettype);
 
-    proargtypes = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargtypes, &isNull);
-    if(isNull)
+    proargtypes = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargtypes, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.proargtypes is NULL."));
 
     proargtypes_arr = DatumGetArrayTypeP(proargtypes);
@@ -275,37 +275,37 @@ static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSe
     if(ARR_NDIM(proargtypes_arr) != 1)
         ereport(ERROR, errmsg("pg_proc.proargtypes has %d dimensions.", ARR_NDIM(proargtypes_arr)));
 
-    if(ARR_LBOUND(proargtypes_arr)[0] != 0 || ARR_DIMS(proargtypes_arr)[0] != pCallInfo->nargs)
+    if(ARR_LBOUND(proargtypes_arr)[0] != 0 || ARR_DIMS(proargtypes_arr)[0] != p_call_info->nargs)
         ereport(ERROR, errmsg("pg_proc.proargtypes has unexpected size"));
 
     if(ARR_NULLBITMAP(proargtypes_arr) != NULL)
         ereport(ERROR, errmsg("pg_proc.proargtypes has NULL element"));
 
     argtypes = (Oid*)ARR_DATA_PTR(proargtypes_arr);
-    for(int i=0; i<pCallInfo->nargs; i++)
+    for(int i=0; i<p_call_info->nargs; i++)
     {
-        pCallInfo->Args[i] = palloc(sizeof(struct ValueInfo));
-        BuildValueInfo(pCallInfo->Args[i], argtypes[i]);
+        p_call_info->args[i] = palloc(sizeof(struct ValueInfo));
+        build_value_info(p_call_info->args[i], argtypes[i]);
     }
 
-    proname = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proname, &isNull);
-    if(isNull)
+    proname = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proname, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.proname is NULL."));
 
-    pCallInfo->FuncName = palloc(NAMEDATALEN);
-    memcpy(pCallInfo->FuncName, DatumGetName(proname)->data, NAMEDATALEN);
+    p_call_info->func_name = palloc(NAMEDATALEN);
+    memcpy(p_call_info->func_name, DatumGetName(proname)->data, NAMEDATALEN);
 
     // Fill temp file with function source
-    prosrc = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosrc, &isNull);
-    if(isNull)
+    prosrc = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosrc, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_proc.prosrc is NULL."));
 
     src = DatumGetTextPP(prosrc);
 
-    pCallInfo->ModFileName = palloc(18);
-    memcpy(pCallInfo->ModFileName, "/tmp/ModXXXXXX.hs", 18);
+    p_call_info->mod_file_name = palloc(18);
+    memcpy(p_call_info->mod_file_name, "/tmp/ModXXXXXX.hs", 18);
 
-    modfd = mkstemps(pCallInfo->ModFileName, 3);
+    modfd = mkstemps(p_call_info->mod_file_name, 3);
 
     if(write(modfd, "module PGmodule (", 17) < 0)
     {
@@ -313,7 +313,7 @@ static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSe
         ereport(ERROR, errmsg("Unable to write to module file."));
     }
 
-    if(write(modfd, pCallInfo->FuncName, strlen(pCallInfo->FuncName)) < 0)
+    if(write(modfd, p_call_info->func_name, strlen(p_call_info->func_name)) < 0)
     {
         close(modfd);
         ereport(ERROR, errmsg("Unable to write to module file."));
@@ -337,54 +337,54 @@ static void BuildCallInfo(struct CallInfo* pCallInfo, Oid funcoid, bool ReturnSe
 }
 
 // Fill ValueInfo struct
-static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
+static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 {
     HeapTuple typetup, reltup, atttup;
     Datum typtype, typname, typbasetype, typrelid;
     Datum relnatts;
     Datum atttypid;
-    char* type_name;
-    bool isNull;
+    char *type_name;
+    bool is_null;
     Oid classoid, attroid;
 
-    if(TypeOid == VOIDOID)
+    if(type_oid == VOIDOID)
     {
-        pValueInfo->Type = VOID_TYPE;
+        p_value_info->type = VOID_TYPE;
         return;
     }
 
-    typetup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(TypeOid));
+    typetup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
     if(!HeapTupleIsValid(typetup))
-        ereport(ERROR, errmsg("cache lookup failed for type %u.", TypeOid));
+        ereport(ERROR, errmsg("cache lookup failed for type %u.", type_oid));
 
-    typname = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typname, &isNull);
-    if(isNull)
+    typname = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typname, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_type.typname is NULL."));
 
     type_name = DatumGetCString(typname);
 
-    typtype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typtype, &isNull);
-    if(isNull)
+    typtype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typtype, &is_null);
+    if(is_null)
         ereport(ERROR, errmsg("pg_type.typtype is NULL."));
 
     switch(DatumGetChar(typtype))
     {
     case TYPTYPE_BASE :
-        if(!TypeAvailable(TypeOid))
+        if(!type_available(type_oid))
             ereport(ERROR, errmsg("PL/Haskell does not support type %s.", type_name));
 
-        pValueInfo->TypeOid = TypeOid;
-        pValueInfo->Type = BASE_TYPE;
+        p_value_info->type_oid = type_oid;
+        p_value_info->type = BASE_TYPE;
 
         break;
     case TYPTYPE_COMPOSITE :
-        pValueInfo->Type = COMPOSITE_TYPE;
-        pValueInfo->Count = 0;
-        pValueInfo->attnums = palloc(0);
-        pValueInfo->Fields = palloc(0);
+        p_value_info->type = COMPOSITE_TYPE;
+        p_value_info->count = 0;
+        p_value_info->attnums = palloc(0);
+        p_value_info->fields = palloc(0);
 
-        typrelid = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typrelid, &isNull);
-        if(isNull)
+        typrelid = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typrelid, &is_null);
+        if(is_null)
             ereport(ERROR, errmsg("pg_type.typrelid is NULL."));
 
         classoid = ObjectIdGetDatum(typrelid);
@@ -393,37 +393,37 @@ static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
         if(!HeapTupleIsValid(reltup))
             ereport(ERROR, errmsg("cache lookup failed for class %u.", classoid));
 
-        relnatts = SysCacheGetAttr(RELOID, reltup, Anum_pg_class_relnatts, &isNull);
-        if(isNull)
+        relnatts = SysCacheGetAttr(RELOID, reltup, Anum_pg_class_relnatts, &is_null);
+        if(is_null)
             ereport(ERROR, errmsg("pg_class.relnatts is NULL."));
 
-        pValueInfo->natts = DatumGetInt16(relnatts);
+        p_value_info->natts = DatumGetInt16(relnatts);
 
         // Loop over all composite type attributes
-        for(int16 i=0; i<pValueInfo->natts; i++)
+        for(int16 i=0; i<p_value_info->natts; i++)
         {
             atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(classoid), Int16GetDatum(i+1));
             if(!HeapTupleIsValid(atttup))
                 ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d.", classoid, i+1));
 
-            atttypid = SysCacheGetAttr(ATTNUM, atttup, Anum_pg_attribute_atttypid, &isNull);
-            if(isNull)
+            atttypid = SysCacheGetAttr(ATTNUM, atttup, Anum_pg_attribute_atttypid, &is_null);
+            if(is_null)
                 ereport(ERROR, errmsg("pg_attribute.atttypid is NULL."));
 
             // If the attribute is not dropped
             if((attroid = DatumGetObjectId(atttypid)))
             {
-                pValueInfo->Count++;
+                p_value_info->count++;
 
-                if(pValueInfo->Count > 63)
+                if(p_value_info->count > 63)
                     ereport(ERROR, errmsg("Tuple size too large"));
 
-                pValueInfo->attnums = repalloc(pValueInfo->attnums, pValueInfo->Count * sizeof(int16));
-                pValueInfo->attnums[pValueInfo->Count-1] = i+1;
+                p_value_info->attnums = repalloc(p_value_info->attnums, p_value_info->count * sizeof(int16));
+                p_value_info->attnums[p_value_info->count-1] = i+1;
 
-                pValueInfo->Fields = repalloc(pValueInfo->Fields, pValueInfo->Count * sizeof(struct ValueInfo*));
-                pValueInfo->Fields[pValueInfo->Count-1] = palloc(sizeof(struct ValueInfo));
-                BuildValueInfo(pValueInfo->Fields[pValueInfo->Count-1], attroid);
+                p_value_info->fields = repalloc(p_value_info->fields, p_value_info->count * sizeof(struct ValueInfo*));
+                p_value_info->fields[p_value_info->count-1] = palloc(sizeof(struct ValueInfo));
+                build_value_info(p_value_info->fields[p_value_info->count-1], attroid);
             }
 
             ReleaseSysCache(atttup);
@@ -431,16 +431,16 @@ static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
 
         ReleaseSysCache(reltup);
 
-        pValueInfo->tupdesc = lookup_rowtype_tupdesc_copy(TypeOid, -1);
-        BlessTupleDesc(pValueInfo->tupdesc);
+        p_value_info->tupdesc = lookup_rowtype_tupdesc_copy(type_oid, -1);
+        BlessTupleDesc(p_value_info->tupdesc);
 
         break;
     case TYPTYPE_DOMAIN :
-        typbasetype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typbasetype, &isNull);
-        if(isNull)
+        typbasetype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typbasetype, &is_null);
+        if(is_null)
             ereport(ERROR, errmsg("pg_type.typbasetype is NULL."));
 
-        BuildValueInfo(pValueInfo, DatumGetObjectId(typbasetype));
+        build_value_info(p_value_info, DatumGetObjectId(typbasetype));
 
         break;
     case TYPTYPE_ENUM :
@@ -462,40 +462,40 @@ static void BuildValueInfo(struct ValueInfo* pValueInfo, Oid TypeOid)
     ReleaseSysCache(typetup);
 }
 
-// Delete temp module file and free Function and List if necessary
-static void DestroyCallInfo(void* arg)
+// Delete temp module file and free function and List if necessary
+static void destroy_call_info(void *arg)
 {
-    struct CallInfo *pCallInfo = arg;
+    struct CallInfo *p_call_info = arg;
 
-    if(pCallInfo->ModFileName)
-        unlink(pCallInfo->ModFileName);
+    if(p_call_info->mod_file_name)
+        unlink(p_call_info->mod_file_name);
 
-    if(pCallInfo->List)
-        hs_free_stable_ptr(pCallInfo->List);
+    if(p_call_info->list)
+        hs_free_stable_ptr(p_call_info->list);
 
-    if(pCallInfo->Function)
-        hs_free_fun_ptr(pCallInfo->Function);
+    if(p_call_info->function)
+        hs_free_fun_ptr(p_call_info->function);
 }
 
-// Populate the value and isNull fields of pValueInfo
-static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNull)
+// Populate the value and is_null fields of p_value_info
+static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool is_null)
 {
     HeapTupleHeader tuple;
     HeapTupleData tmptup;
 
-    if((pValueInfo->isNull=isNull))
+    if((p_value_info->is_null=is_null))
         return;
 
-    switch(pValueInfo->Type)
+    switch(p_value_info->type)
     {
     case VOID_TYPE :
         ereport(ERROR, errmsg("Cannot write void type"));
         break;
     case BASE_TYPE :
-        pValueInfo->Value = value;
+        p_value_info->value = value;
         break;
     case COMPOSITE_TYPE :
-        // If pValueInfo is a tuple, populate the fields recursively.
+        // If p_value_info is a tuple, populate the fields recursively.
         tuple = DatumGetHeapTupleHeader(value);
 
         tmptup.t_len = HeapTupleHeaderGetDatumLength(tuple);
@@ -503,53 +503,53 @@ static void WriteValueInfo(struct ValueInfo* pValueInfo, Datum value, bool isNul
         tmptup.t_tableOid = InvalidOid;
         tmptup.t_data = tuple;
 
-        for(int16 i=0; i<pValueInfo->Count; i++)
+        for(int16 i=0; i<p_value_info->count; i++)
         {
-            Datum value = heap_getattr(&tmptup, pValueInfo->attnums[i], pValueInfo->tupdesc, &isNull);
-            WriteValueInfo(pValueInfo->Fields[i], value, isNull);
+            Datum value = heap_getattr(&tmptup, p_value_info->attnums[i], p_value_info->tupdesc, &is_null);
+            write_value_info(p_value_info->fields[i], value, is_null);
         }
 
         break;
     default :
-        ereport(ERROR, errmsg("Bad Type : %d", pValueInfo->Type));
+        ereport(ERROR, errmsg("Bad Type : %d", p_value_info->type));
     }
 }
 
-// Get the value from pValueInfo
-static Datum ReadValueInfo(struct ValueInfo* pValueInfo, bool* isNull)
+// Get the value from p_value_info
+static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null)
 {
     Datum *values;
-    bool *isNulls;
+    bool *is_nulls;
 
-    if((*isNull=pValueInfo->isNull))
+    if((*is_null=p_value_info->is_null))
         return (Datum)0;
 
-    switch(pValueInfo->Type)
+    switch(p_value_info->type)
     {
     case VOID_TYPE :
         return (Datum)0;
     case BASE_TYPE :
-        return pValueInfo->Value;
+        return p_value_info->value;
     case COMPOSITE_TYPE :
-        // If pValueInfo is a tuple, get the fields' values recursively.
-        values  = palloc(pValueInfo->natts * sizeof(Datum));
-        isNulls = palloc(pValueInfo->natts * sizeof(bool));
+        // If p_value_info is a tuple, get the fields' values recursively.
+        values  = palloc(p_value_info->natts * sizeof(Datum));
+        is_nulls = palloc(p_value_info->natts * sizeof(bool));
 
-        for(int i = 0; i < pValueInfo->Count; i++)
+        for(int i = 0; i < p_value_info->count; i++)
         {
-            int16 attnum = pValueInfo->attnums[i];
-            values[attnum-1] = ReadValueInfo(pValueInfo->Fields[i], isNulls+(attnum-1));
+            int16 attnum = p_value_info->attnums[i];
+            values[attnum-1] = read_value_info(p_value_info->fields[i], is_nulls+(attnum-1));
         }
 
-        return HeapTupleGetDatum(heap_form_tuple(pValueInfo->tupdesc, values, isNulls));
+        return HeapTupleGetDatum(heap_form_tuple(p_value_info->tupdesc, values, is_nulls));
     default :
-        ereport(ERROR, errmsg("Bad Type : %d", pValueInfo->Type));
+        ereport(ERROR, errmsg("Bad Type : %d", p_value_info->type));
     }
 }
 
 // Called when the module is loaded
-static void Enter(void) __attribute__((constructor));
-static void Enter(void)
+static void enter(void) __attribute__((constructor));
+static void enter(void)
 {
     char GHC_PackagePath[MAXPGPATH+18];
     static char *argv[] = {"PLHaskell", "+RTS", "--install-signal-handlers=no", "-V0", "-RTS"}; // Configuration for the RTS
@@ -623,8 +623,8 @@ static void restore_stderr(int bak_fn)
 }
 
 // Used by Haskell
-void PLHaskell_Report(int32 elevel, char* msg) __attribute__((visibility ("hidden")));
-void PLHaskell_Report(int32 elevel, char* msg)
+void PLHaskell_Report(int32 elevel, char *msg) __attribute__((visibility ("hidden")));
+void PLHaskell_Report(int32 elevel, char *msg)
 {
     ereport(elevel, errmsg("%s", msg));
 }

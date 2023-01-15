@@ -50,13 +50,13 @@ palloc size = c_palloc (CSize (fromIntegral size))
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo i = do
-    fields <- (#peek struct ValueInfo, Fields) pValueInfo
+    fields <- (#peek struct ValueInfo, fields) pValueInfo
     peekElemOff fields (fromIntegral i)
 
 -- Determine the value of the isNull field of a ValueInfo struct
 readIsNull :: Ptr ValueInfo -> IO Bool
 readIsNull pValueInfo = do
-    CBool isNull <- (#peek struct ValueInfo, isNull) pValueInfo
+    CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
     return (toBool isNull)
 
 class ReadWrite a where
@@ -65,21 +65,21 @@ class ReadWrite a where
 
     readType :: Ptr ValueInfo -> IO (Maybe a)
     readType pValueInfo = do
-        value <- (#peek struct ValueInfo, Value) pValueInfo
-        CBool isNull <- (#peek struct ValueInfo, isNull) pValueInfo
+        value <- (#peek struct ValueInfo, value) pValueInfo
+        CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
         if (toBool isNull)
         then return Nothing
         else read value <&> Just
 
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
-        (#poke struct ValueInfo, Value) pValueInfo (ptrToWordPtr nullPtr)
-        (#poke struct ValueInfo, isNull) pValueInfo (CBool $ fromBool True)
+        (#poke struct ValueInfo, value) pValueInfo (ptrToWordPtr nullPtr)
+        (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
 
     writeType (Just result) pValueInfo = do
         value <- write result
-        (#poke struct ValueInfo, Value) pValueInfo value
-        (#poke struct ValueInfo, isNull) pValueInfo (CBool $ fromBool False)
+        (#poke struct ValueInfo, value) pValueInfo value
+        (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
 
 -- Get the size of a variable length array
 foreign import capi safe "postgres.h VARSIZE_ANY_EXHDR"
@@ -230,11 +230,11 @@ readFloat8 = readType
 
 -- Set isNull to true
 writeNull :: Ptr ValueInfo -> IO ()
-writeNull pValueInfo = (#poke struct ValueInfo, isNull) pValueInfo (CBool (fromBool True))
+writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (fromBool True))
 
 -- Set isNull to false
 writeNotNull :: Ptr ValueInfo -> IO ()
-writeNotNull pValueInfo = (#poke struct ValueInfo, isNull) pValueInfo (CBool (fromBool False))
+writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (fromBool False))
 
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
