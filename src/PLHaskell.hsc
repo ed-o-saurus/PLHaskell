@@ -47,7 +47,7 @@ interpolate ('?':ss) i = show i ++ interpolate ss i
 interpolate (s:ss) i = s : interpolate ss i
 
 -- Function to record message or raise exception
-foreign import capi safe "plhaskell.h PLHaskell_Report"
+foreign import capi safe "plhaskell.h plhaskell_report"
     c_Report :: CInt -> CString -> IO ()
 
 raise :: Int32 -> String -> IO ()
@@ -101,7 +101,7 @@ typeAvailable oid = case (getDataType oid) of Just _  -> True
                                               Nothing -> False
 
 -- Run the function pointed to by the stable pointer
-foreign export capi "TypeAvailable" c_TypeAvailable :: CInt -> IO CBool
+foreign export capi "type_available" c_TypeAvailable :: CInt -> IO CBool
 c_TypeAvailable :: CInt -> IO CBool
 c_TypeAvailable oid = do
     let CInt oid' = oid
@@ -121,27 +121,27 @@ readFunctionName oid = maybe undefined readFunction (getDataType oid)
 
 -- Extract module file name from CallInfo struct
 getModFileName :: Ptr CallInfo -> Interpreter String
-getModFileName pCallInfo = liftIO ((#peek struct CallInfo, ModFileName) pCallInfo >>= peekCString)
+getModFileName pCallInfo = liftIO ((#peek struct CallInfo, mod_file_name) pCallInfo >>= peekCString)
 
 -- Extract function name from CallInfo struct
 getFuncName :: Ptr CallInfo -> Interpreter String
-getFuncName pCallInfo = liftIO ((#peek struct CallInfo, FuncName) pCallInfo >>= peekCString)
+getFuncName pCallInfo = liftIO ((#peek struct CallInfo, func_name) pCallInfo >>= peekCString)
 
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo i = do
-    fields <- (#peek struct ValueInfo, Fields) pValueInfo
+    fields <- (#peek struct ValueInfo, fields) pValueInfo
     peekElemOff fields (fromIntegral i)
 
 getTypeNameTyp :: CInt -> Ptr ValueInfo -> IO String
 getTypeNameTyp (#const VOID_TYPE) _pValueInfo = return "()"
 
 getTypeNameTyp (#const BASE_TYPE) pValueInfo = do
-    CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
+    CInt typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
     return ("Maybe " ++ baseName typeOid)
 
 getTypeNameTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    CShort count <- (#peek struct ValueInfo, Count) pValueInfo
+    CShort count <- (#peek struct ValueInfo, count) pValueInfo
     names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
     return ("Maybe (" ++ intercalate ", " names ++ ")")
 
@@ -150,13 +150,13 @@ getTypeNameTyp _typ _pValueInfo = undefined
 -- Get Haskell type name based on ValueInfo struct
 getTypeName :: Ptr ValueInfo -> IO String
 getTypeName pValueInfo = do
-    typ <- (#peek struct ValueInfo, Type) pValueInfo
+    typ <- (#peek struct ValueInfo, type) pValueInfo
     getTypeNameTyp typ pValueInfo
 
 -- Get argument ValueInfo struct from CallInfo struct
 getArgValueInfo :: Ptr CallInfo -> Int16 -> IO (Ptr ValueInfo)
 getArgValueInfo pCallInfo i = do
-    pArgs <- (#peek struct CallInfo, Args) pCallInfo
+    pArgs <- (#peek struct CallInfo, args) pCallInfo
     peekElemOff pArgs (fromIntegral i)
 
 -- Get type signature of function needed based on CallInfo struct
@@ -164,9 +164,9 @@ getSignature :: Ptr CallInfo -> Interpreter String
 getSignature pCallInfo = liftIO $ do
     CShort nargs <- (#peek struct CallInfo, nargs) pCallInfo
     argTypeNames <- forM [0 .. nargs-1] (getArgValueInfo pCallInfo >=> getTypeName)
-    resultTypeName <- (#peek struct CallInfo, Result) pCallInfo >>= getTypeName
+    resultTypeName <- (#peek struct CallInfo, result) pCallInfo >>= getTypeName
 
-    CBool returnSet <- (#peek struct CallInfo, ReturnSet) pCallInfo
+    CBool returnSet <- (#peek struct CallInfo, return_set) pCallInfo
     if toBool returnSet
         then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
         else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
@@ -175,14 +175,14 @@ writeResultDefTyp :: CInt -> Ptr ValueInfo -> IO String
 writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
 
 writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
-    CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
+    CInt typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
     return (writeFunctionName typeOid)
 
 writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
         writeFieldDef <- getField pValueInfo i >>= writeResultDef
         return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") i
-    CShort count <- (#peek struct ValueInfo, Count) pValueInfo
+    CShort count <- (#peek struct ValueInfo, count) pValueInfo
     fieldsDef <- forM [0 .. count-1] getFieldDef
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
     return ("\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
@@ -195,19 +195,19 @@ writeResultDefTyp _typ _pValueInfo = undefined
 -- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
 writeResultDef :: Ptr ValueInfo -> IO String
 writeResultDef pValueInfo = do
-    typ <- (#peek struct ValueInfo, Type) pValueInfo
+    typ <- (#peek struct ValueInfo, type) pValueInfo
     writeResultDefTyp typ pValueInfo
 
 readArgDefTyp :: CInt -> Ptr ValueInfo -> IO String
 readArgDefTyp (#const BASE_TYPE) pValueInfo = do
-    CInt typeOid <- (#peek struct ValueInfo, TypeOid) pValueInfo
+    CInt typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
     return (readFunctionName typeOid)
 
 readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
         readFieldDef <- getField pValueInfo i >>= readArgDef
         return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i
-    CShort count <- (#peek struct ValueInfo, Count) pValueInfo
+    CShort count <- (#peek struct ValueInfo, count) pValueInfo
     fieldsDef <- forM [0 .. count-1] getFieldDef
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
     return ("\\pValueInfo -> do {\
@@ -225,7 +225,7 @@ readArgDefTyp _typ _pValueInfo = undefined
 -- Return a string representing a function to take and argument from a ValueInfo struct and return the Haskell value
 readArgDef :: Ptr ValueInfo -> IO String
 readArgDef pValueInfo = do
-    typ <- (#peek struct ValueInfo, Type) pValueInfo
+    typ <- (#peek struct ValueInfo, type) pValueInfo
     readArgDefTyp typ pValueInfo
 
 defineReadArg :: Ptr CallInfo -> Int16 -> Interpreter ()
@@ -273,7 +273,7 @@ setUpEvalInt pCallInfo = do
     forM_ [0 .. nargs-1] (defineReadArg pCallInfo)
 
     -- Fill writeResult value with function to write result to ValueInfo struct
-    pResultValueInfo <- (liftIO . (#peek struct CallInfo, Result)) pCallInfo
+    pResultValueInfo <- (liftIO . (#peek struct CallInfo, result)) pCallInfo
     resultDef <- (liftIO . writeResultDef) pResultValueInfo
     runStmt ("let writeResult = " ++ resultDef)
 
@@ -297,7 +297,7 @@ execute int = do
 
 -- Check the type signature of the function against what is expected
 -- Raise and Error if they don't match
-foreign export capi checkSignature :: Ptr CallInfo -> IO ()
+foreign export capi "check_signature" checkSignature :: Ptr CallInfo -> IO ()
 checkSignature :: Ptr CallInfo -> IO ()
 checkSignature pCallInfo = execute $ do
     set [languageExtensions := [OverloadedStrings, Safe], installedModulesInScope := False]
@@ -320,7 +320,7 @@ checkSignature pCallInfo = execute $ do
 
 -- Set the Function field of the CallInfo struct to a function that
 -- will read the arguments, call the function, and write the result
-foreign export capi mkFunction :: Ptr CallInfo -> IO ()
+foreign export capi "mk_function" mkFunction :: Ptr CallInfo -> IO ()
 mkFunction :: Ptr CallInfo -> IO ()
 mkFunction pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
@@ -333,7 +333,7 @@ mkFunction pCallInfo = execute $ do
     runStmt ("function <- wrapVoidFunc (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})")
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
-    runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
+    runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo))
     runStmt ("poke pFunction function")
 
 -- Set the List field of the CallInfo struct to the list returns by the function
@@ -341,7 +341,7 @@ mkFunction pCallInfo = execute $ do
 -- Each call of Function :
 --     Writes the head of the list to the Result ValueInfo struct
 --     Advances the List pointer
-foreign export capi mkIterator :: Ptr CallInfo -> IO ()
+foreign export capi "mk_iterator" mkIterator :: Ptr CallInfo -> IO ()
 mkIterator :: Ptr CallInfo -> IO ()
 mkIterator pCallInfo = execute $ do
     (nargs, funcName) <- setUpEvalInt pCallInfo
@@ -356,12 +356,12 @@ mkIterator pCallInfo = execute $ do
 
     -- poke the stable pointer value into the List field of the CallInfo struct
     runStmt "spList <- newStablePtr writeResultList"
-    runStmt ("let pList = wordPtrToPtr " ++ show ((#ptr struct CallInfo, List) pCallInfo))
+    runStmt ("let pList = wordPtrToPtr " ++ show ((#ptr struct CallInfo, list) pCallInfo))
     runStmt "poke pList spList"
 
-    runStmt ("let pMoreResults = wordPtrToPtr " ++ show ((#ptr struct CallInfo, MoreResults) pCallInfo))
+    runStmt ("let pMoreResults = wordPtrToPtr " ++ show ((#ptr struct CallInfo, more_results) pCallInfo))
 
     -- poke the iterator into the Function field of the CallInfo struct
     runStmt "function <- wrapVoidFunc (iterate pList pMoreResults)"
-    runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, Function) pCallInfo))
+    runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo))
     runStmt "poke pFunction function"

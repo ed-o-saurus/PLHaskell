@@ -48,7 +48,7 @@ PGutils.o PGutils.hi : PGutils.hs
 PGsupport.o PGsupport.hi : PGsupport.hs
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGsupport.hs -o PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
-%.hs : %.hsc
+%.hs : %.hsc plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/
 
 %.dyn_hi : %.hi
