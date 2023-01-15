@@ -35,11 +35,11 @@
 struct ValueInfo
 {
     bool isNull;
-    int Type; // VOID_TYPE, BASE_TYPE, COMPOSITE_TYPE,
+    int Type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE,
     union {
         struct { // BASE
             Oid TypeOid; // OID of the type
-            Datum Value; // value or pointer depending on ByVal
+            Datum Value; // Value of base type
         };
 
         struct { // COMPOSITE
