@@ -33,14 +33,14 @@ all : PGutils.dyn_hi PGsupport.dyn_hi plhaskell.so
 clean :
 	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so *_hsc_make.c
 
-plhaskell.so : plhaskell.o backend.o PGutils.o PGsupport.o
+plhaskell.so : plhaskell.o PLHaskell.o PGutils.o PGsupport.o
 	ghc -Weverything -Werror -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION)
 
-plhaskell.o : plhaskell.c backend_stub.h plhaskell.h
+plhaskell.o : plhaskell.c PLHaskell_stub.h plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -c plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
-backend.o backend_stub.h backend.hi : backend.hs plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c backend.hs   -o backend.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC
+PLHaskell.o PLHaskell_stub.h PLHaskell.hi : PLHaskell.hs plhaskell.h
+	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PLHaskell.hs -o PLHaskell.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC
 
 PGutils.o PGutils.hi : PGutils.hs
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1

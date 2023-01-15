@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "plhaskell.h"
-#include "backend_stub.h"
+#include "PLHaskell_stub.h"
 
 #include "Rts.h"
 
