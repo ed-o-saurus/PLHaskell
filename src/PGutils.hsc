@@ -27,12 +27,13 @@
 
 module PGutils (PGm, ErrorLevel, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, unPGm) where
 
+import Control.Monad.Fail    (MonadFail (fail))
 import Data.ByteString       (useAsCString)
-import Data.Text             (Text)
+import Data.Text             (Text, pack)
 import Data.Text.Encoding    (encodeUtf8)
 import Foreign.C.String      (CString)
 import Foreign.C.Types       (CInt (CInt))
-import Prelude               (Applicative, Functor, IO, Monad, undefined, ($))
+import Prelude               (Applicative, Functor, IO, Monad, undefined, ($), (.))
 import System.IO.Unsafe      (unsafePerformIO)
 
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
@@ -62,3 +63,6 @@ raiseError :: Text -> a
 raiseError msg = unsafePerformIO $ do
     unPGm $ report exception msg
     undefined
+
+instance MonadFail PGm where
+    fail = raiseError . pack
