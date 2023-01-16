@@ -1,5 +1,7 @@
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE Unsafe #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
 
@@ -26,19 +28,21 @@
 module PLHaskell () where
 
 import Control.Monad                (forM, forM_, (>=>))
-import Data.Int                     (Int16, Int32)
+import Data.Int                     (Int16)
 import Data.List                    (intercalate)
-import Foreign.C.String             (CString, peekCString, withCStringLen)
-import Foreign.C.Types              (CBool (CBool), CShort (CShort), CInt (CInt), CSize (CSize))
-import Foreign.Marshal.Utils        (copyBytes, fromBool, toBool)
-import Foreign.Ptr                  (Ptr, castPtr, plusPtr, ptrToWordPtr)
-import Foreign.Storable             (peekByteOff, peekElemOff)
+import Data.Word                    (Word16)
+import Foreign.C.String             (CString, peekCString, withCString)
+import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
+import Foreign.Marshal.Utils        (fromBool, toBool)
+import Foreign.Ptr                  (Ptr, plusPtr, ptrToWordPtr)
+import Foreign.Storable             (Storable, peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Either (Left, Right), Int, IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, maybe, return, show, undefined, ($), (+), (++), (-), (.), (>>=))
+import Prelude                      (Bool (False, True), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, maybe, return, show, undefined, ($), (++), (-), (.), (>>=))
 
 -- Dummy types to make pointers
-type CallInfo = ()
-type ValueInfo = ()
+data CallInfo
+data ValueInfo
+newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
@@ -48,42 +52,20 @@ interpolate (s:ss) i = s : interpolate ss i
 
 -- Function to record message or raise exception
 foreign import capi safe "plhaskell.h plhaskell_report"
-    c_Report :: CInt -> CString -> IO ()
+    plhaskellReport :: CInt -> CString -> IO ()
 
-raise :: Int32 -> String -> IO ()
-raise level str = do
-    ptr <- pallocString str
-    c_Report (CInt level) ptr
-    pfree ptr
+-- withCString leaks memory and should be replaced
+raise :: CInt -> String -> IO ()
+raise level msg = withCString msg (plhaskellReport level)
 
 raiseError :: String -> IO ()
 raiseError = raise (#const ERROR)
-
--- Allocate memory using postgres' mechanism and zero the contents
-foreign import capi safe "plhaskell.h palloc0"
-    c_palloc0 :: CSize -> IO (Ptr a)
-
-palloc0 :: Int -> IO (Ptr a)
-palloc0 size = c_palloc0 (CSize (fromIntegral size))
-
--- Palloc CString
--- Copy a String's contents to palloc'd memory
-pallocString :: String -> IO (Ptr a)
-pallocString str = do
-    withCStringLen str (\(ptr, len) -> do
-        pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
-        copyBytes pallocPtr ptr len
-        return (castPtr pallocPtr))
-
--- Free memory using postgres' mechanism
-foreign import capi safe "plhaskell.h pfree"
-    pfree :: Ptr a -> IO ()
 
 data DataType = DataType {name          :: String,
                           writeFunction :: String,
                           readFunction  :: String}
 
-getDataType :: Int32 -> Maybe DataType
+getDataType :: Oid -> Maybe DataType
 getDataType (#const BYTEAOID)  = Just (DataType {name = "ByteString", writeFunction="writeBytea",  readFunction="readBytea"})
 getDataType (#const TEXTOID)   = Just (DataType {name = "Text",       writeFunction="writeText",   readFunction="readText"})
 getDataType (#const BPCHAROID) = Just (DataType {name = "Char",       writeFunction="writeChar",   readFunction="readChar"})
@@ -96,27 +78,25 @@ getDataType (#const FLOAT8OID) = Just (DataType {name = "Double",     writeFunct
 getDataType _ = Nothing
 
 -- Is a type supported
-typeAvailable :: Int32 -> Bool
+typeAvailable :: Oid -> Bool
 typeAvailable oid = case (getDataType oid) of Just _  -> True
                                               Nothing -> False
 
 -- Run the function pointed to by the stable pointer
-foreign export capi "type_available" c_TypeAvailable :: CInt -> IO CBool
-c_TypeAvailable :: CInt -> IO CBool
-c_TypeAvailable oid = do
-    let CInt oid' = oid
-    return  (CBool (fromBool (typeAvailable oid')))
+foreign export capi "type_available" c_typeAvailable :: Oid -> IO CBool
+c_typeAvailable :: Oid -> IO CBool
+c_typeAvailable oid = return $ CBool $ fromBool $ typeAvailable oid
 
--- Name of corresponding Haskell types
-baseName :: Int32 -> String
+-- Name of corresponding Haskell type
+baseName :: Oid -> String
 baseName oid = maybe undefined name (getDataType oid)
 
 -- Name of function to write Haskell type to ValueInfo struct
-writeFunctionName :: Int32 -> String
+writeFunctionName :: Oid -> String
 writeFunctionName oid = maybe undefined writeFunction (getDataType oid)
 
 -- Name of function to read Haskell type from ValueInfo struct
-readFunctionName :: Int32 -> String
+readFunctionName :: Oid -> String
 readFunctionName oid = maybe undefined readFunction (getDataType oid)
 
 -- Extract module file name from CallInfo struct
@@ -133,15 +113,15 @@ getField pValueInfo i = do
     fields <- (#peek struct ValueInfo, fields) pValueInfo
     peekElemOff fields (fromIntegral i)
 
-getTypeNameTyp :: CInt -> Ptr ValueInfo -> IO String
+getTypeNameTyp :: Word16 -> Ptr ValueInfo -> IO String
 getTypeNameTyp (#const VOID_TYPE) _pValueInfo = return "()"
 
 getTypeNameTyp (#const BASE_TYPE) pValueInfo = do
-    CInt typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
     return ("Maybe " ++ baseName typeOid)
 
 getTypeNameTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    CShort count <- (#peek struct ValueInfo, count) pValueInfo
+    count <- (#peek struct ValueInfo, count) pValueInfo
     names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
     return ("Maybe (" ++ intercalate ", " names ++ ")")
 
@@ -162,7 +142,7 @@ getArgValueInfo pCallInfo i = do
 -- Get type signature of function needed based on CallInfo struct
 getSignature :: Ptr CallInfo -> Interpreter String
 getSignature pCallInfo = liftIO $ do
-    CShort nargs <- (#peek struct CallInfo, nargs) pCallInfo
+    nargs <- (#peek struct CallInfo, nargs) pCallInfo
     argTypeNames <- forM [0 .. nargs-1] (getArgValueInfo pCallInfo >=> getTypeName)
     resultTypeName <- (#peek struct CallInfo, result) pCallInfo >>= getTypeName
 
@@ -171,18 +151,18 @@ getSignature pCallInfo = liftIO $ do
         then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
         else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
 
-writeResultDefTyp :: CInt -> Ptr ValueInfo -> IO String
+writeResultDefTyp :: Word16 -> Ptr ValueInfo -> IO String
 writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
 
 writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
-    CInt typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
     return (writeFunctionName typeOid)
 
 writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
         writeFieldDef <- getField pValueInfo i >>= writeResultDef
         return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") i
-    CShort count <- (#peek struct ValueInfo, count) pValueInfo
+    count <- (#peek struct ValueInfo, count) pValueInfo
     fieldsDef <- forM [0 .. count-1] getFieldDef
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
     return ("\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
@@ -198,16 +178,16 @@ writeResultDef pValueInfo = do
     typ <- (#peek struct ValueInfo, type) pValueInfo
     writeResultDefTyp typ pValueInfo
 
-readArgDefTyp :: CInt -> Ptr ValueInfo -> IO String
+readArgDefTyp :: Word16 -> Ptr ValueInfo -> IO String
 readArgDefTyp (#const BASE_TYPE) pValueInfo = do
-    CInt typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
     return (readFunctionName typeOid)
 
 readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
         readFieldDef <- getField pValueInfo i >>= readArgDef
         return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i
-    CShort count <- (#peek struct ValueInfo, count) pValueInfo
+    count <- (#peek struct ValueInfo, count) pValueInfo
     fieldsDef <- forM [0 .. count-1] getFieldDef
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
     return ("\\pValueInfo -> do {\
@@ -267,7 +247,7 @@ setUpEvalInt pCallInfo = do
         else (liftIO . raiseError) ("Expected Signature : " ++ funcName ++ " :: " ++ signature)
 
     -- Number of arguments
-    CShort nargs <- (liftIO . (#peek struct CallInfo, nargs)) pCallInfo
+    nargs <- (liftIO . (#peek struct CallInfo, nargs)) pCallInfo
 
     -- Fill all readArg? values with functions to read arguments from ValueInfo structs
     forM_ [0 .. nargs-1] (defineReadArg pCallInfo)

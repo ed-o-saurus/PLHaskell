@@ -35,7 +35,7 @@
 struct ValueInfo
 {
     bool is_null;
-    int type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE,
+    uint16 type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
     union {
         struct { // BASE
             Oid type_oid; // OID of the type
@@ -57,7 +57,7 @@ struct CallInfo
 {
     char *func_name; // Name of function
     char *mod_file_name; // Temporary file where code is stored
-    short nargs; // Number of arguments
+    int16 nargs; // Number of arguments
     struct ValueInfo **args; // Arguments
     struct ValueInfo *result; // Returned result
     bool return_set; // Does the function return a set of values?
@@ -67,6 +67,6 @@ struct CallInfo
 };
 
 // Report a message or error
-void plhaskell_report(int32 elevel, char *msg);
+void plhaskell_report(int elevel, char *msg);
 
 #endif

@@ -27,20 +27,17 @@
 
 module PGutils (PGm, ErrorLevel, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, unPGm) where
 
-import Data.ByteString       (useAsCStringLen)
-import Data.Int              (Int32)
+import Data.ByteString       (useAsCString)
 import Data.Text             (Text)
 import Data.Text.Encoding    (encodeUtf8)
 import Foreign.C.String      (CString)
-import Foreign.C.Types       (CInt(CInt), CSize (CSize))
-import Foreign.Marshal.Utils (copyBytes)
-import Foreign.Ptr           (Ptr, castPtr)
-import Prelude               (Applicative, Functor, Int, IO, Monad, fromIntegral, return, undefined, ($), (+))
+import Foreign.C.Types       (CInt (CInt))
+import Prelude               (Applicative, Functor, IO, Monad, undefined, ($))
 import System.IO.Unsafe      (unsafePerformIO)
 
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
 
-newtype ErrorLevel = ErrorLevel { unErrorLevel :: CInt }
+newtype ErrorLevel = ErrorLevel {unErrorLevel :: CInt}
 #{enum ErrorLevel, ErrorLevel,
     debug5    = DEBUG5,
     debug4    = DEBUG4,
@@ -55,39 +52,13 @@ newtype ErrorLevel = ErrorLevel { unErrorLevel :: CInt }
 }
 
 foreign import capi safe "plhaskell.h plhaskell_report"
-    c_Report :: CInt -> CString -> IO ()
+    plhaskellReport :: CInt -> CString -> IO ()
 
-raise :: Int32 -> Text -> IO ()
-raise level str = do
-    ptr <- pallocString str
-    c_Report (CInt level) ptr
-    pfree ptr
-
--- Allocate memory using postgres' mechanism and zero the contents
-foreign import capi safe "plhaskell.h palloc0"
-    c_palloc0 :: CSize -> IO (Ptr a)
-
-palloc0 :: Int -> IO (Ptr a)
-palloc0 size = c_palloc0 (CSize (fromIntegral size))
-
--- Palloc CString
--- Copy a String's contents to palloc'd memory
-pallocString :: Text -> IO (Ptr a)
-pallocString str = useAsCStringLen (encodeUtf8 str) (\(ptr, len) -> do
-    pallocPtr <- palloc0 (len+1) -- Add one to ensure \0 termination
-    copyBytes pallocPtr ptr len
-    return (castPtr pallocPtr))
-
--- Free memory using postgres' mechanism
-foreign import capi safe "plhaskell.h pfree"
-    pfree :: Ptr a -> IO ()
-
+-- useAsCString leaks memory and should be replaced
 report :: ErrorLevel -> Text -> PGm ()
-report elevel msg = do
-    let CInt level = unErrorLevel elevel
-    PGm (raise level msg)
+report elevel msg = PGm $ useAsCString (encodeUtf8 msg) (plhaskellReport (unErrorLevel elevel))
 
 raiseError :: Text -> a
 raiseError msg = unsafePerformIO $ do
-    unPGm (report exception msg)
+    unPGm $ report exception msg
     undefined

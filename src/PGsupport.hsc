@@ -1,5 +1,7 @@
 {-# LANGUAGE CApiFFI #-}
-{-# LANGUAGE Safe #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
 
@@ -30,22 +32,19 @@ import Data.Functor          ((<&>))
 import Data.Int              (Int16, Int32, Int64)
 import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
-import Foreign.C.Types       (CBool (CBool), CShort (CShort), CInt (CInt), CLong (CLong), CFloat (CFloat), CDouble (CDouble), CSize (CSize))
+import Foreign.C.Types       (CBool (CBool), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
-import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), castPtr, nullPtr, ptrToWordPtr, wordPtrToPtr)
+import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
-import Foreign.Storable      (peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), fromIntegral, return, ($), (+), (.), (>>=))
+import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, return, ($), (+), (.), (>>=))
 
-type ValueInfo = ()
-type Datum = WordPtr
+data ValueInfo
+newtype Datum = Datum WordPtr deriving newtype (Storable)
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "plhaskell.h palloc"
-    c_palloc :: CSize -> IO (Ptr a)
-
-palloc :: Int -> IO (Ptr a)
-palloc size = c_palloc (CSize (fromIntegral size))
+    palloc :: CSize -> IO (Ptr a)
 
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
@@ -73,7 +72,7 @@ class ReadWrite a where
 
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
-        (#poke struct ValueInfo, value) pValueInfo (ptrToWordPtr nullPtr)
+        (#poke struct ValueInfo, value) pValueInfo (Datum (ptrToWordPtr nullPtr))
         (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
 
     writeType (Just result) pValueInfo = do
@@ -83,39 +82,31 @@ class ReadWrite a where
 
 -- Get the size of a variable length array
 foreign import capi safe "postgres.h VARSIZE_ANY_EXHDR"
-    c_GetVarSize :: Ptr () -> IO CInt
-
-getVarSize :: Datum -> IO Int32
-getVarSize value = do
-    CInt size <- c_GetVarSize (wordPtrToPtr value)
-    return size
+    getVarSize :: Datum -> IO CSize
 
 -- Set the size of a variable length array
 foreign import capi safe "postgres.h SET_VARSIZE"
-    c_SetVarSize :: Ptr () -> CInt -> IO ()
+    c_setVarSize :: Datum -> CSize -> IO ()
 
-setVarSize :: Datum -> Int32 -> IO ()
-setVarSize value len = c_SetVarSize (wordPtrToPtr value) (CInt ((#const VARHDRSZ) + len))
+setVarSize :: Datum -> CSize -> IO ()
+setVarSize datum len = c_setVarSize datum ((#const VARHDRSZ) + len)
 
 -- Get the start of a variable length array
 foreign import capi safe "postgres.h VARDATA_ANY"
-    c_GetVarData :: Ptr () -> IO (Ptr ())
-
-getVarData :: Datum -> IO (Ptr ())
-getVarData = c_GetVarData . wordPtrToPtr
+    getVarData :: Datum -> IO (Ptr b)
 
 instance ReadWrite ByteString where
-    read value = do
-        len <- getVarSize value
-        pData <- getVarData value
-        packCStringLen (castPtr pData, fromIntegral len)
+    read datum = do
+        len <- getVarSize datum
+        pData <- getVarData datum
+        packCStringLen (pData, fromIntegral len)
 
     write result = useAsCStringLen result (\(src, len) -> do
-        ptr <- palloc (len + (#const VARHDRSZ))
-        let value = ptrToWordPtr ptr
+        p <- palloc (fromIntegral (len + (#const VARHDRSZ)))
+        let value = Datum (ptrToWordPtr p)
         setVarSize value (fromIntegral len)
         pData <- getVarData value
-        copyBytes (castPtr pData) src len
+        copyBytes pData src len
         return value)
 
 instance ReadWrite Text where
@@ -127,79 +118,64 @@ instance ReadWrite Char where
     write = write . singleton
 
 foreign import capi safe "postgres.h DatumGetBool"
-    c_DatumGetBool :: Datum -> IO CBool
+    datumGetBool :: Datum -> IO CBool
 
 foreign import capi safe "postgres.h BoolGetDatum"
-    c_BoolGetDatum :: CBool -> IO Datum
+    boolGetDatum :: CBool -> IO Datum
 
 instance ReadWrite Bool where
-    read value = c_DatumGetBool value <&> toBool
-    write = c_BoolGetDatum . CBool . fromBool
+    read value = datumGetBool value <&> toBool
+    write = boolGetDatum . CBool . fromBool
 
 foreign import capi safe "postgres.h DatumGetInt16"
-    c_DatumGetInt16 :: Datum -> IO CShort
+    datumGetInt16 :: Datum -> IO Int16
 
 foreign import capi safe "postgres.h Int16GetDatum"
-    c_Int16GetDatum :: CShort -> IO Datum
+    int16GetDatum :: Int16 -> IO Datum
 
 instance ReadWrite Int16 where
-    read value = do
-        CShort arg <- c_DatumGetInt16 value
-        return arg
-
-    write = c_Int16GetDatum . CShort
+    read = datumGetInt16
+    write = int16GetDatum
 
 foreign import capi safe "postgres.h DatumGetInt32"
-    c_DatumGetInt32 :: Datum -> IO CInt
+    datumGetInt32 :: Datum -> IO Int32
 
 foreign import capi safe "postgres.h Int32GetDatum"
-    c_Int32GetDatum :: CInt -> IO Datum
+    int32GetDatum :: Int32 -> IO Datum
 
 instance ReadWrite Int32 where
-    read value = do
-        CInt arg <- c_DatumGetInt32 value
-        return arg
-
-    write = c_Int32GetDatum . CInt
+    read = datumGetInt32
+    write = int32GetDatum
 
 foreign import capi safe "postgres.h DatumGetInt64"
-    c_DatumGetInt64 :: Datum -> IO CLong
+    datumGetInt64 :: Datum -> IO Int64
 
 foreign import capi safe "postgres.h Int64GetDatum"
-    c_Int64GetDatum :: CLong -> IO Datum
+    int64GetDatum :: Int64 -> IO Datum
 
 instance ReadWrite Int64 where
-    read value = do
-        CLong arg <- c_DatumGetInt64 value
-        return arg
-
-    write = c_Int64GetDatum . CLong
+    read = datumGetInt64
+    write = int64GetDatum
 
 foreign import capi safe "postgres.h DatumGetFloat4"
-    c_DatumGetFloat4 :: Datum -> IO CFloat
+    datumGetFloat4 :: Datum -> IO Float
 
 foreign import capi safe "postgres.h Float4GetDatum"
-    c_Float4GetDatum :: CFloat -> IO Datum
+    float4GetDatum :: Float -> IO Datum
 
 instance ReadWrite Float where
-    read value = do
-        CFloat arg <- c_DatumGetFloat4 value
-        return arg
-
-    write = c_Float4GetDatum . CFloat
+    read = datumGetFloat4
+    write = float4GetDatum
 
 foreign import capi safe "postgres.h DatumGetFloat8"
-    c_DatumGetFloat8 :: Datum -> IO CDouble
+    datumGetFloat8 :: Datum -> IO Double
 
 foreign import capi safe "postgres.h Float8GetDatum"
-    c_Float8GetDatum :: CDouble -> IO Datum
+    float8GetDatum :: Double -> IO Datum
 
 instance ReadWrite Double where
-    read value = do
-        CDouble arg <- c_DatumGetFloat8 value
-        return arg
-
-    write  = c_Float8GetDatum . CDouble
+    read = datumGetFloat8
+    write = float8GetDatum
 
 readBytea :: Ptr ValueInfo -> IO (Maybe ByteString)
 readBytea = readType

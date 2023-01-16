@@ -106,7 +106,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             build_call_info(p_call_info, funcoid, true);
 
             // Write the argument to their ValueInfo structs
-            for(short i=0; i<p_call_info->nargs; i++)
+            for(int16 i=0; i<p_call_info->nargs; i++)
                 write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
             next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
@@ -161,7 +161,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         p_call_info = fcinfo->flinfo->fn_extra;
 
         // Write the argument to their ValueInfo structs
-        for(short i=0; i<p_call_info->nargs; i++)
+        for(int16 i=0; i<p_call_info->nargs; i++)
             write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
         next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
@@ -249,7 +249,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     if(DatumGetChar(prokind) != PROKIND_FUNCTION)
         ereport(ERROR, errmsg("Only normal function allowed."));
 
-    p_call_info->nargs = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &is_null);
+    p_call_info->nargs = DatumGetInt16(SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &is_null));
     if(is_null)
         ereport(ERROR, errmsg("pg_proc.pronargs is NULL."));
 
@@ -282,7 +282,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
         ereport(ERROR, errmsg("pg_proc.proargtypes has NULL element"));
 
     argtypes = (Oid*)ARR_DATA_PTR(proargtypes_arr);
-    for(int i=0; i<p_call_info->nargs; i++)
+    for(int16 i=0; i<p_call_info->nargs; i++)
     {
         p_call_info->args[i] = palloc(sizeof(struct ValueInfo));
         build_value_info(p_call_info->args[i], argtypes[i]);
@@ -535,7 +535,7 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null)
         values  = palloc(p_value_info->natts * sizeof(Datum));
         is_nulls = palloc(p_value_info->natts * sizeof(bool));
 
-        for(int i = 0; i < p_value_info->count; i++)
+        for(int16 i=0; i<p_value_info->count; i++)
         {
             int16 attnum = p_value_info->attnums[i];
             values[attnum-1] = read_value_info(p_value_info->fields[i], is_nulls+(attnum-1));
@@ -581,7 +581,7 @@ static void exit_function(void)
     if(stderr_pipefd[0] > -1) // If stderr is being redirected
     {
         char buf[4097];
-        int len = read(stderr_pipefd[0], buf, 4096); // Read stderr into buf
+        ssize_t len = read(stderr_pipefd[0], buf, 4096); // Read stderr into buf
         if(len > 0)
         {
             buf[len] = '\0';
@@ -623,8 +623,8 @@ static void restore_stderr(int bak_fn)
 }
 
 // Used by Haskell
-void plhaskell_report(int32 elevel, char *msg) __attribute__((visibility ("hidden")));
-void plhaskell_report(int32 elevel, char *msg)
+void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
+void plhaskell_report(int elevel, char *msg)
 {
     ereport(elevel, errmsg("%s", msg));
 }
