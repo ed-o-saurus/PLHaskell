@@ -46,10 +46,11 @@ static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 static void exit_function(void);
 
-static int redirect_stderr(void);
+static int redirect_stderr(struct CallInfo *p_call_info);
 static void restore_stderr(int bak);
 
 static int stderr_pipefd[2] = {-1, -1};
+static struct CallInfo *gp_call_info = NULL;
 
 PG_MODULE_MAGIC;
 
@@ -109,7 +110,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             for(int16 i=0; i<p_call_info->nargs; i++)
                 write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
-            next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
+            next_stderr_fn = redirect_stderr(p_call_info); // Redirect stderr to pipe
             mk_iterator(p_call_info); // Setup the iterator and list
             restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
@@ -119,7 +120,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         funcctx = per_MultiFuncCall(fcinfo);
         p_call_info = funcctx->user_fctx;
 
-        next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
+        next_stderr_fn = redirect_stderr(p_call_info); // Redirect stderr to pipe
         (*p_call_info->function)(); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
@@ -164,7 +165,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         for(int16 i=0; i<p_call_info->nargs; i++)
             write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
-        next_stderr_fn = redirect_stderr(); // Redirect stderr to pipe
+        next_stderr_fn = redirect_stderr(p_call_info); // Redirect stderr to pipe
         (*p_call_info->function)(); // Run the function
         restore_stderr(next_stderr_fn); // Stop redirection of stderr
 
@@ -572,7 +573,12 @@ static void enter(void)
 static void gcDoneHook(const struct GCDetails_ *stats)
 {
     if(stats->mem_in_use_bytes > (uint64_t)0x100000 * MAX_MEMORY) // 0x100000 B = 1 MiB
+    {
+        if(gp_call_info && gp_call_info->mod_file_name)
+            unlink(gp_call_info->mod_file_name);
+
         ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d MiB)", MAX_MEMORY));
+    }
 }
 
 // Called if the RTS terminates the process
@@ -588,18 +594,26 @@ static void exit_function(void)
             if(buf[len-1] == '\n')
                 buf[len-1] = '\0';
 
+            if(gp_call_info && gp_call_info->mod_file_name)
+                unlink(gp_call_info->mod_file_name);
+
             ereport(FATAL, errmsg("%s", buf)); // Use the ereport mechanism to report the terminating error.
         }
     }
 }
 
 // Redirect stderr to the pipe
-static int redirect_stderr(void)
+static int redirect_stderr(struct CallInfo *p_call_info)
 {
     int bak_fn, new_fn;
 
     if(pipe2(stderr_pipefd, O_NONBLOCK) < 0)
+    {
+        if(p_call_info && p_call_info->mod_file_name)
+            unlink(p_call_info->mod_file_name);
+
         ereport(FATAL, errmsg("Unable to open pipe"));
+    }
 
     fflush(stderr);
     bak_fn = dup(STDERR_FILENO);
@@ -608,12 +622,16 @@ static int redirect_stderr(void)
     dup2(new_fn, STDERR_FILENO);
     close(new_fn);
 
+    gp_call_info = p_call_info;
+
     return bak_fn;
 }
 
 // Close the pipe and restore stderr
 static void restore_stderr(int bak_fn)
 {
+    gp_call_info = NULL;
+
     close(stderr_pipefd[0]); close(stderr_pipefd[1]);
     stderr_pipefd[0] = -1; stderr_pipefd[1] = -1;
 
@@ -626,5 +644,8 @@ static void restore_stderr(int bak_fn)
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
+    if(elevel == FATAL && gp_call_info && gp_call_info->mod_file_name)
+        unlink(gp_call_info->mod_file_name);
+
     ereport(elevel, errmsg("%s", msg));
 }
