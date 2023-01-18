@@ -620,7 +620,6 @@ static int redirect_stderr(struct CallInfo *p_call_info)
     new_fn = stderr_pipefd[1];
 
     dup2(new_fn, STDERR_FILENO);
-    close(new_fn);
 
     gp_call_info = p_call_info;
 
