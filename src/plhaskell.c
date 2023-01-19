@@ -44,12 +44,11 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
 
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
-static void exit_function(void);
 
-static int redirect_stderr(struct CallInfo *p_call_info);
-static void restore_stderr(int bak);
+void rts_msg_fn(int elevel, const char *s, va_list ap);
+void rts_debug_msg_fn(const char *s, va_list ap);
+void rts_fatal_msg_fn(const char *s, va_list ap);
 
-static int stderr_pipefd[2] = {-1, -1};
 static struct CallInfo *gp_call_info = NULL;
 
 PG_MODULE_MAGIC;
@@ -58,7 +57,6 @@ PG_MODULE_MAGIC;
 PG_FUNCTION_INFO_V1(plhaskell_call_handler);
 Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 {
-    int next_stderr_fn;
     struct CallInfo *p_call_info;
     Oid funcoid = fcinfo->flinfo->fn_oid; // OID of the function being handled
     HeapTuple proctup;
@@ -110,9 +108,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             for(int16 i=0; i<p_call_info->nargs; i++)
                 write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
-            next_stderr_fn = redirect_stderr(p_call_info); // Redirect stderr to pipe
+            gp_call_info = p_call_info;
             mk_iterator(p_call_info); // Setup the iterator and list
-            restore_stderr(next_stderr_fn); // Stop redirection of stderr
+            gp_call_info = NULL;
 
             MemoryContextSwitchTo(old_context);
         }
@@ -120,9 +118,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         funcctx = per_MultiFuncCall(fcinfo);
         p_call_info = funcctx->user_fctx;
 
-        next_stderr_fn = redirect_stderr(p_call_info); // Redirect stderr to pipe
+        gp_call_info = p_call_info;
         (*p_call_info->function)(); // Run the function
-        restore_stderr(next_stderr_fn); // Stop redirection of stderr
+        gp_call_info = NULL;
 
         if(p_call_info->more_results)
         {
@@ -165,9 +163,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         for(int16 i=0; i<p_call_info->nargs; i++)
             write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
-        next_stderr_fn = redirect_stderr(p_call_info); // Redirect stderr to pipe
+        gp_call_info = p_call_info;
         (*p_call_info->function)(); // Run the function
-        restore_stderr(next_stderr_fn); // Stop redirection of stderr
+        gp_call_info = NULL;
 
         return read_value_info(p_call_info->result, &fcinfo->isnull);
     }
@@ -562,11 +560,13 @@ static void enter(void)
     sprintf(GHC_PackagePath, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
     setenv("GHC_PACKAGE_PATH", GHC_PackagePath, true);
 
+    fatalInternalErrorFn = rts_fatal_msg_fn;
+    debugMsgFn           = rts_debug_msg_fn;
+    errorMsgFn           = rts_fatal_msg_fn;
+
     conf.rts_opts_enabled = RtsOptsAll;
     conf.gcDoneHook = gcDoneHook; // Called on every garbage collections to monitor memory usage
     hs_init_ghc(&argc, &argv_rts, conf);
-
-    atexit(exit_function); // Used to collect error information if the RTS terminates the process.
 }
 
 // Called on every garbage collection to monitor memory usage
@@ -581,64 +581,6 @@ static void gcDoneHook(const struct GCDetails_ *stats)
     }
 }
 
-// Called if the RTS terminates the process
-static void exit_function(void)
-{
-    if(stderr_pipefd[0] > -1) // If stderr is being redirected
-    {
-        char buf[4097];
-        ssize_t len = read(stderr_pipefd[0], buf, 4096); // Read stderr into buf
-        if(len > 0)
-        {
-            buf[len] = '\0';
-            if(buf[len-1] == '\n')
-                buf[len-1] = '\0';
-
-            if(gp_call_info && gp_call_info->mod_file_name)
-                unlink(gp_call_info->mod_file_name);
-
-            ereport(FATAL, errmsg("%s", buf)); // Use the ereport mechanism to report the terminating error.
-        }
-    }
-}
-
-// Redirect stderr to the pipe
-static int redirect_stderr(struct CallInfo *p_call_info)
-{
-    int bak_fn, new_fn;
-
-    if(pipe2(stderr_pipefd, O_NONBLOCK) < 0)
-    {
-        if(p_call_info && p_call_info->mod_file_name)
-            unlink(p_call_info->mod_file_name);
-
-        ereport(FATAL, errmsg("Unable to open pipe"));
-    }
-
-    fflush(stderr);
-    bak_fn = dup(STDERR_FILENO);
-    new_fn = stderr_pipefd[1];
-
-    dup2(new_fn, STDERR_FILENO);
-
-    gp_call_info = p_call_info;
-
-    return bak_fn;
-}
-
-// Close the pipe and restore stderr
-static void restore_stderr(int bak_fn)
-{
-    gp_call_info = NULL;
-
-    close(stderr_pipefd[0]); close(stderr_pipefd[1]);
-    stderr_pipefd[0] = -1; stderr_pipefd[1] = -1;
-
-    fflush(stderr);
-    dup2(bak_fn, STDERR_FILENO);
-    close(bak_fn);
-}
-
 // Used by Haskell
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
@@ -647,4 +589,31 @@ void plhaskell_report(int elevel, char *msg)
         unlink(gp_call_info->mod_file_name);
 
     ereport(elevel, errmsg("%s", msg));
+}
+
+void rts_msg_fn(int elevel, const char *s, va_list ap)
+{
+    char *buf;
+    int len;
+
+    len = vsnprintf(NULL, 0, s, ap);
+    buf = palloc(len+1); // Don't forget the \0 terminator
+    vsnprintf(buf, len+1, s, ap);
+
+    ereport(elevel, errmsg("%s", buf));
+
+    pfree(buf);
+}
+
+void rts_debug_msg_fn(const char *s, va_list ap)
+{
+    rts_msg_fn(DEBUG1, s, ap);
+}
+
+void rts_fatal_msg_fn(const char *s, va_list ap)
+{
+    if(gp_call_info && gp_call_info->mod_file_name)
+        unlink(gp_call_info->mod_file_name);
+
+    rts_msg_fn(FATAL, s, ap);
 }
