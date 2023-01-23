@@ -45,9 +45,9 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 
-void rts_msg_fn(int elevel, const char *s, va_list ap);
-void rts_debug_msg_fn(const char *s, va_list ap);
-void rts_fatal_msg_fn(const char *s, va_list ap);
+static void rts_msg_fn(int elevel, const char *s, va_list ap);
+static void rts_debug_msg_fn(const char *s, va_list ap);
+static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static struct CallInfo *gp_call_info = NULL;
 
@@ -622,7 +622,7 @@ void plhaskell_report(int elevel, char *msg)
     ereport(elevel, errmsg("%s", msg));
 }
 
-void rts_msg_fn(int elevel, const char *s, va_list ap)
+static void rts_msg_fn(int elevel, const char *s, va_list ap)
 {
     char *buf;
     int len;
@@ -636,12 +636,12 @@ void rts_msg_fn(int elevel, const char *s, va_list ap)
     pfree(buf);
 }
 
-void rts_debug_msg_fn(const char *s, va_list ap)
+static void rts_debug_msg_fn(const char *s, va_list ap)
 {
     rts_msg_fn(DEBUG1, s, ap);
 }
 
-void rts_fatal_msg_fn(const char *s, va_list ap)
+static void rts_fatal_msg_fn(const char *s, va_list ap)
 {
     if(gp_call_info && gp_call_info->mod_file_name)
         unlink(gp_call_info->mod_file_name);
