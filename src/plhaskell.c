@@ -62,6 +62,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     HeapTuple proctup;
     Datum proretset;
     bool is_null;
+    int spi_code;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
@@ -108,9 +109,17 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             for(int16 i=0; i<p_call_info->nargs; i++)
                 write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
+            spi_code = SPI_connect();
+            if(spi_code < 0)
+                ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
+
             gp_call_info = p_call_info;
             mk_iterator(p_call_info); // Setup the iterator and list
             gp_call_info = NULL;
+
+            spi_code = SPI_finish();
+            if(spi_code < 0)
+                ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
             MemoryContextSwitchTo(old_context);
         }
@@ -118,9 +127,17 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         funcctx = per_MultiFuncCall(fcinfo);
         p_call_info = funcctx->user_fctx;
 
+        spi_code = SPI_connect();
+        if(spi_code < 0)
+            ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
+
         gp_call_info = p_call_info;
         (*p_call_info->function)(); // Run the function
         gp_call_info = NULL;
+
+        spi_code = SPI_finish();
+        if(spi_code < 0)
+            ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
         if(p_call_info->more_results)
         {
@@ -163,9 +180,17 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         for(int16 i=0; i<p_call_info->nargs; i++)
             write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
+        spi_code = SPI_connect();
+        if(spi_code < 0)
+            ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
+
         gp_call_info = p_call_info;
         (*p_call_info->function)(); // Run the function
         gp_call_info = NULL;
+
+        spi_code = SPI_finish();
+        if(spi_code < 0)
+            ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
         return read_value_info(p_call_info->result, &fcinfo->isnull);
     }
@@ -221,7 +246,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set)
 {
     HeapTuple proctup;
-    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname;
+    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile;
     ArrayType *proargtypes_arr;
     Oid *argtypes;
     bool is_null;
@@ -247,6 +272,12 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     if(DatumGetChar(prokind) != PROKIND_FUNCTION)
         ereport(ERROR, errmsg("Only normal function allowed."));
+
+    provolatile = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provolatile, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_proc.provolatile is NULL."));
+
+    p_call_info->spi_read_only = DatumGetChar(provolatile) != PROVOLATILE_VOLATILE;
 
     p_call_info->nargs = DatumGetInt16(SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &is_null));
     if(is_null)
@@ -616,4 +647,81 @@ void rts_fatal_msg_fn(const char *s, va_list ap)
         unlink(gp_call_info->mod_file_name);
 
     rts_msg_fn(FATAL, s, ap);
+}
+
+// Functions to handle ValueInfo for SPI querying
+struct ValueInfo *new_value_info(Oid typeoid) __attribute__((visibility ("hidden")));
+struct ValueInfo *new_value_info(Oid typeoid)
+{
+    struct ValueInfo *p_value_info = palloc(sizeof(struct ValueInfo));
+    build_value_info(p_value_info, typeoid);
+    return p_value_info;
+}
+
+// Recusively free ValueInfo
+void delete_value_info(struct ValueInfo *p_value_info) __attribute__((visibility ("hidden")));
+void delete_value_info(struct ValueInfo *p_value_info)
+{
+    if(p_value_info->type == COMPOSITE_TYPE)
+    {
+        pfree(p_value_info->attnums);
+        pfree(p_value_info->tupdesc);
+
+        for(int16 i=0; i<p_value_info->count; i++)
+            delete_value_info(p_value_info->fields[i]);
+
+        pfree(p_value_info->fields);
+    }
+
+    pfree(p_value_info);
+}
+
+// Execute an SPI query
+int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls) __attribute__((visibility ("hidden")));
+int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls)
+{
+    int spi_code;
+    char nulls[nargs];
+
+    for(int i=0; i<nargs; i++)
+        nulls[i] = is_nulls[i]?'n':' ';
+
+    spi_code = SPI_execute_with_args(command, nargs, argtypes, values, nulls, gp_call_info->spi_read_only, 0);
+    if(spi_code < 0)
+        ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
+
+    return spi_code;
+}
+
+void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber) __attribute__((visibility ("hidden")));
+void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber)
+{
+    char *name = SPI_fname(tuptable->tupdesc, fnumber);
+    strcpy(header, name);
+    pfree(name);
+}
+
+// Get OID of types of columns from SPI query
+void get_oids(struct SPITupleTable *tuptable, Oid *oids) __attribute__((visibility ("hidden")));
+void get_oids(struct SPITupleTable *tuptable, Oid *oids)
+{
+    for(int i=0; i<tuptable->tupdesc->natts; i++)
+        oids[i] = SPI_gettypeid(tuptable->tupdesc, i+1);
+}
+
+// Get datum/is_null from SPI result and use it to populate ValueInfo struct
+void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber) __attribute__((visibility ("hidden")));
+void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber)
+{
+    Datum value;
+    bool is_null;
+
+    value = SPI_getbinval(tuptable->vals[row_number], tuptable->tupdesc, fnumber, &is_null);
+    write_value_info(p_value_info, value, is_null);
+}
+
+void free_tuptable(struct SPITupleTable *tuptable) __attribute__((visibility ("hidden")));
+void free_tuptable(struct SPITupleTable *tuptable)
+{
+    SPI_freetuptable(tuptable);
 }

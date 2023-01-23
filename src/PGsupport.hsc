@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (getField, readIsNull, readBytea, readText, readChar, readBool, readInt2, readInt4, readInt8, readFloat4, readFloat8, wrapVoidFunc, writeNull, writeNotNull, writeVoid, writeBytea, writeText, writeChar, writeBool, writeInt2, writeInt4, writeInt8, writeFloat4, writeFloat8, iterate) where
+module PGsupport (ValueInfo, Datum, ReadWrite (readType, write), voidDatum, getField, readIsNull, readBytea, readText, readChar, readBool, readInt2, readInt4, readInt8, readFloat4, readFloat8, wrapVoidFunc, writeNull, writeNotNull, writeVoid, writeBytea, writeText, writeChar, writeBool, writeInt2, writeInt4, writeInt8, writeFloat4, writeFloat8, iterate) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<&>))
@@ -37,10 +37,13 @@ import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, return, ($), (+), (.), (>>=))
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), Show, fromIntegral, return, ($), (+), (.), (>>=))
 
 data ValueInfo
-newtype Datum = Datum WordPtr deriving newtype (Storable)
+newtype Datum = Datum WordPtr deriving newtype (Storable, Show)
+
+voidDatum :: Datum
+voidDatum = Datum (ptrToWordPtr nullPtr)
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "plhaskell.h palloc"
@@ -72,7 +75,7 @@ class ReadWrite a where
 
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
-        (#poke struct ValueInfo, value) pValueInfo (Datum (ptrToWordPtr nullPtr))
+        (#poke struct ValueInfo, value) pValueInfo voidDatum
         (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
 
     writeType (Just result) pValueInfo = do

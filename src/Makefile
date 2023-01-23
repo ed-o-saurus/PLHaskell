@@ -42,7 +42,7 @@ plhaskell.o : plhaskell.c PLHaskell_stub.h plhaskell.h
 PLHaskell.o PLHaskell_stub.h PLHaskell.hi : PLHaskell.hs plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PLHaskell.hs -o PLHaskell.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC
 
-PGutils.o PGutils.hi : PGutils.hs
+PGutils.o PGutils.hi : PGutils.hs PGsupport.hi
 	ghc -Weverything -Werror -Wno-unsafe -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
 PGsupport.o PGsupport.hi : PGsupport.hs

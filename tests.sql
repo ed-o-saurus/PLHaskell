@@ -22,7 +22,7 @@ DROP SCHEMA IF EXISTS plhaskell_test CASCADE;
 
 CREATE SCHEMA plhaskell_test;
 
-CREATE FUNCTION plhaskell_test.echo(bytea) RETURNS bytea AS
+CREATE FUNCTION plhaskell_test.echo(bytea) RETURNS bytea IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -31,7 +31,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(text) RETURNS text AS
+CREATE FUNCTION plhaskell_test.echo(text) RETURNS text IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -40,7 +40,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(char) RETURNS char AS
+CREATE FUNCTION plhaskell_test.echo(char) RETURNS char IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -49,7 +49,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(bool) RETURNS bool AS
+CREATE FUNCTION plhaskell_test.echo(bool) RETURNS bool IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -58,7 +58,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(smallint) RETURNS smallint AS
+CREATE FUNCTION plhaskell_test.echo(smallint) RETURNS smallint IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -67,7 +67,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(int) RETURNS int AS
+CREATE FUNCTION plhaskell_test.echo(int) RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -76,7 +76,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(bigint) RETURNS bigint AS
+CREATE FUNCTION plhaskell_test.echo(bigint) RETURNS bigint IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -85,7 +85,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(real) RETURNS real AS
+CREATE FUNCTION plhaskell_test.echo(real) RETURNS real IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -94,7 +94,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(float) RETURNS float AS
+CREATE FUNCTION plhaskell_test.echo(float) RETURNS float IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -103,7 +103,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.nan() RETURNS float AS
+CREATE FUNCTION plhaskell_test.nan() RETURNS float IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -112,7 +112,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.poop() RETURNS char AS
+CREATE FUNCTION plhaskell_test.poop() RETURNS char IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -122,7 +122,7 @@ $$
 LANGUAGE plhaskell;
 
 
-CREATE FUNCTION plhaskell_test.shrug() RETURNS text AS
+CREATE FUNCTION plhaskell_test.shrug() RETURNS text IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Text (Text)
@@ -132,7 +132,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.len(bytea) RETURNS int AS
+CREATE FUNCTION plhaskell_test.len(bytea) RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.ByteString (length, ByteString)
@@ -144,7 +144,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.len(text) RETURNS int AS
+CREATE FUNCTION plhaskell_test.len(text) RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
@@ -156,7 +156,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.make_length_bytea(int) RETURNS bytea AS
+CREATE FUNCTION plhaskell_test.make_length_bytea(int) RETURNS bytea IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.ByteString (pack, ByteString)
@@ -172,7 +172,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.make_length_text(int) RETURNS text AS
+CREATE FUNCTION plhaskell_test.make_length_text(int) RETURNS text IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
@@ -184,7 +184,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.inv(bool) RETURNS bool AS
+CREATE FUNCTION plhaskell_test.inv(bool) RETURNS bool IMMUTABLE AS
 $$
     import PGutils (PGm)
 
@@ -195,7 +195,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.add(int, int) RETURNS int AS
+CREATE FUNCTION plhaskell_test.add(int, int) RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
@@ -212,7 +212,7 @@ CREATE TYPE plhaskell_test.bravo AS (d plhaskell_test.alpha, e int);
 CREATE TYPE plhaskell_test.charlie AS ();
 CREATE TYPE plhaskell_test.delta AS (f plhaskell_test.bravo, g plhaskell_test.charlie);
 
-CREATE FUNCTION plhaskell_test.alpha_test(int) RETURNS plhaskell_test.alpha AS
+CREATE FUNCTION plhaskell_test.alpha_test(int) RETURNS plhaskell_test.alpha IMMUTABLE AS
 $$
     import Data.Int (Int32)
     import Data.Text (Text)
@@ -235,7 +235,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.delta_test() RETURNS plhaskell_test.delta AS
+CREATE FUNCTION plhaskell_test.delta_test() RETURNS plhaskell_test.delta IMMUTABLE AS
 $$
     import Data.Int (Int32)
     import Data.Text (Text)
@@ -247,7 +247,7 @@ $$
 $$
 LANGUAGE plhaskell;
 
-CREATE FUNCTION plhaskell_test.echo(plhaskell_test.delta) RETURNS plhaskell_test.delta AS
+CREATE FUNCTION plhaskell_test.echo(plhaskell_test.delta) RETURNS plhaskell_test.delta IMMUTABLE AS
 $$
     import Data.Int (Int32)
     import Data.Text (Text)
@@ -261,7 +261,7 @@ LANGUAGE plhaskell;
 
 CREATE TYPE plhaskell_test.n_p AS (n int, p int);
 
-CREATE FUNCTION plhaskell_test.primes(int) RETURNS SETOF plhaskell_test.n_p AS
+CREATE FUNCTION plhaskell_test.primes(int) RETURNS SETOF plhaskell_test.n_p IMMUTABLE AS
 $$
     import PGutils (PGm, raiseError)
     import Data.Int (Int32)

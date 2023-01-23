@@ -126,12 +126,64 @@ debug5    |
 
 In addition, the function `raiseError :: Text -> a` stops execution and raises an error.
 
+## Queries
+
+Queries can be performed from inside PL/Haskell with the function `query :: Text -> [QueryParam] -> PGm QueryResults`. The first argument is the query itself. The second argument is a list of values to be substituted into the query using the expressions `$`*`n`*. This should be used rather than constructing a query string directly to prevent [SQL injection attacks](https://xkcd.com/327/).
+
+Queries in stable and immutable functions are executed in read-only mode, while volatile functions execute queries in read-write mode.
+
+Any base type that can be passed to PL/Haskell functions can be used as a parameter by using the appropriate constructor for the type `QueryParam`. The constructors are the following:
+
+`QueryParam`                          |
+---------------------------------------
+`QueryParamByteA  (Maybe ByteString)` |
+`QueryParamText   (Maybe Text)`       |
+`QueryParamChar   (Maybe Char)`       |
+`QueryParamBool   (Maybe Bool)`       |
+`QueryParamInt2   (Maybe Int16)`      |
+`QueryParamInt4   (Maybe Int32)`      |
+`QueryParamInt8   (Maybe Int64)`      |
+`QueryParamFloat4 (Maybe Float)`      |
+`QueryParamFloat8 (Maybe Double)`     |
+
+The constuctors for `QueryResults` are the following:
+
+`QueryResults`                                              |
+-------------------------------------------------------------
+`SelectResults          Word64 [Text] [[QueryResultValue]]` |
+`SelectIntoResults      Word64`                             |
+`InsertResults          Word64`                             |
+`DeleteResults          Word64`                             |
+`UpdateResults          Word64`                             |
+`InsertReturningResults Word64 [Text] [[QueryResultValue]]` |
+`DeleteReturningResults Word64 [Text] [[QueryResultValue]]` |
+`UpdateReturningResults Word64 [Text] [[QueryResultValue]]` |
+`UtilityResults         Word64`                             |
+`RewrittenResults       Word64`                             |
+
+The constructor indicates the type of query run. The `Word64` field is the number of rows processed. The `[Text]` field is the names of the columns returned and the `[[QueryResultValue]]` is the data returned.
+
+The constructors for `QueryResultValue` are the following:
+
+`QueryResultValue`                                     |
+--------------------------------------------------------
+`QueryResultValueByteA     (Maybe ByteString)`         |
+`QueryResultValueText      (Maybe Text)`               |
+`QueryResultValueChar      (Maybe Char)`               |
+`QueryResultValueBool      (Maybe Bool)`               |
+`QueryResultValueInt2      (Maybe Int16)`              |
+`QueryResultValueInt4      (Maybe Int32)`              |
+`QueryResultValueInt8      (Maybe Int64)`              |
+`QueryResultValueFloat4    (Maybe Float)`              |
+`QueryResultValueFloat8    (Maybe Double)`             |
+`QueryResultValueComposite (Maybe [QueryResultValue])` |
+
 ## Examples
 
 ### Addition
 
 ```
-CREATE FUNCTION add(int, int) RETURNS int AS
+CREATE FUNCTION add(int, int) RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
@@ -149,7 +201,7 @@ LANGUAGE plhaskell;
 ### Fibonacci Sequence
 
 ```
-CREATE FUNCTION fibonacci(int) RETURNS int AS
+CREATE FUNCTION fibonacci(int) RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
@@ -177,7 +229,7 @@ The function in this section returns a set of composite results.
 ```
 CREATE TYPE n_p AS (n int, p int);
 
-CREATE FUNCTION primes(int) RETURNS SETOF n_p AS
+CREATE FUNCTION primes(int) RETURNS SETOF n_p IMMUTABLE AS
 $$
     import PGutils (PGm, raiseError)
     import Data.Int (Int32)
@@ -219,7 +271,7 @@ The following is produced
 The following function returns a infinite list of prime numbers
 
 ```
-CREATE FUNCTION primes() RETURNS SETOF int AS
+CREATE FUNCTION primes() RETURNS SETOF int IMMUTABLE AS
 $$
     import PGutils (PGm)
     import Data.Int (Int32)
@@ -273,7 +325,7 @@ LIMIT 25
 The following demonstrates how to show a notice from within a function.
 
 ```
-CREATE FUNCTION forty_two() RETURNS int AS
+CREATE FUNCTION forty_two() RETURNS int IMMUTABLE AS
 $$
     import PGutils (PGm, report, notice)
     import Data.Int (Int32)
@@ -282,6 +334,45 @@ $$
     forty_two = do
         report notice "Don't Panic"
         return (Just 42)
+$$
+LANGUAGE plhaskell;
+```
+
+### Queries
+
+The following deletes all elements of table `t` and returns the number of rows removed.
+
+```
+CREATE FUNCTION remove_all() RETURNS bigint VOLATILE AS
+$$
+    import PGutils (PGm, query, QueryResults (DeleteResults))
+    import Data.Int (Int64)
+
+    remove_all :: PGm (Maybe Int64)
+    remove_all = do
+        DeleteResults processed <- query "DELETE FROM t" []
+        return (Just (fromIntegral processed))
+$$
+LANGUAGE plhaskell;
+```
+
+The following returns the last names of students with the passed first name.
+
+```
+DROP FUNCTION last_names(text);
+
+CREATE FUNCTION last_names(text) RETURNS SETOF text IMMUTABLE AS
+$$
+    import PGutils (PGm, query, QueryResults (SelectResults), QueryParam (QueryParamText), QueryResultValue (QueryResultValueText))
+    import Data.Text (Text)
+
+    extract_text :: [QueryResultValue] -> Maybe Text
+    extract_text [QueryResultValueText name] = name
+
+    last_names :: Maybe Text -> PGm [Maybe Text]
+    last_names first_name = do
+        SelectResults _processed _header results <- query "SELECT last_name FROM students WHERE first_name = $1" [QueryParamText first_name]
+        return (map extract_text results)
 $$
 LANGUAGE plhaskell;
 ```

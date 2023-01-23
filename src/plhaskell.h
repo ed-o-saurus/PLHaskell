@@ -21,6 +21,7 @@
 
 #include "postgres.h"
 #include "funcapi.h"
+#include "executor/spi.h"
 
 #include "HsFFI.h"
 
@@ -61,6 +62,7 @@ struct CallInfo
     struct ValueInfo **args; // Arguments
     struct ValueInfo *result; // Returned result
     bool return_set; // Does the function return a set of values?
+    bool spi_read_only; // Use read-only mode on internal queries
     bool more_results; // Are there more results to return from a set?
     void (*function)(void); // Pointer to the function to be called to read Args and populate Result
     HsStablePtr list; // Stable pointer to list of results
@@ -68,5 +70,15 @@ struct CallInfo
 
 // Report a message or error
 void plhaskell_report(int elevel, char *msg);
+
+struct ValueInfo *new_value_info(Oid typeoid);
+void delete_value_info(struct ValueInfo *p_value_info);
+
+// Functions for SPI queries
+int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);
+void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber);
+void get_oids(struct SPITupleTable *tuptable, Oid *oids);
+void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber);
+void free_tuptable(struct SPITupleTable *tuptable);
 
 #endif
