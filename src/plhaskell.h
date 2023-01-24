@@ -66,6 +66,9 @@ struct CallInfo
     bool more_results; // Are there more results to return from a set?
     void (*function)(void); // Pointer to the function to be called to read Args and populate Result
     HsStablePtr list; // Stable pointer to list of results
+
+    struct CallInfo *prev; // Used to link list of all active CallInfos
+    struct CallInfo *next;
 };
 
 // Report a message or error

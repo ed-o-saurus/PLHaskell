@@ -49,7 +49,10 @@ static void rts_msg_fn(int elevel, const char *s, va_list ap);
 static void rts_debug_msg_fn(const char *s, va_list ap);
 static void rts_fatal_msg_fn(const char *s, va_list ap);
 
-static struct CallInfo *gp_call_info = NULL;
+static void unlink_all();
+
+static struct CallInfo *current_p_call_info = NULL;
+static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
 
 PG_MODULE_MAGIC;
 
@@ -63,6 +66,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     Datum proretset;
     bool is_null;
     int spi_code;
+    struct CallInfo *prev_p_call_info;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
@@ -113,9 +117,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             if(spi_code < 0)
                 ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-            gp_call_info = p_call_info;
+            prev_p_call_info = current_p_call_info;
+            current_p_call_info = p_call_info;
             mk_iterator(p_call_info); // Setup the iterator and list
-            gp_call_info = NULL;
+            current_p_call_info = prev_p_call_info;
 
             spi_code = SPI_finish();
             if(spi_code < 0)
@@ -131,9 +136,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        gp_call_info = p_call_info;
+        prev_p_call_info = current_p_call_info;
+        current_p_call_info = p_call_info;
         (*p_call_info->function)(); // Run the function
-        gp_call_info = NULL;
+        current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -184,9 +190,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        gp_call_info = p_call_info;
+        prev_p_call_info = current_p_call_info;
+        current_p_call_info = p_call_info;
         (*p_call_info->function)(); // Run the function
-        gp_call_info = NULL;
+        current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -364,6 +371,15 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     close(modfd);
 
     ReleaseSysCache(proctup);
+
+    // Add p_call_info to the list of all active CallInfos
+    if(first_p_call_info)
+    {
+        p_call_info->next = first_p_call_info;
+        first_p_call_info->prev = p_call_info;
+    }
+
+    first_p_call_info = p_call_info;
 }
 
 // Fill ValueInfo struct
@@ -505,6 +521,15 @@ static void destroy_call_info(void *arg)
 
     if(p_call_info->function)
         hs_free_fun_ptr(p_call_info->function);
+
+    if(first_p_call_info == p_call_info)
+        first_p_call_info = p_call_info->next;
+
+    if(p_call_info->prev)
+        p_call_info->prev->next = p_call_info->next;
+
+    if(p_call_info->next)
+        p_call_info->next->prev = p_call_info->prev;
 }
 
 // Populate the value and is_null fields of p_value_info
@@ -605,9 +630,7 @@ static void gcDoneHook(const struct GCDetails_ *stats)
 {
     if(stats->mem_in_use_bytes > (uint64_t)0x100000 * MAX_MEMORY) // 0x100000 B = 1 MiB
     {
-        if(gp_call_info && gp_call_info->mod_file_name)
-            unlink(gp_call_info->mod_file_name);
-
+        unlink_all();
         ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d MiB)", MAX_MEMORY));
     }
 }
@@ -616,8 +639,8 @@ static void gcDoneHook(const struct GCDetails_ *stats)
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
-    if(elevel == FATAL && gp_call_info && gp_call_info->mod_file_name)
-        unlink(gp_call_info->mod_file_name);
+    if(elevel == FATAL)
+        unlink_all();
 
     ereport(elevel, errmsg("%s", msg));
 }
@@ -643,9 +666,7 @@ static void rts_debug_msg_fn(const char *s, va_list ap)
 
 static void rts_fatal_msg_fn(const char *s, va_list ap)
 {
-    if(gp_call_info && gp_call_info->mod_file_name)
-        unlink(gp_call_info->mod_file_name);
-
+    unlink_all();
     rts_msg_fn(FATAL, s, ap);
 }
 
@@ -686,7 +707,7 @@ int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_n
     for(int i=0; i<nargs; i++)
         nulls[i] = is_nulls[i]?'n':' ';
 
-    spi_code = SPI_execute_with_args(command, nargs, argtypes, values, nulls, gp_call_info->spi_read_only, 0);
+    spi_code = SPI_execute_with_args(command, nargs, argtypes, values, nulls, current_p_call_info->spi_read_only, 0);
     if(spi_code < 0)
         ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
@@ -724,4 +745,11 @@ void free_tuptable(struct SPITupleTable *tuptable) __attribute__((visibility ("h
 void free_tuptable(struct SPITupleTable *tuptable)
 {
     SPI_freetuptable(tuptable);
+}
+
+// Delete temp files from all active CallInfos
+static void unlink_all()
+{
+    for(struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
+        unlink(p_call_info->mod_file_name);
 }
