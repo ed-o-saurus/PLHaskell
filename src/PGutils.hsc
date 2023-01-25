@@ -31,7 +31,7 @@
 module PGutils (PGm, ErrorLevel, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, unPGm, QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad.Fail    (MonadFail (fail))
-import Data.ByteString       (useAsCString, ByteString)
+import Data.ByteString       (ByteString)
 import Data.Int              (Int16, Int32, Int64)
 import Data.Functor          ((<&>))
 import Data.Text             (Text, pack)
@@ -39,7 +39,7 @@ import Data.Text.Encoding    (encodeUtf8)
 import Data.Word             (Word16, Word64)
 import Foreign.C.String      (peekCString, CString)
 import Foreign.C.Types       (CBool (CBool), CInt (CInt), CUInt (CUInt))
-import Foreign.Marshal.Array (allocaArray, withArray, withArrayLen)
+import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr           (Ptr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff)
@@ -47,6 +47,7 @@ import Prelude               (Applicative, Bool (False, True), Char, Double, Eq,
 import System.IO.Unsafe      (unsafePerformIO)
 
 import PGsupport             (Datum, ReadWrite (readType, write), ValueInfo, getField, voidDatum)
+import MemoryUtils           (pUseAsCString, pWithArray, pWithArrayLen)
 
 newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 data TupleTable
@@ -69,9 +70,8 @@ newtype ErrorLevel = ErrorLevel {unErrorLevel :: CInt}
 foreign import capi safe "plhaskell.h plhaskell_report"
     plhaskellReport :: CInt -> CString -> IO ()
 
--- useAsCString leaks memory and should be replaced
 report :: ErrorLevel -> Text -> PGm ()
-report elevel msg = PGm $ useAsCString (encodeUtf8 msg) (plhaskellReport (unErrorLevel elevel))
+report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) (plhaskellReport (unErrorLevel elevel))
 
 raiseError :: Text -> a
 raiseError msg = unsafePerformIO $ do
@@ -304,10 +304,10 @@ query q params = PGm $ do
     let argtypes = map getOid params
     isNullsValues <- mapM encode params
     let (isNulls, values) = unzip isNullsValues
-    useAsCString (encodeUtf8 q) $ \ptr -> do
-        withArrayLen argtypes $ \nargs ptrArgtypes -> do -- Leaks memory
-            withArray values $ \ptrValues -> do
-                withArray isNulls $ \ptrIsNulls -> do
+    pUseAsCString (encodeUtf8 q) $ \ptr -> do
+        pWithArrayLen argtypes $ \nargs ptrArgtypes -> do
+            pWithArray values $ \ptrValues -> do
+                pWithArray isNulls $ \ptrIsNulls -> do
                     spiCode <- runQuery ptr (fromIntegral nargs) ptrArgtypes ptrValues ptrIsNulls
                     processed <- peek pSPIProcessed
                     pTupleTable <- peek pSPITupTable

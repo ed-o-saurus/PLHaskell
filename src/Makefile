@@ -33,20 +33,23 @@ all : PGutils.dyn_hi PGsupport.dyn_hi plhaskell.so
 clean :
 	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so *_hsc_make.c
 
-plhaskell.so : plhaskell.o PLHaskell.o PGutils.o PGsupport.o
+plhaskell.so : plhaskell.o PLHaskell.o PGutils.o PGsupport.o MemoryUtils.o
 	ghc -Weverything -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION)
 
 plhaskell.o : plhaskell.c PLHaskell_stub.h plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -c plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
-PLHaskell.o PLHaskell_stub.h PLHaskell.hi : PLHaskell.hs plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c PLHaskell.hs -o PLHaskell.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC
+PLHaskell.o PLHaskell_stub.h PLHaskell.hi : PLHaskell.hs MemoryUtils.hi plhaskell.h
+	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c PLHaskell.hs   -o PLHaskell.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
-PGutils.o PGutils.hi : PGutils.hs PGsupport.hi
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs   -o PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
+PGutils.o PGutils.hi : PGutils.hs PGsupport.hi MemoryUtils.hi plhaskell.h
+	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c PGutils.hs     -o PGutils.o     -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
-PGsupport.o PGsupport.hi : PGsupport.hs
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c PGsupport.hs -o PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
+PGsupport.o PGsupport.hi : PGsupport.hs MemoryUtils.hi plhaskell.h
+	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c PGsupport.hs   -o PGsupport.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
+
+MemoryUtils.o MemoryUtils.hi : MemoryUtils.hs
+	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c MemoryUtils.hs -o MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
 %.hs : %.hsc plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/

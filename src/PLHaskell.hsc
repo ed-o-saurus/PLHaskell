@@ -31,13 +31,15 @@ import Control.Monad                (forM, forM_, (>=>))
 import Data.Int                     (Int16)
 import Data.List                    (intercalate)
 import Data.Word                    (Word16)
-import Foreign.C.String             (CString, peekCString, withCString)
+import Foreign.C.String             (CString, peekCString)
 import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Utils        (fromBool, toBool)
 import Foreign.Ptr                  (Ptr, plusPtr, ptrToWordPtr)
 import Foreign.Storable             (Storable, peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
 import Prelude                      (Bool (False, True), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, maybe, return, show, undefined, ($), (++), (-), (.), (>>=))
+
+import MemoryUtils                  (pWithCString)
 
 -- Dummy types to make pointers
 data CallInfo
@@ -54,9 +56,8 @@ interpolate (s:ss) i = s : interpolate ss i
 foreign import capi safe "plhaskell.h plhaskell_report"
     plhaskellReport :: CInt -> CString -> IO ()
 
--- withCString leaks memory and should be replaced
 raise :: CInt -> String -> IO ()
-raise level msg = withCString msg (plhaskellReport level)
+raise level msg = pWithCString msg (plhaskellReport level)
 
 raiseError :: String -> IO ()
 raiseError = raise (#const ERROR)

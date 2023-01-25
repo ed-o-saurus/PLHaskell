@@ -39,15 +39,13 @@ import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, fre
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
 import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), Show, fromIntegral, return, ($), (+), (.), (>>=))
 
+import MemoryUtils           (palloc)
+
 data ValueInfo
 newtype Datum = Datum WordPtr deriving newtype (Storable, Show)
 
 voidDatum :: Datum
 voidDatum = Datum (ptrToWordPtr nullPtr)
-
--- Allocate memory using postgres' mechanism
-foreign import capi safe "plhaskell.h palloc"
-    palloc :: CSize -> IO (Ptr a)
 
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
