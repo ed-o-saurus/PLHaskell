@@ -28,14 +28,15 @@ export GHC_PACKAGE_PATH=$PKG_LIB_DIR/plhaskell_pkg_db
 
 cp -vf src/plhaskell.control  $EXTENSION_DIR
 cp -vf src/plhaskell--1.1.sql $EXTENSION_DIR
-cp -vf src/plhaskell.so $PKG_LIB_DIR
-cp -vf src/PGutils.dyn_hi $PKG_LIB_DIR
+cp -vf src/plhaskell.so     $PKG_LIB_DIR
+cp -vf src/PGutils.dyn_hi   $PKG_LIB_DIR
+cp -vf src/PGsupport.dyn_hi $PKG_LIB_DIR
 
 ghc-pkg init $GHC_PACKAGE_PATH
 
 ghc-pkg register - << EOF
 name:            pgutils
-version:         1.0
+version:         1.1
 visibility:      public
 id:              pgutils-1.1
 key:             pgutils-1.1
