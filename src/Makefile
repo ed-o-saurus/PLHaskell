@@ -52,7 +52,7 @@ MemoryUtils.o MemoryUtils.hi : MemoryUtils.hs
 	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -c MemoryUtils.hs -o MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-1.1
 
 %.hs : %.hsc plhaskell.h
-	hsc2hs $< -I$(PG_INCLUDE_DIR) -I/usr/lib64/ghc-$(GHC_VERSION)/
+	hsc2hs $< -I$(PG_INCLUDE_DIR)
 
 %.dyn_hi : %.hi
 	cp $^ $@
