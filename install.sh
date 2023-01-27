@@ -32,17 +32,6 @@ cp -vf src/plhaskell.so     $PKG_LIB_DIR
 cp -vf src/PGutils.dyn_hi   $PKG_LIB_DIR
 cp -vf src/PGsupport.dyn_hi $PKG_LIB_DIR
 
-ghc-pkg init $GHC_PACKAGE_PATH
-
-ghc-pkg register - << EOF
-name:            pgutils
-version:         1.1
-visibility:      public
-id:              pgutils-1.1
-key:             pgutils-1.1
-license:         GPL
-synopsis:        PL/Haskell Utilities
-exposed:         True
-exposed-modules: PGutils PGsupport
-import-dirs:     $PKG_LIB_DIR
-EOF
+mkdir $GHC_PACKAGE_PATH
+cp -vf src/pgutils-1.1.conf $GHC_PACKAGE_PATH
+ghc-pkg recache

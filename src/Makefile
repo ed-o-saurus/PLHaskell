@@ -21,20 +21,24 @@
 
 GHC_VERSION = $(shell ghc --numeric-version)
 
-RTS_NAME  = $(shell ghc-pkg describe rts  | grep hs-libraries | awk '{print $$2}')
-HINT_NAME = $(shell ghc-pkg describe hint | grep hs-libraries | awk '{print $$2}')
-TEXT_NAME = $(shell ghc-pkg describe text | grep hs-libraries | awk '{print $$2}')
+RTS_NAME  = $(shell ghc-pkg field rts  hs-libraries | awk '{print $$2}')
+HINT_NAME = $(shell ghc-pkg field hint hs-libraries | awk '{print $$2}')
+TEXT_NAME = $(shell ghc-pkg field text hs-libraries | awk '{print $$2}')
+
+RTS_LIB_DIR      = $(shell ghc-pkg field rts  library-dirs         | awk '{print $$2}')
+HINT_DYN_LIB_DIR = $(shell ghc-pkg field hint dynamic-library-dirs | awk '{print $$2}')
+TEXT_DYN_LIB_DIR = $(shell ghc-pkg field text dynamic-library-dirs | awk '{print $$2}')
 
 PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 
 .PHONY: all clean
-all : PGutils.dyn_hi PGsupport.dyn_hi plhaskell.so
+all : PGutils.dyn_hi PGsupport.dyn_hi plhaskell.so pgutils-1.1.conf
 
 clean :
-	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so *_hsc_make.c
+	rm -fv *.hi *.dyn_hi *_stub.h *.hs *.o *.so *_hsc_make.c *.conf
 
 plhaskell.so : plhaskell.o PLHaskell.o PGutils.o PGsupport.o MemoryUtils.o
-	ghc -Weverything -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION)
+	ghc -Weverything -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR)
 
 plhaskell.o : plhaskell.c PLHaskell_stub.h plhaskell.h
 	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -c plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
@@ -56,3 +60,6 @@ MemoryUtils.o MemoryUtils.hi : MemoryUtils.hs
 
 %.dyn_hi : %.hi
 	cp $^ $@
+
+pgutils-1.1.conf :
+	./mk_pgutils_conf.sh
