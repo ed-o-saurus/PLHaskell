@@ -70,11 +70,11 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("Cache lookup failed for function %u.", funcoid));
+        ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
 
     proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.proretset is NULL."));
+        ereport(ERROR, errmsg("pg_proc.proretset is NULL"));
 
     ReleaseSysCache(proctup);
 
@@ -223,11 +223,11 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("Cache lookup failed for function %u.", funcoid));
+        ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
 
     proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.proretset is NULL."));
+        ereport(ERROR, errmsg("pg_proc.proretset is NULL"));
 
     ReleaseSysCache(proctup);
 
@@ -264,53 +264,53 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("Cache lookup failed for function %u.", funcoid));
+        ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
 
     provariadic = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provariadic, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.provariadic is NULL."));
+        ereport(ERROR, errmsg("pg_proc.provariadic is NULL"));
 
     if(DatumGetObjectId(provariadic) != 0)
-        ereport(ERROR, errmsg("Variadic types not allowed"));
+        ereport(ERROR, errmsg("PL/Haskell : Variadic types not allowed"));
 
     prokind = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prokind, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.prokind is NULL."));
+        ereport(ERROR, errmsg("pg_proc.prokind is NULL"));
 
     if(DatumGetChar(prokind) != PROKIND_FUNCTION)
-        ereport(ERROR, errmsg("Only normal function allowed."));
+        ereport(ERROR, errmsg("PL/Haskell : Only normal function allowed"));
 
     provolatile = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provolatile, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.provolatile is NULL."));
+        ereport(ERROR, errmsg("pg_proc.provolatile is NULL"));
 
     p_call_info->spi_read_only = DatumGetChar(provolatile) != PROVOLATILE_VOLATILE;
 
     p_call_info->nargs = DatumGetInt16(SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &is_null));
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.pronargs is NULL."));
+        ereport(ERROR, errmsg("pg_proc.pronargs is NULL"));
 
     p_call_info->args = palloc(p_call_info->nargs * sizeof(struct ValueInfo*));
 
     SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargmodes, &is_null);
     if(!is_null)
-        ereport(ERROR, errmsg("Only IN arguments allowed."));
+        ereport(ERROR, errmsg("PL/Haskell : Only IN arguments allowed"));
 
     prorettype = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prorettype, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.prorettype is NULL."));
+        ereport(ERROR, errmsg("pg_proc.prorettype is NULL"));
 
     p_call_info->result = palloc(sizeof(struct ValueInfo));
     build_value_info(p_call_info->result, prorettype);
 
     proargtypes = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargtypes, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.proargtypes is NULL."));
+        ereport(ERROR, errmsg("pg_proc.proargtypes is NULL"));
 
     proargtypes_arr = DatumGetArrayTypeP(proargtypes);
 
     if(ARR_NDIM(proargtypes_arr) != 1)
-        ereport(ERROR, errmsg("pg_proc.proargtypes has %d dimensions.", ARR_NDIM(proargtypes_arr)));
+        ereport(ERROR, errmsg("pg_proc.proargtypes has %d dimensions", ARR_NDIM(proargtypes_arr)));
 
     if(ARR_LBOUND(proargtypes_arr)[0] != 0 || ARR_DIMS(proargtypes_arr)[0] != p_call_info->nargs)
         ereport(ERROR, errmsg("pg_proc.proargtypes has unexpected size"));
@@ -327,7 +327,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     proname = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proname, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.proname is NULL."));
+        ereport(ERROR, errmsg("pg_proc.proname is NULL"));
 
     p_call_info->func_name = palloc(NAMEDATALEN);
     memcpy(p_call_info->func_name, DatumGetName(proname)->data, NAMEDATALEN);
@@ -335,7 +335,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     // Fill temp file with function source
     prosrc = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosrc, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_proc.prosrc is NULL."));
+        ereport(ERROR, errmsg("pg_proc.prosrc is NULL"));
 
     src = DatumGetTextPP(prosrc);
 
@@ -347,25 +347,25 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     if(write(modfd, "module PGmodule (", 17) < 0)
     {
         close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file."));
+        ereport(ERROR, errmsg("Unable to write to module file"));
     }
 
     if(write(modfd, p_call_info->func_name, strlen(p_call_info->func_name)) < 0)
     {
         close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file."));
+        ereport(ERROR, errmsg("Unable to write to module file"));
     }
 
     if(write(modfd, ") where\n", 8) < 0)
     {
         close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file."));
+        ereport(ERROR, errmsg("Unable to write to module file"));
     }
 
     if(write(modfd, VARDATA_ANY(src), VARSIZE_ANY_EXHDR(src)) < 0)
     {
         close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file."));
+        ereport(ERROR, errmsg("Unable to write to module file"));
     }
 
     close(modfd);
@@ -401,23 +401,23 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 
     typetup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
     if(!HeapTupleIsValid(typetup))
-        ereport(ERROR, errmsg("cache lookup failed for type %u.", type_oid));
+        ereport(ERROR, errmsg("cache lookup failed for type %u", type_oid));
 
     typname = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typname, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_type.typname is NULL."));
+        ereport(ERROR, errmsg("pg_type.typname is NULL"));
 
     type_name = DatumGetCString(typname);
 
     typtype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typtype, &is_null);
     if(is_null)
-        ereport(ERROR, errmsg("pg_type.typtype is NULL."));
+        ereport(ERROR, errmsg("pg_type.typtype is NULL"));
 
     switch(DatumGetChar(typtype))
     {
     case TYPTYPE_BASE :
         if(!type_available(type_oid))
-            ereport(ERROR, errmsg("PL/Haskell does not support type %s.", type_name));
+            ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
 
         p_value_info->type_oid = type_oid;
         p_value_info->type = BASE_TYPE;
@@ -431,17 +431,17 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 
         typrelid = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typrelid, &is_null);
         if(is_null)
-            ereport(ERROR, errmsg("pg_type.typrelid is NULL."));
+            ereport(ERROR, errmsg("pg_type.typrelid is NULL"));
 
         classoid = ObjectIdGetDatum(typrelid);
 
         reltup = SearchSysCache1(RELOID, ObjectIdGetDatum(classoid));
         if(!HeapTupleIsValid(reltup))
-            ereport(ERROR, errmsg("cache lookup failed for class %u.", classoid));
+            ereport(ERROR, errmsg("cache lookup failed for class %u", classoid));
 
         relnatts = SysCacheGetAttr(RELOID, reltup, Anum_pg_class_relnatts, &is_null);
         if(is_null)
-            ereport(ERROR, errmsg("pg_class.relnatts is NULL."));
+            ereport(ERROR, errmsg("pg_class.relnatts is NULL"));
 
         p_value_info->natts = DatumGetInt16(relnatts);
 
@@ -450,11 +450,11 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         {
             atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(classoid), Int16GetDatum(i+1));
             if(!HeapTupleIsValid(atttup))
-                ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d.", classoid, i+1));
+                ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d", classoid, i+1));
 
             atttypid = SysCacheGetAttr(ATTNUM, atttup, Anum_pg_attribute_atttypid, &is_null);
             if(is_null)
-                ereport(ERROR, errmsg("pg_attribute.atttypid is NULL."));
+                ereport(ERROR, errmsg("pg_attribute.atttypid is NULL"));
 
             // If the attribute is not dropped
             if((attroid = DatumGetObjectId(atttypid)))
@@ -462,7 +462,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
                 p_value_info->count++;
 
                 if(p_value_info->count > 63)
-                    ereport(ERROR, errmsg("Tuple size too large"));
+                    ereport(ERROR, errmsg("PL/Haskell : Tuple size too large (%s)", type_name));
 
                 p_value_info->attnums = repalloc(p_value_info->attnums, p_value_info->count * sizeof(int16));
                 p_value_info->attnums[p_value_info->count-1] = i+1;
@@ -484,22 +484,22 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
     case TYPTYPE_DOMAIN :
         typbasetype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typbasetype, &is_null);
         if(is_null)
-            ereport(ERROR, errmsg("pg_type.typbasetype is NULL."));
+            ereport(ERROR, errmsg("pg_type.typbasetype is NULL"));
 
         build_value_info(p_value_info, DatumGetObjectId(typbasetype));
 
         break;
     case TYPTYPE_ENUM :
-        ereport(ERROR, errmsg("PL/Haskell does not support enumerated types. (%s)", type_name));
+        ereport(ERROR, errmsg("PL/Haskell does not support enumerated types (%s)", type_name));
         break;
 #ifdef TYPTYPE_MULTIRANGE
     case TYPTYPE_MULTIRANGE :
 #endif
     case TYPTYPE_RANGE :
-        ereport(ERROR, errmsg("PL/Haskell does not support range types. (%s)", type_name));
+        ereport(ERROR, errmsg("PL/Haskell does not support range types (%s)", type_name));
         break;
     case TYPTYPE_PSEUDO :
-        ereport(ERROR, errmsg("PL/Haskell does not support type %s.", type_name));
+        ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
         break;
     default :
         ereport(ERROR, errmsg("pg_type.typtype is invalid : %c", DatumGetChar(typtype)));
@@ -543,9 +543,6 @@ static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool i
 
     switch(p_value_info->type)
     {
-    case VOID_TYPE :
-        ereport(ERROR, errmsg("Cannot write void type"));
-        break;
     case BASE_TYPE :
         p_value_info->value = value;
         break;
@@ -642,7 +639,24 @@ void plhaskell_report(int elevel, char *msg)
     if(elevel == FATAL)
         unlink_all();
 
-    ereport(elevel, errmsg("%s", msg));
+    // Strip trailing new-line if necessary
+    if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
+        msg[strlen(msg)-1] = '\0';
+
+    // Replace temp file name with name of function
+    if(strncmp(msg, first_p_call_info->mod_file_name, 17)==0 && msg[17]==':')
+    {
+        int i;
+        for(i=18; isdigit(msg[i]); i++);
+
+        // Reduce line number by one to account for added line of code in file
+        if(msg[i]==':')
+            ereport(elevel, errmsg("%s:%d:%s", first_p_call_info->func_name, atoi(msg+18)-1, msg+i+1));
+        else
+            ereport(elevel, errmsg("%s:%s", first_p_call_info->func_name, msg+18));
+    }
+    else
+        ereport(elevel, errmsg("%s", msg));
 }
 
 static void rts_msg_fn(int elevel, const char *s, va_list ap)
@@ -654,7 +668,7 @@ static void rts_msg_fn(int elevel, const char *s, va_list ap)
     buf = palloc(len+1); // Don't forget the \0 terminator
     vsnprintf(buf, len+1, s, ap);
 
-    ereport(elevel, errmsg("%s", buf));
+    plhaskell_report(elevel, buf);
 
     pfree(buf);
 }
@@ -666,7 +680,6 @@ static void rts_debug_msg_fn(const char *s, va_list ap)
 
 static void rts_fatal_msg_fn(const char *s, va_list ap)
 {
-    unlink_all();
     rts_msg_fn(FATAL, s, ap);
 }
 

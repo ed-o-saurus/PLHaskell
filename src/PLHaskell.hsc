@@ -270,7 +270,7 @@ execute int = do
     r <- runInterpreter int
     case r of
         Left (UnknownError msg)    -> raiseError msg
-        Left (WontCompile [])      -> raiseError "Unknown Compiler Error"
+        Left (WontCompile [])      -> raiseError "PL/Haskell : Unknown Compiler Error"
         Left (WontCompile (err:_)) -> raiseError (errMsg err)
         Left (NotAllowed msg)      -> raiseError msg
         Left (GhcException msg)    -> raiseError msg
