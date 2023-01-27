@@ -22,6 +22,5 @@
 *.hs
 *.o
 *.so
-*_hsc_make.c
 .vscode
 *.conf

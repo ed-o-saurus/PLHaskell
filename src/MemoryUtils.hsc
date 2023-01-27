@@ -23,14 +23,14 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 -- This module implements functions to allocate memory useing postgres' memory allocation.
--- This prevents memory leaks in case of an ERROR event. 
+-- This prevents memory leaks in case of an ERROR event.
 
 module MemoryUtils (palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Foreign.C.String      (CString, CStringLen, withCStringLen)
 import Foreign.C.Types       (CSize (CSize))
-import Foreign.Marshal.Array (pokeArray) --allocaArray, withArray, withArrayLen)
+import Foreign.Marshal.Array (pokeArray)
 import Foreign.Marshal.Utils (copyBytes)
 import Foreign.Ptr           (Ptr)
 import Foreign.Storable      (sizeOf, Storable)
