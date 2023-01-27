@@ -37,15 +37,15 @@ import Foreign.Storable      (sizeOf, Storable)
 import Prelude               (Int, IO, String, const, fromIntegral, length, return, undefined, ($), (.), (*), (+))
 
 -- Allocate memory using postgres' mechanism
-foreign import capi safe "postgres.h palloc"
+foreign import capi unsafe "postgres.h palloc"
     palloc :: CSize -> IO (Ptr a)
 
 -- Allocate zeroed memory using postgres' mechanism
-foreign import capi safe "postgres.h palloc0"
+foreign import capi unsafe "postgres.h palloc0"
     palloc0 :: CSize -> IO (Ptr a)
 
 -- Allocate memory using postgres' mechanism
-foreign import capi safe "postgres.h pfree"
+foreign import capi unsafe "postgres.h pfree"
     pfree :: Ptr a -> IO ()
 
 pallocArray :: forall a b . Storable a => Int -> (Ptr a -> IO b) -> IO b

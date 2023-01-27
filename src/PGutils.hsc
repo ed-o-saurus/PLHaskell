@@ -174,7 +174,7 @@ data QueryResults = SelectResults          Word64 [Text] [[QueryResultValue]]
                   | UtilityResults         Word64
                   | RewrittenResults       Word64 deriving stock Show
 
-foreign import capi safe "plhaskell.h get_header_field"
+foreign import capi unsafe "plhaskell.h get_header_field"
     c_getHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
 
 getHeaderField :: Ptr TupleTable -> Int16 -> IO Text
@@ -188,7 +188,7 @@ getHeader pTupleTable = do
     natts <- (#peek struct TupleDescData, natts) tupDesc
     mapM (getHeaderField pTupleTable) [1 .. natts]
 
-foreign import capi safe "plhaskell.h get_oids"
+foreign import capi unsafe "plhaskell.h get_oids"
     c_getOids :: Ptr TupleTable -> Ptr Oid -> IO ()
 
 getOids :: Ptr TupleTable -> IO [Oid]
@@ -202,10 +202,10 @@ getOids pTupleTable = do
 foreign import capi safe "plhaskell.h new_value_info"
     newValueInfo :: Oid -> IO (Ptr ValueInfo)
 
-foreign import capi safe "plhaskell.h delete_value_info"
+foreign import capi unsafe "plhaskell.h delete_value_info"
     deleteValueInfo :: Ptr ValueInfo -> IO ()
 
-foreign import capi safe "plhaskell.h fill_value_info"
+foreign import capi unsafe "plhaskell.h fill_value_info"
     fillValueInfo :: Ptr TupleTable -> Ptr ValueInfo -> Word64 -> CInt -> IO ()
 
 mkQueryResultValueTypOid :: Oid -> Ptr ValueInfo -> IO QueryResultValue
@@ -296,7 +296,7 @@ foreign import ccall safe "executor/spi.h &SPI_processed"
 foreign import ccall safe "executor/spi.h &SPI_tuptable"
     pSPITupTable :: Ptr (Ptr TupleTable)
 
-foreign import capi safe "plhaskell.h free_tuptable"
+foreign import capi unsafe "plhaskell.h free_tuptable"
     freeTupTable :: Ptr TupleTable -> IO ()
 
 query :: Text -> [QueryParam] -> PGm QueryResults
