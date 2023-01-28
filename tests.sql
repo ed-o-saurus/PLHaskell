@@ -121,7 +121,6 @@ $$
 $$
 LANGUAGE plhaskell;
 
-
 CREATE FUNCTION plhaskell_test.shrug() RETURNS text IMMUTABLE AS
 $$
     import PGutils (PGm)
@@ -275,6 +274,272 @@ $$
     primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
 $$
 LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.query_create() RETURNS void VOLATILE AS
+$$
+    import PGutils (PGm, query, QueryResults (UtilityResults))
+
+    query_create :: PGm ()
+    query_create = do
+        UtilityResults _processed <- query "CREATE TABLE plhaskell_test.t(i int, l text)" [];
+        return ()
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.query_insert(int, text) RETURNS void VOLATILE AS
+$$
+    import PGutils (PGm, query, QueryResults (InsertResults), QueryParam (QueryParamInt4, QueryParamText))
+    import Data.Int (Int32)
+    import Data.Text (Text)
+
+    query_insert :: Maybe Int32 -> Maybe Text -> PGm ()
+    query_insert i l = do
+        InsertResults _processed <- query "INSERT INTO plhaskell_test.t(i, l) VALUES ($1, $2);" [QueryParamInt4 i, QueryParamText l];
+        return ()
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.query_insert_returning() RETURNS void VOLATILE AS
+$$
+    import PGutils (PGm, query, QueryResults (InsertReturningResults), QueryResultValue (QueryResultValueInt4, QueryResultValueText), raiseError)
+
+    query_insert_returning :: PGm ()
+    query_insert_returning = do
+        InsertReturningResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0], [QueryResultValueInt4 i1, QueryResultValueText l1], [QueryResultValueInt4 i2, QueryResultValueText l2]] <- query "INSERT INTO plhaskell_test.t(i, l) SELECT i+3, l FROM plhaskell_test.t WHERE i is not NULL ORDER BY i RETURNING i, l" []
+
+        if processed == 3
+        then return ()
+        else raiseError "Bad processed"
+
+        if header1 == "i"
+        then return ()
+        else raiseError "Bad header1"
+
+        if header2 == "l"
+        then return ()
+        else raiseError "Bad header2"
+
+        if i0 == Just 4
+        then return ()
+        else raiseError "Bad i0"
+
+        if l0 == Just "A"
+        then return ()
+        else raiseError "Bad l0"
+
+        if i1 == Just 5
+        then return ()
+        else raiseError "Bad i1"
+
+        if l1 == Just "B"
+        then return ()
+        else raiseError "Bad l1"
+
+        if i2 == Just 6
+        then return ()
+        else raiseError "Bad i2"
+
+        if l2 == Just "C"
+        then return ()
+        else raiseError "Bad l2"
+
+        return ()
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.query_select() RETURNS void IMMUTABLE AS
+$$
+    import PGutils (PGm, query, QueryResults (SelectResults), QueryResultValue (QueryResultValueInt4, QueryResultValueText), raiseError)
+
+    query_select :: PGm ()
+    query_select = do
+        SelectResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0], [QueryResultValueInt4 i1, QueryResultValueText l1], [QueryResultValueInt4 i2, QueryResultValueText l2], [QueryResultValueInt4 i3, QueryResultValueText l3], [QueryResultValueInt4 i4, QueryResultValueText l4], [QueryResultValueInt4 i5, QueryResultValueText l5], [QueryResultValueInt4 i6, QueryResultValueText l6]] <- query "SELECT i, l FROM plhaskell_test.t ORDER BY i" []
+
+        if processed == 7
+        then return ()
+        else raiseError "Bad processed"
+
+        if header1 == "i"
+        then return ()
+        else raiseError "Bad header1"
+
+        if header2 == "l"
+        then return ()
+        else raiseError "Bad header2"
+
+        if i0 == Just 1
+        then return ()
+        else raiseError "Bad i0"
+
+        if l0 == Just "A"
+        then return ()
+        else raiseError "Bad l0"
+
+        if i1 == Just 2
+        then return ()
+        else raiseError "Bad i1"
+
+        if l1 == Just "B"
+        then return ()
+        else raiseError "Bad l1"
+
+        if i2 == Just 3
+        then return ()
+        else raiseError "Bad i2"
+
+        if l2 == Just "C"
+        then return ()
+        else raiseError "Bad l2"
+
+        if i3 == Just 4
+        then return ()
+        else raiseError "Bad i3"
+
+        if l3 == Just "A"
+        then return ()
+        else raiseError "Bad l3"
+
+        if i4 == Just 5
+        then return ()
+        else raiseError "Bad i4"
+
+        if l4 == Just "B"
+        then return ()
+        else raiseError "Bad l4"
+
+        if i5 == Just 6
+        then return ()
+        else raiseError "Bad i5"
+
+        if l5 == Just "C"
+        then return ()
+        else raiseError "Bad l5"
+
+        if i6 == Nothing
+        then return ()
+        else raiseError "Bad i6"
+
+        if l6 == Nothing
+        then return ()
+        else raiseError "Bad l6"
+
+        return ()
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.query_delete() RETURNS void VOLATILE AS
+$$
+    import PGutils (PGm, query, QueryResults (DeleteResults), raiseError)
+
+    query_delete :: PGm ()
+    query_delete = do
+        DeleteResults processed1 <- query "DELETE FROM plhaskell_test.t" [];
+        DeleteResults processed2 <- query "DELETE FROM plhaskell_test.t" [];
+
+        if processed1 == 7
+        then return ()
+        else raiseError "Bad processed1"
+
+        if processed2 == 0
+        then return ()
+        else raiseError "Bad processed2"
+
+        return ()
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.query_drop() RETURNS void VOLATILE AS
+$$
+    import PGutils (PGm, query, QueryResults (UtilityResults))
+
+    query_drop :: PGm ()
+    query_drop = do
+        UtilityResults _processed <- query "DROP TABLE plhaskell_test.t" [];
+        return ()
+$$
+LANGUAGE plhaskell;
+
+SELECT plhaskell_test.query_create();
+
+SELECT plhaskell_test.query_insert(NULL::int, NULL::text);
+SELECT plhaskell_test.query_insert(1, 'A');
+SELECT plhaskell_test.query_insert(2, 'B');
+SELECT plhaskell_test.query_insert(3, 'C');
+
+SELECT plhaskell_test.query_insert_returning();
+
+SELECT plhaskell_test.query_select();
+
+SELECT plhaskell_test.query_delete();
+
+SELECT plhaskell_test.query_drop();
+
+CREATE FUNCTION plhaskell_test.query_composite() RETURNS void IMMUTABLE AS
+$$
+    import PGutils (PGm, query, QueryResults (SelectResults), QueryResultValue (QueryResultValueComposite, QueryResultValueInt4, QueryResultValueText, QueryResultValueFloat8), raiseError)
+
+    query_composite :: PGm ()
+    query_composite = do
+        SelectResults processed [header] [row0, row1, row2, row3] <- query "SELECT d FROM plhaskell_test.deltas ORDER BY i" []
+
+        if processed == 4
+        then return ()
+        else raiseError "Bad processed"
+
+        if header == "d"
+        then return ()
+        else raiseError "Bad header"
+
+        let [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (Just [])])] = row0
+
+        if x0 == "Hello"
+        then return ()
+        else raiseError "Bad x0"
+
+        if x1 == 12
+        then return ()
+        else raiseError "Bad x1"
+
+        if x2 == 3.4
+        then return ()
+        else raiseError "Bad x2"
+
+        if x3 == 76
+        then return ()
+        else raiseError "Bad x3"
+
+        let [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite Nothing])] = row1
+
+        if x4 == "world"
+        then return ()
+        else raiseError "Bad x4"
+
+        if x5 == 42
+        then return ()
+        else raiseError "Bad x5"
+
+        if x6 == 1.0
+        then return ()
+        else raiseError "Bad x6"
+
+        if x7 == -12
+        then return ()
+        else raiseError "Bad x7"
+
+        let [QueryResultValueComposite (Just [QueryResultValueComposite Nothing, QueryResultValueComposite (Just [])])] = row2
+        let [QueryResultValueComposite Nothing] = row3
+
+        return ()
+$$
+LANGUAGE plhaskell;
+
+CREATE TABLE plhaskell_test.deltas(i int, d plhaskell_test.delta);
+INSERT INTO plhaskell_test.deltas(i, d) VALUES (1, ((('Hello', 12, 3.4)::plhaskell_test.alpha, 76)::plhaskell_test.bravo, '()'::plhaskell_test.charlie)::plhaskell_test.delta);
+INSERT INTO plhaskell_test.deltas(i, d) VALUES (2, ((('world', 42, 1.0)::plhaskell_test.alpha, -12)::plhaskell_test.bravo, NULL::plhaskell_test.charlie)::plhaskell_test.delta);
+INSERT INTO plhaskell_test.deltas(i, d) VALUES (3, (NULL::plhaskell_test.bravo, '()'::plhaskell_test.charlie)::plhaskell_test.delta);
+INSERT INTO plhaskell_test.deltas(i, d) VALUES (4, NULL::plhaskell_test.delta);
+
+SELECT plhaskell_test.query_composite();
 
 CREATE TABLE plhaskell_test.primes(n int, p int);
 
