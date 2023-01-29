@@ -135,7 +135,7 @@ Queries in stable and immutable functions are executed in read-only mode, while 
 Any base type that can be passed to PL/Haskell functions can be used as a parameter by using the appropriate constructor for the type `QueryParam`. The constructors are the following:
 
 `QueryParam`                          |
----------------------------------------
+------------------------------------- |
 `QueryParamByteA  (Maybe ByteString)` |
 `QueryParamText   (Maybe Text)`       |
 `QueryParamChar   (Maybe Char)`       |
@@ -149,7 +149,7 @@ Any base type that can be passed to PL/Haskell functions can be used as a parame
 The constuctors for `QueryResults` are the following:
 
 `QueryResults`                                              |
--------------------------------------------------------------
+----------------------------------------------------------- |
 `SelectResults          Word64 [Text] [[QueryResultValue]]` |
 `SelectIntoResults      Word64`                             |
 `InsertResults          Word64`                             |
@@ -166,7 +166,7 @@ The constructor indicates the type of query run. The `Word64` field is the numbe
 The constructors for `QueryResultValue` are the following:
 
 `QueryResultValue`                                     |
---------------------------------------------------------
+------------------------------------------------------ |
 `QueryResultValueByteA     (Maybe ByteString)`         |
 `QueryResultValueText      (Maybe Text)`               |
 `QueryResultValueChar      (Maybe Char)`               |
