@@ -281,7 +281,7 @@ $$
 
     query_create :: PGm ()
     query_create = do
-        UtilityResults _processed <- query "CREATE TABLE plhaskell_test.t(i int, l text)" [];
+        UtilityResults _processed <- query "CREATE TABLE plhaskell_test.t(i int, l text)" []
         return ()
 $$
 LANGUAGE plhaskell;
@@ -294,7 +294,7 @@ $$
 
     query_insert :: Maybe Int32 -> Maybe Text -> PGm ()
     query_insert i l = do
-        InsertResults _processed <- query "INSERT INTO plhaskell_test.t(i, l) VALUES ($1, $2);" [QueryParamInt4 i, QueryParamText l];
+        InsertResults _processed <- query "INSERT INTO plhaskell_test.t(i, l) VALUES ($1, $2);" [QueryParamInt4 i, QueryParamText l]
         return ()
 $$
 LANGUAGE plhaskell;
@@ -433,8 +433,8 @@ $$
 
     query_delete :: PGm ()
     query_delete = do
-        DeleteResults processed1 <- query "DELETE FROM plhaskell_test.t" [];
-        DeleteResults processed2 <- query "DELETE FROM plhaskell_test.t" [];
+        DeleteResults processed1 <- query "DELETE FROM plhaskell_test.t" []
+        DeleteResults processed2 <- query "DELETE FROM plhaskell_test.t" []
 
         if processed1 == 7
         then return ()
@@ -454,7 +454,7 @@ $$
 
     query_drop :: PGm ()
     query_drop = do
-        UtilityResults _processed <- query "DROP TABLE plhaskell_test.t" [];
+        UtilityResults _processed <- query "DROP TABLE plhaskell_test.t" []
         return ()
 $$
 LANGUAGE plhaskell;
