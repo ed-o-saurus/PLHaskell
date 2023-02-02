@@ -37,7 +37,43 @@ This document assumes that the reader is familiar with PostgreSQL (specifically 
 
 ## Build and Install
 
-This extension is intended to be build and installed in a Linux environment. It has only been tested on the x86-64 architecture.
+This extension is intended to be built and installed in a Linux environment. It has only been tested on the x86-64 architecture.
+
+The easiest way to install the project is to use a .rpm package (for RedHat based systems including Fedora) or a .deb package (for Debian based systems including Ubuntu).
+
+### Redhat Package Management
+
+The following should be done as a non-root user.
+
+Install git, rpmdevtools, make, postgresql-server-devel, ghc-compiler, ghc-bytestring-devel, ghc-text-devel, and ghc-hint-devel:
+
+**`$>`** `sudo dnf install git rpmdevtools make selinux-policy-devel postgresql-server-devel ghc-compiler ghc-bytestring-devel ghc-text-devel ghc-hint-devel`
+
+Create the directories necessary to build the .rpm:
+
+**`$>`** `rpmdev-setuptree`
+
+Download the project code:
+
+**`$>`** `git clone https://github.com/ed-o-saurus/PLHaskell`
+
+Copy the `.spec` file to the `~/rpmbuild/SPECS` directory:
+
+**`$>`** `cp PLHaskell/rpm/plhaskell.spec ~/rpmbuild/SPECS`
+
+Copy the source to the `~/rpmbuild/SOURCES` directory:
+
+**`$>`** `tar --exclude-vcs -czf ~/rpmbuild/SOURCES/PLHaskell.tar.gz PLHaskell`
+
+Build the `.rpm` package:
+
+**`$>`** `rpmbuild -bb ~/rpmbuild/SPECS/plhaskell.spec`
+
+Install the `.rpm` package written to the `~/rpmbuild/RPMS/`*`<arch>`* directory on the target machine as root user.
+
+### Other
+
+The alternative to building an `.rpm` or `.deb` package is to build and install the project manually.
 
 The following are needed to build and install PL/Haskell:
 * PostgreSQL server
@@ -46,19 +82,21 @@ The following are needed to build and install PL/Haskell:
 * The GHC Hint development module
 * libpq-devel
 
-### Build
+#### Build
 
 Ensure that `pg_config` is available in the path. Run `make` to build all the files needed for the extension.
 
-### Install
+#### Install
 
 You must be `root` to install the extension. As root, run `install.sh` from the root directory.
 
 In each database that you wish to have the extension, run the SQL command `CREATE EXTENSION plhaskell;`.
 
-### Uninstall
+### Security Enhanced Linux
 
-Run the SQL command `DROP EXTENSION plhaskell;`.
+Systems that use Security Enhanced Linux (SELinux) may encounter problems running the extension. This is manifest as the ability to create functions and the inability to call them. Appropriate policies must be implemented. Accomplishing this is beyond the scope of this document. 
+
+#### Uninstall
 
 As root, run `uninstall.sh`.
 
@@ -86,6 +124,8 @@ The optional key word TRUSTED specifies that the language does not grant access 
 As such, unprivileged users are permitted to write and execute functions without the possibility that they will be able to access information or resources that are not allowed to access. This is accomplished by enforcing Haskell's strong type system.
 
 ## Usage
+
+To install the language in a database, run the SQL command `CREATE EXTENSION plhaskell;`.
 
 Functions in PL/Haskell are created the same manner as other PostgreSQL functions. The code must be valid Haskell. It must import the `PGm` monad type from the `PGutils` module.
 

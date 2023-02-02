@@ -1,0 +1,18 @@
+
+module plhaskell 1.1;
+
+require {
+	type postgresql_tmp_t;
+	type var_lib_nfs_t;
+	type postgresql_t;
+	type postgresql_db_t;
+	class file { execute map };
+	class dir search;
+}
+
+#============= postgresql_t ==============
+
+#!!!! This avc can be allowed using the boolean 'domain_can_mmap_files'
+allow postgresql_t postgresql_db_t:file map;
+allow postgresql_t postgresql_tmp_t:file execute;
+allow postgresql_t var_lib_nfs_t:dir search;
