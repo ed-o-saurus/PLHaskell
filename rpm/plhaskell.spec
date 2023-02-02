@@ -26,7 +26,8 @@ URL:            https://github.com/ed-o-saurus/PLHaskell
 Source0:        PLHaskell.tar.gz
 
 BuildRequires:  make selinux-policy-devel postgresql-server-devel ghc-compiler ghc-bytestring-devel ghc-text-devel ghc-hint-devel
-Requires:       policycoreutils-python-utils postgresql-server ghc ghc-bytestring ghc-text ghc-hint
+Requires(pre):  policycoreutils-python-utils
+Requires:       postgresql-server ghc ghc-bytestring ghc-text ghc-hint
 
 %description
 This project is a "procedural language" extension of PostgreSQL allowing
