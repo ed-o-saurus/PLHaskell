@@ -27,6 +27,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 I wrote the project mostly for my own amusement and as a challenge. If you have any questions, comments, or issues, or if you find the project interesting or useful, please don't hesitate to contact me at ed@behn.us.
 
+## Bugs and Features
+
+Bug reports and feature requests should be submitted in the Github issues page. 
+
 ## Prerequisites
 
 This document assumes that the reader is familiar with PostgreSQL (specifically procedural languages) and with the Haskell language.
