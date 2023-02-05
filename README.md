@@ -39,13 +39,13 @@ This document assumes that the reader is familiar with PostgreSQL (specifically 
 
 This extension is intended to be built and installed in a Linux environment. It has only been tested on the x86-64 architecture.
 
-The easiest way to install the project is to use a .rpm package (for RedHat based systems including Fedora) or a .deb package (for Debian based systems including Ubuntu).
+The easiest way to install the project is to use an .rpm package (for Red Hat based systems including Fedora) or a .deb package (for Debian based systems including Ubuntu).
 
-### Redhat Package Management
+### Red Hat Package Management
 
 The following should be done as a non-root user.
 
-Install git, rpmdevtools, make, postgresql-server-devel, ghc-compiler, ghc-bytestring-devel, ghc-text-devel, and ghc-hint-devel:
+Install git, rpmdevtools, make, checkpolicy, policycoreutils, postgresql-server-devel, ghc-compiler, ghc-bytestring-devel, ghc-text-devel, and ghc-hint-devel:
 
 **`$>`** `sudo dnf install git rpmdevtools make selinux-policy-devel postgresql-server-devel ghc-compiler ghc-bytestring-devel ghc-text-devel ghc-hint-devel`
 
@@ -59,7 +59,7 @@ Download the project code:
 
 Copy the `.spec` file to the `~/rpmbuild/SPECS` directory:
 
-**`$>`** `cp PLHaskell/rpm/plhaskell.spec ~/rpmbuild/SPECS`
+**`$>`** `cp PLHaskell/spec/plhaskell.spec ~/rpmbuild/SPECS`
 
 Copy the source to the `~/rpmbuild/SOURCES` directory:
 
@@ -88,17 +88,19 @@ Ensure that `pg_config` is available in the path. Run `make` to build all the fi
 
 #### Install
 
-You must be `root` to install the extension. As root, run `install.sh` from the root directory.
+You must be `root` to install the extension. As root, run `make install`.
 
 In each database that you wish to have the extension, run the SQL command `CREATE EXTENSION plhaskell;`.
 
-### Security Enhanced Linux
-
-Systems that use Security Enhanced Linux (SELinux) may encounter problems running the extension. This is manifest as the ability to create functions and the inability to call them. Appropriate policies must be implemented. Accomplishing this is beyond the scope of this document. 
-
 #### Uninstall
 
-As root, run `uninstall.sh`.
+As root, run `make uninstall`.
+
+### Security Enhanced Linux
+
+Systems that use Security Enhanced Linux (SELinux) may encounter problems running the extension. This manifests as the ability to create functions and the inability to call them. Appropriate policies must be implemented. Full details are beyond the scope of this document.
+
+A policy file designed to accommodate Red Hat based systems can be built by running `make SELINUX=1`. Upon installation, this file is saved to `/usr/share/selinux/packages/plhaskell.pp`. It is the user's responsibility to install the policy.
 
 ### Testing
 
@@ -190,7 +192,7 @@ Any base type that can be passed to PL/Haskell functions can be used as a parame
 `QueryParamFloat4 (Maybe Float)`      |
 `QueryParamFloat8 (Maybe Double)`     |
 
-The constuctors for `QueryResults` are the following:
+The constructors for `QueryResults` are the following:
 
 `QueryResults`                                              |
 ----------------------------------------------------------- |

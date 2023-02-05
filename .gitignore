@@ -24,3 +24,5 @@
 *.so
 .vscode
 *.conf
+*.mod
+*.pp

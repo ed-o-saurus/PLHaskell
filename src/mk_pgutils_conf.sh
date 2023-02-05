@@ -1,6 +1,6 @@
-#!/usr/bin/bash
+#!/bin/sh
 
-cat - > pgutils-1.1.conf << EOF
+cat - << EOF
 name:            pgutils
 version:         1.1
 visibility:      public
@@ -12,5 +12,4 @@ exposed:         True
 exposed-modules: PGutils PGsupport
 EOF
 
-echo -n import-dirs:\ \ \ \ \ >> pgutils-1.1.conf
-pg_config --pkglibdir         >> pgutils-1.1.conf
+echo import-dirs:\ \ \ \ \ $1

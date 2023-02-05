@@ -25,8 +25,8 @@ License:        GPLv3
 URL:            https://github.com/ed-o-saurus/PLHaskell
 Source0:        PLHaskell.tar.gz
 
-BuildRequires:  make selinux-policy-devel postgresql-server-devel ghc-compiler ghc-bytestring-devel ghc-text-devel ghc-hint-devel
-Requires(pre):  policycoreutils-python-utils
+BuildRequires:  make checkpolicy policycoreutils postgresql-server-devel ghc-compiler ghc-bytestring-devel ghc-text-devel ghc-hint-devel
+Requires(pre):  policycoreutils
 Requires:       postgresql-server ghc ghc-bytestring ghc-text ghc-hint
 
 %description
@@ -45,16 +45,16 @@ tar zxfv %{SOURCE0}
 
 %build
 
-cd PLHaskell/src
-make all
-
-cd ../rpm
-make -f /usr/share/selinux/devel/Makefile %{name}.pp
+cd PLHaskell
+rm -fv selinux/plhaskell.pp
+make SELINUX=1
 
 %install
 
-# Suppress RPATHS warnings
+# Suppress RPATHS errors
 export QA_RPATHS=1
+
+rm -rf $RPM_BUILD_ROOT
 
 cd PLHaskell
 
@@ -64,22 +64,7 @@ install -m 0644 LICENSE %{buildroot}/%{_datadir}/licenses/%{name}/LICENSE
 mkdir -p %{buildroot}/%{_datadir}/doc/%{name}
 install -m 0644 README.md %{buildroot}/%{_datadir}/doc/%{name}/README.md
 
-mkdir -p %{buildroot}/%{_datadir}/pgsql/extension
-install -m 0644 src/plhaskell.control  %{buildroot}/%{_datadir}/pgsql/extension/plhaskell.control
-install -m 0644 src/plhaskell--%{version}.sql %{buildroot}/%{_datadir}/pgsql/extension/plhaskell--%{version}.sql
-
-mkdir -p %{buildroot}/%{_libdir}/pgsql
-install -m 0755 src/plhaskell.so     %{buildroot}/%{_libdir}/pgsql/plhaskell.so
-install -m 0644 src/PGutils.dyn_hi   %{buildroot}/%{_libdir}/pgsql/PGutils.dyn_hi
-install -m 0644 src/PGsupport.dyn_hi %{buildroot}/%{_libdir}/pgsql/PGsupport.dyn_hi
-
-export GHC_PACKAGE_PATH=%{buildroot}/%{_libdir}/pgsql/plhaskell_pkg_db
-mkdir -p $GHC_PACKAGE_PATH
-cp -vf src/pgutils-%{version}.conf $GHC_PACKAGE_PATH
-ghc-pkg recache
-
-mkdir -p %{buildroot}/%{_datadir}/selinux/packages
-install -m 0644 rpm/%{name}.pp %{buildroot}/%{_datadir}/selinux/packages/%{name}.pp
+%make_install
 
 %post
 
@@ -97,10 +82,10 @@ install -m 0644 rpm/%{name}.pp %{buildroot}/%{_datadir}/selinux/packages/%{name}
 %license %{_datadir}/licenses/%{name}/LICENSE
 %doc %{_datadir}/doc/%{name}/README.md
 
-%{_datadir}/pgsql/extension/plhaskell.control
-%{_datadir}/pgsql/extension/plhaskell--%{version}.sql
+%{_datadir}/pgsql/extension/%{name}.control
+%{_datadir}/pgsql/extension/%{name}--%{version}.sql
 
-%{_libdir}/pgsql/plhaskell.so
+%{_libdir}/pgsql/%{name}.so
 %{_libdir}/pgsql/PGutils.dyn_hi
 %{_libdir}/pgsql/PGsupport.dyn_hi
 
