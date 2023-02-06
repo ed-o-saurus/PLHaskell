@@ -69,7 +69,7 @@ Build the `.rpm` package:
 
 **`$>`** `rpmbuild -bb ~/rpmbuild/SPECS/plhaskell.spec`
 
-Install the `.rpm` package written to the `~/rpmbuild/RPMS/`*`<arch>`* directory on the target machine as root user.
+Install the `.rpm` package written to the `~/rpmbuild/RPMS/`*`<arch>`* directory on the target machine user.
 
 ### Other
 
@@ -88,13 +88,13 @@ Ensure that `pg_config` is available in the path. Run `make` to build all the fi
 
 #### Install
 
-You must be `root` to install the extension. As root, run `make install`.
+To install, run `sudo make install`.
 
-In each database that you wish to have the extension, run the SQL command `CREATE EXTENSION plhaskell;`.
+On each database that you wish to have the extension, run the SQL command `CREATE EXTENSION plhaskell;`.
 
 #### Uninstall
 
-As root, run `make uninstall`.
+To uninstall, run `sudo make uninstall`.
 
 ### Security Enhanced Linux
 
