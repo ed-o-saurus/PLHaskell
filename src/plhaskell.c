@@ -254,7 +254,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set)
 {
     HeapTuple proctup;
-    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile;
+    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel;
     ArrayType *proargtypes_arr;
     Oid *argtypes;
     bool is_null;
@@ -300,6 +300,13 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     prorettype = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prorettype, &is_null);
     if(is_null)
         ereport(ERROR, errmsg("pg_proc.prorettype is NULL"));
+
+    proparallel = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proparallel, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_proc.proparallel is NULL"));
+
+    if(DatumGetChar(proparallel) != PROPARALLEL_UNSAFE)
+        ereport(ERROR, errmsg("PL/Haksell : Function must be parallel unsafe"));
 
     p_call_info->result = palloc(sizeof(struct ValueInfo));
     build_value_info(p_call_info->result, prorettype);
