@@ -31,6 +31,7 @@
 #include "utils/guc.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "storage/ipc.h"
 
 extern char pkglib_path[];
 
@@ -49,7 +50,7 @@ static void rts_msg_fn(int elevel, const char *s, va_list ap);
 static void rts_debug_msg_fn(const char *s, va_list ap);
 static void rts_fatal_msg_fn(const char *s, va_list ap);
 
-static void unlink_all();
+static void unlink_all(int code, Datum arg);
 
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
@@ -609,6 +610,8 @@ static void enter(void)
     static char **argv_rts = argv;
     RtsConfig conf = defaultRtsConfig;
 
+    on_proc_exit(unlink_all, (Datum)0);
+
     // Add the directory containing PGutils to the GHC Package Path
     sprintf(GHC_PackagePath, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
     setenv("GHC_PACKAGE_PATH", GHC_PackagePath, true);
@@ -626,19 +629,13 @@ static void enter(void)
 static void gcDoneHook(const struct GCDetails_ *stats)
 {
     if(stats->mem_in_use_bytes > (uint64_t)0x100000 * MAX_MEMORY) // 0x100000 B = 1 MiB
-    {
-        unlink_all();
         ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d MiB)", MAX_MEMORY));
-    }
 }
 
 // Used by Haskell
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
-    if(elevel == FATAL)
-        unlink_all();
-
     // Strip trailing new-line if necessary
     if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
         msg[strlen(msg)-1] = '\0';
@@ -761,7 +758,7 @@ void free_tuptable(struct SPITupleTable *tuptable)
 }
 
 // Delete temp files from all active CallInfos
-static void unlink_all()
+static void unlink_all(int code, Datum arg)
 {
     for(struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
         unlink(p_call_info->mod_file_name);
