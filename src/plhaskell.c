@@ -55,6 +55,8 @@ static void unlink_all(int code, Datum arg);
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
 
+static int plhaskell_max_memory;
+
 PG_MODULE_MAGIC;
 
 // Main handler
@@ -623,6 +625,16 @@ static void enter(void)
     sprintf(GHC_PackagePath, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
     setenv("GHC_PACKAGE_PATH", GHC_PackagePath, true);
 
+    DefineCustomIntVariable("plhaskell.max_memory",
+                             gettext_noop("Maximum memory for PL/Haskell"),
+                             gettext_noop("This is the maximum memory that can be used by the Haskell runtime system before a FATAL error."),
+                             &plhaskell_max_memory,
+                             131072, // 131072 kB = 128 MB
+                             0, MAX_KILOBYTES,
+                             PGC_USERSET,
+                             GUC_UNIT_KB,
+                             NULL, NULL, NULL);
+
     fatalInternalErrorFn = rts_fatal_msg_fn;
     debugMsgFn           = rts_debug_msg_fn;
     errorMsgFn           = rts_fatal_msg_fn;
@@ -635,8 +647,8 @@ static void enter(void)
 // Called on every garbage collection to monitor memory usage
 static void gcDoneHook(const struct GCDetails_ *stats)
 {
-    if(stats->mem_in_use_bytes > (uint64_t)0x100000 * MAX_MEMORY) // 0x100000 B = 1 MiB
-        ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d MiB)", MAX_MEMORY));
+    if(stats->mem_in_use_bytes > (uint64_t)0x400 * plhaskell_max_memory)
+        ereport(FATAL, errmsg("Haskell RTS exceeded maximum memory. (%d kB)", plhaskell_max_memory));
 }
 
 // Used by Haskell

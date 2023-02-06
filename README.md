@@ -224,6 +224,10 @@ The constructors for `QueryResultValue` are the following:
 `QueryResultValueFloat8    (Maybe Double)`             |
 `QueryResultValueComposite (Maybe [QueryResultValue])` |
 
+## Maximum Memory
+
+By default, the maximum memory that can be used by the Haskell runtime system is 128 MB. This can be changed by setting the `plhaskell.max_memory` variable in the `postgresql.conf` file. 
+
 ## Examples
 
 ### Addition

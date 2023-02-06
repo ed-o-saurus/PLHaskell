@@ -29,9 +29,6 @@
 #define BASE_TYPE      1
 #define COMPOSITE_TYPE 2
 
-// Maximum memory the Haskell RTS is allowed to use (in MiB)
-#define MAX_MEMORY 128
-
 // Represents a value passed or returned by a function
 struct ValueInfo
 {
