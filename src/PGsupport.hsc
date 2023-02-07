@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (ValueInfo, Datum, ReadWrite (readType, write), voidDatum, getField, readIsNull, readBytea, readText, readChar, readBool, readInt2, readInt4, readInt8, readFloat4, readFloat8, wrapVoidFunc, writeNull, writeNotNull, writeVoid, writeBytea, writeText, writeChar, writeBool, writeInt2, writeInt4, writeInt8, writeFloat4, writeFloat8, iterate) where
+module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), voidDatum, getField, readIsNull, wrapVoidFunc, writeNull, writeNotNull, writeVoid, iterate) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<&>))
@@ -178,33 +178,6 @@ instance ReadWrite Double where
     read = datumGetFloat8
     write = float8GetDatum
 
-readBytea :: Ptr ValueInfo -> IO (Maybe ByteString)
-readBytea = readType
-
-readText :: Ptr ValueInfo -> IO (Maybe Text)
-readText = readType
-
-readChar :: Ptr ValueInfo -> IO (Maybe Char)
-readChar = readType
-
-readBool :: Ptr ValueInfo -> IO (Maybe Bool)
-readBool = readType
-
-readInt2 :: Ptr ValueInfo -> IO (Maybe Int16)
-readInt2 = readType
-
-readInt4 :: Ptr ValueInfo -> IO (Maybe Int32)
-readInt4 = readType
-
-readInt8 :: Ptr ValueInfo -> IO (Maybe Int64)
-readInt8 = readType
-
-readFloat4 :: Ptr ValueInfo -> IO (Maybe Float)
-readFloat4 = readType
-
-readFloat8 :: Ptr ValueInfo -> IO (Maybe Double)
-readFloat8 = readType
-
 -- Set isNull to true
 writeNull :: Ptr ValueInfo -> IO ()
 writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (fromBool True))
@@ -216,33 +189,6 @@ writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (f
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
 writeVoid () _ = return ()
-
-writeBytea :: Maybe ByteString -> Ptr ValueInfo -> IO ()
-writeBytea = writeType
-
-writeText :: Maybe Text -> Ptr ValueInfo -> IO ()
-writeText = writeType
-
-writeChar :: Maybe Char -> Ptr ValueInfo -> IO ()
-writeChar = writeType
-
-writeBool :: Maybe Bool -> Ptr ValueInfo -> IO ()
-writeBool = writeType
-
-writeInt2 :: Maybe Int16 -> Ptr ValueInfo -> IO ()
-writeInt2 = writeType
-
-writeInt4 :: Maybe Int32 -> Ptr ValueInfo -> IO ()
-writeInt4 = writeType
-
-writeInt8 :: Maybe Int64 -> Ptr ValueInfo -> IO ()
-writeInt8 = writeType
-
-writeFloat4 :: Maybe Float -> Ptr ValueInfo -> IO ()
-writeFloat4 = writeType
-
-writeFloat8 :: Maybe Double -> Ptr ValueInfo -> IO ()
-writeFloat8 = writeType
 
 iterate :: Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
 iterate pList pMoreResults = do

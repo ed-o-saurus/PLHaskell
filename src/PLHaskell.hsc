@@ -30,6 +30,7 @@ module PLHaskell () where
 import Control.Monad                (forM, forM_, (>=>))
 import Data.Int                     (Int16)
 import Data.List                    (intercalate)
+import Data.Maybe                   (fromMaybe)
 import Data.Word                    (Word16)
 import Foreign.C.String             (CString, peekCString)
 import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
@@ -37,7 +38,7 @@ import Foreign.Marshal.Utils        (fromBool, toBool)
 import Foreign.Ptr                  (Ptr, plusPtr, ptrToWordPtr)
 import Foreign.Storable             (Storable, peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, maybe, return, show, undefined, ($), (++), (-), (.), (>>=))
+import Prelude                      (Bool (False, True), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, return, show, undefined, ($), (++), (-), (.), (>>=))
 
 import MemoryUtils                  (pWithCString)
 
@@ -62,20 +63,16 @@ raise level msg = pWithCString msg (plhaskellReport level)
 raiseError :: String -> IO ()
 raiseError = raise (#const ERROR)
 
-data DataType = DataType {name          :: String,
-                          writeFunction :: String,
-                          readFunction  :: String}
-
-getDataType :: Oid -> Maybe DataType
-getDataType (#const BYTEAOID)  = Just (DataType {name = "ByteString", writeFunction="writeBytea",  readFunction="readBytea"})
-getDataType (#const TEXTOID)   = Just (DataType {name = "Text",       writeFunction="writeText",   readFunction="readText"})
-getDataType (#const BPCHAROID) = Just (DataType {name = "Char",       writeFunction="writeChar",   readFunction="readChar"})
-getDataType (#const BOOLOID)   = Just (DataType {name = "Bool",       writeFunction="writeBool",   readFunction="readBool"})
-getDataType (#const INT2OID)   = Just (DataType {name = "Int16",      writeFunction="writeInt2",   readFunction="readInt2"})
-getDataType (#const INT4OID)   = Just (DataType {name = "Int32",      writeFunction="writeInt4",   readFunction="readInt4"})
-getDataType (#const INT8OID)   = Just (DataType {name = "Int64",      writeFunction="writeInt8",   readFunction="readInt8"})
-getDataType (#const FLOAT4OID) = Just (DataType {name = "Float",      writeFunction="writeFloat4", readFunction="readFloat4"})
-getDataType (#const FLOAT8OID) = Just (DataType {name = "Double",     writeFunction="writeFloat8", readFunction="readFloat8"})
+getDataType :: Oid -> Maybe String
+getDataType (#const BYTEAOID)  = Just "ByteString"
+getDataType (#const TEXTOID)   = Just "Text"
+getDataType (#const BPCHAROID) = Just "Char"
+getDataType (#const BOOLOID)   = Just "Bool"
+getDataType (#const INT2OID)   = Just "Int16"
+getDataType (#const INT4OID)   = Just "Int32"
+getDataType (#const INT8OID)   = Just "Int64"
+getDataType (#const FLOAT4OID) = Just "Float"
+getDataType (#const FLOAT8OID) = Just "Double"
 getDataType _ = Nothing
 
 -- Is a type supported
@@ -90,15 +87,7 @@ c_typeAvailable oid = return $ CBool $ fromBool $ typeAvailable oid
 
 -- Name of corresponding Haskell type
 baseName :: Oid -> String
-baseName oid = maybe undefined name (getDataType oid)
-
--- Name of function to write Haskell type to ValueInfo struct
-writeFunctionName :: Oid -> String
-writeFunctionName oid = maybe undefined writeFunction (getDataType oid)
-
--- Name of function to read Haskell type from ValueInfo struct
-readFunctionName :: Oid -> String
-readFunctionName oid = maybe undefined readFunction (getDataType oid)
+baseName oid = fromMaybe undefined (getDataType oid)
 
 -- Extract module file name from CallInfo struct
 getModFileName :: Ptr CallInfo -> Interpreter String
@@ -157,7 +146,7 @@ writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
 
 writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
     typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return (writeFunctionName typeOid)
+    return ("(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())")
 
 writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
@@ -182,7 +171,7 @@ writeResultDef pValueInfo = do
 readArgDefTyp :: Word16 -> Ptr ValueInfo -> IO String
 readArgDefTyp (#const BASE_TYPE) pValueInfo = do
     typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return (readFunctionName typeOid)
+    return ("(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))")
 
 readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do
@@ -233,11 +222,11 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Data.ByteString"   NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"          NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Text"         NotQualified (ImportList ["Text"]),
-                 ModuleImport "Foreign.Ptr"       NotQualified (ImportList ["wordPtrToPtr"]),
+                 ModuleImport "Foreign.Ptr"       NotQualified (ImportList ["Ptr", "wordPtrToPtr"]),
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["getField", "readIsNull", "readBytea", "readText", "readChar", "readBool", "readInt2", "readInt4", "readInt8", "readFloat4", "readFloat8", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "writeBytea", "writeText", "writeChar", "writeBool", "writeInt2", "writeInt4", "writeInt8", "writeFloat4", "writeFloat8", "iterate"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "ValueInfo", "getField", "readIsNull", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "iterate"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     -- Check signature
