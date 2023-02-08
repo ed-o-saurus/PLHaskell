@@ -69,7 +69,27 @@ Build the `.rpm` package:
 
 **`$>`** `rpmbuild -bb ~/rpmbuild/SPECS/plhaskell.spec`
 
-Install the `.rpm` package written to the `~/rpmbuild/RPMS/`*`<arch>`* directory on the target machine user.
+Install the `.rpm` package written to the `~/rpmbuild/RPMS/`*`<arch>`* directory on the target machine.
+
+### Debian Package Management
+
+The following should be done as a non-root user.
+
+Install git, devscripts, debhelper-compat, postgresql-server-dev-all ghc, libghc-hint-dev:
+
+**`$>`** `sudo apt install git devscripts debhelper-compat postgresql-server-dev-all ghc libghc-hint-dev`
+
+Download the project code:
+
+**`$>`** `git clone https://github.com/ed-o-saurus/PLHaskell`
+
+Build the `.deb` package:
+
+**`$>`** `cd PLHaskell`
+
+**`$>`** `debuild --no-tgz-check`
+
+Install the `.deb` package written to the parent directory on the target machine.
 
 ### Other
 
