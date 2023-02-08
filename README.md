@@ -112,10 +112,6 @@ psql -f tests.sql
 
 If successful, it will terminate with the notice `All tests passed`.
 
-### Room for Improvement
-
-The Makefile, install and uninstall scripts should probably be replaced by a cabal or stack script. Unfortunately, I'm not familiar with either of them. If you see room for improvement or have a complete rewrite, drop me a note.
-
 ## Trust
 
 PL/Haskell is a "trusted" language. The PostgreSQL manual explains:

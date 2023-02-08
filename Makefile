@@ -16,9 +16,6 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# This Makefile should be replace by either cabal or stack.
-# If you know how, drop me a note.
-
 SHELL = /bin/sh
 
 GHC_VERSION = $(shell ghc --numeric-version)
