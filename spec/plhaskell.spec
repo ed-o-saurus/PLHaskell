@@ -17,7 +17,7 @@
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 Name:           plhaskell
-Version:        1.1
+Version:        2.0
 Release:        1%{?dist}
 Summary:        PL/Haskell language extention for PostgreSQL
 

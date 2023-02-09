@@ -15,7 +15,7 @@ Files:     .gitignore
            src/mk_pgutils_conf.sh
            src/PGsupport.hsc
            src/PGutils.hsc
-           src/plhaskell--1.1.sql
+           src/plhaskell--2.0.sql
            src/plhaskell.c
            src/plhaskell.control
            src/plhaskell.h
