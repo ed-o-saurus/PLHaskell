@@ -35,11 +35,31 @@ Bug reports and feature requests should be submitted in the Github issues page.
 
 This document assumes that the reader is familiar with PostgreSQL (specifically procedural languages) and with the Haskell language.
 
+## Package Repositories
+
+The easiest way to install the project is to use the RPM package repository for Fedora or the apt package repository for Ubuntu.
+
+### Ubuntu
+
+Add the signing key to the apt keys:
+
+**`$>`** `wget --quiet -O- https://ed-o-saurus.github.io/keys/A9DD4516.asc | gpg --dearmor | sudo tee /usr/share/keyrings/plhaskell-keyring.gpg > /dev/null`
+
+Add the repository:
+
+**`$>`** `echo deb \[signed-by=/usr/share/keyrings/plhaskell-keyring.gpg\] https://ed-o-saurus.github.io/repos/plhaskell/ubuntu/$(lsb_release -cs)/apt-repo stable main | sudo tee /etc/apt/sources.list.d/plhaskell.list > /dev/null`
+
+Update the repository information:
+
+**`$>`** `sudo apt update`
+
+Install the package:
+
+**`$>`** `sudo apt install plhaskell`
+
 ## Build and Install
 
 This extension is intended to be built and installed in a Linux environment. It has only been tested on the x86-64 architecture.
-
-The easiest way to install the project is to use an .rpm package (for Red Hat based systems including Fedora) or a .deb package (for Debian based systems including Ubuntu).
 
 ### Red Hat Package Management
 
