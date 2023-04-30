@@ -75,7 +75,7 @@ struct ValueInfo *new_value_info(Oid typeoid);
 void delete_value_info(struct ValueInfo *p_value_info);
 
 // Functions for SPI queries
-int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);
+int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);
 void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber);
 void get_oids(struct SPITupleTable *tuptable, Oid *oids);
 void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber);

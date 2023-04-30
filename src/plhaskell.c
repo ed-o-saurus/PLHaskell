@@ -727,14 +727,17 @@ void delete_value_info(struct ValueInfo *p_value_info)
 }
 
 // Execute an SPI query
-int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls) __attribute__((visibility ("hidden")));
-int run_query(char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls)
+int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls) __attribute__((visibility ("hidden")));
+int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls)
 {
     int spi_code;
-    char nulls[nargs];
+    char nulls[nargs+1];
 
     for(int i=0; i<nargs; i++)
         nulls[i] = is_nulls[i]?'n':' ';
+
+    // This is just to stop the compiler from complaining.
+    nulls[nargs] = '\0';
 
     spi_code = SPI_execute_with_args(command, nargs, argtypes, values, nulls, current_p_call_info->spi_read_only, 0);
     if(spi_code < 0)

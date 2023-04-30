@@ -42,22 +42,22 @@ clean :
 distclean: clean
 
 src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/MemoryUtils.o
-	ghc -Weverything -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR)
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR)
 
 src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -c src/plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c src/plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/MemoryUtils.hi src/plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs   -o src/PLHaskell.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs   -o src/PLHaskell.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
 
 src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/MemoryUtils.hi src/plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs     -o src/PGutils.o     -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs     -o src/PGutils.o     -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
 
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/MemoryUtils.hi src/plhaskell.h
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs   -o src/PGsupport.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs   -o src/PGsupport.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
 
 src/MemoryUtils.o src/MemoryUtils.hi : src/MemoryUtils.hs
-	ghc -Weverything -Werror -Wno-unsafe -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/MemoryUtils.hs -o src/MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/MemoryUtils.hs -o src/MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.0
 
 %.hs : %.hsc src/plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR)
