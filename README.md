@@ -222,7 +222,7 @@ debug5    |
 
 In addition, the function `raiseError :: Text -> a` stops execution and raises an error.
 
-## Queries
+### Queries
 
 Queries can be performed from inside PL/Haskell with the function `query :: Text -> [QueryParam] -> PGm QueryResults`. The first argument is the query itself. The second argument is a list of values to be substituted into the query using the expressions `$`*`n`*. This should be used rather than constructing a query string directly to prevent [SQL injection attacks](https://xkcd.com/327/).
 
