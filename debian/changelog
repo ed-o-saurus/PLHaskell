@@ -1,5 +1,5 @@
-plhaskell (2.0-1) UNRELEASED; urgency=low
+plhaskell (2.1-1) UNRELEASED; urgency=low
 
   * Initial release.
 
- -- Ed Behn <ed@behn.us>  Mon, 06 Feb 2023 19:12:01 -0500
+ -- Ed Behn <ed@behn.us>  Sun, 30 Apr 2023 08:33:00 -0500

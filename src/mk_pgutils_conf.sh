@@ -20,10 +20,10 @@
 
 cat - << EOF
 name:            pgutils
-version:         2.0
+version:         2.1
 visibility:      public
-id:              pgutils-2.0
-key:             pgutils-2.0
+id:              pgutils-2.1
+key:             pgutils-2.1
 license:         GPL
 synopsis:        PL/Haskell Utilities
 exposed:         True
