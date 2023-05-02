@@ -792,4 +792,3 @@ BEGIN
     raise NOTICE 'All tests passed';
 END
 $$;
-
