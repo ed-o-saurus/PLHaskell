@@ -52,7 +52,7 @@ make SELINUX=1
 %install
 
 # Suppress RPATHS errors
-export QA_RPATHS=1
+export QA_RPATHS=0x0020
 
 rm -rf $RPM_BUILD_ROOT
 
