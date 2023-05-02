@@ -46,8 +46,14 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 
-static void rts_msg_fn(int elevel, const char *s, va_list ap);
+static int rts_msg_fn(int elevel, const char *s, va_list ap);
+
+#if __GLASGOW_HASKELL__ >= 902
+static int rts_debug_msg_fn(const char *s, va_list ap);
+#else
 static void rts_debug_msg_fn(const char *s, va_list ap);
+#endif
+
 static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void unlink_all(int code, Datum arg);
@@ -675,7 +681,7 @@ void plhaskell_report(int elevel, char *msg)
         ereport(elevel, errmsg("%s", msg));
 }
 
-static void rts_msg_fn(int elevel, const char *s, va_list ap)
+static int rts_msg_fn(int elevel, const char *s, va_list ap)
 {
     char *buf;
     int len;
@@ -687,12 +693,21 @@ static void rts_msg_fn(int elevel, const char *s, va_list ap)
     plhaskell_report(elevel, buf);
 
     pfree(buf);
+
+    return len;
 }
 
+#if __GLASGOW_HASKELL__ >= 902
+static int rts_debug_msg_fn(const char *s, va_list ap)
+{
+    return rts_msg_fn(DEBUG1, s, ap);
+}
+#else
 static void rts_debug_msg_fn(const char *s, va_list ap)
 {
     rts_msg_fn(DEBUG1, s, ap);
 }
+#endif
 
 static void rts_fatal_msg_fn(const char *s, va_list ap)
 {
