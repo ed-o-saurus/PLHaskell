@@ -57,7 +57,7 @@ src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/MemoryUtils.hi src/plhas
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs   -o src/PGsupport.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.1
 
 src/MemoryUtils.o src/MemoryUtils.hi : src/MemoryUtils.hs
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/MemoryUtils.hs -o src/MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.1
+	ghc -Wall -O1 -Werror -optc -Wall -Wno-trustworthy-safe -fforce-recomp -optc -fvisibility=hidden -isrc -c src/MemoryUtils.hs -o src/MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-2.1
 
 %.hs : %.hsc src/plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR)
