@@ -666,16 +666,16 @@ void plhaskell_report(int elevel, char *msg)
         msg[strlen(msg)-1] = '\0';
 
     // Replace temp file name with name of function
-    if(strncmp(msg, first_p_call_info->mod_file_name, 17)==0 && msg[17]==':')
+    if(strncmp(msg, current_p_call_info->mod_file_name, 17)==0 && msg[17]==':')
     {
         int i;
         for(i=18; isdigit(msg[i]); i++);
 
         // Reduce line number by one to account for added line of code in file
         if(msg[i]==':')
-            ereport(elevel, errmsg("%s:%d:%s", first_p_call_info->func_name, atoi(msg+18)-1, msg+i+1));
+            ereport(elevel, errmsg("%s:%d:%s", current_p_call_info->func_name, atoi(msg+18)-1, msg+i+1));
         else
-            ereport(elevel, errmsg("%s:%s", first_p_call_info->func_name, msg+18));
+            ereport(elevel, errmsg("%s:%s", current_p_call_info->func_name, msg+18));
     }
     else
         ereport(elevel, errmsg("%s", msg));
