@@ -268,6 +268,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     bool is_null;
     text *src;
     int modfd;
+    char *temp_dir;
 
     p_call_info->return_set = return_set;
 
@@ -355,10 +356,23 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     src = DatumGetTextPP(prosrc);
 
-    p_call_info->mod_file_name = palloc(18);
-    memcpy(p_call_info->mod_file_name, "/tmp/ModXXXXXX.hs", 18);
+    if ((temp_dir=getenv("TMPDIR")))
+    {
+        if(temp_dir[0] != '/')
+            ereport(ERROR, errmsg("$TMPDIR is not an absolute path"));
+
+        p_call_info->mod_file_name = palloc(strlen(temp_dir)+14);
+        sprintf(p_call_info->mod_file_name, "%s/ModXXXXXX.hs", temp_dir);
+    }
+    else
+    {
+        p_call_info->mod_file_name = palloc(18);
+        strcpy(p_call_info->mod_file_name, "/tmp/ModXXXXXX.hs");
+    }
 
     modfd = mkstemps(p_call_info->mod_file_name, 3);
+    if(modfd < 0)
+        ereport(ERROR, errmsg("Unable to create temporary file (%s)", p_call_info->mod_file_name));
 
     if(write(modfd, "module PGmodule (", 17) < 0)
     {

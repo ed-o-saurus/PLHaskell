@@ -278,6 +278,10 @@ The constructors for `QueryResultValue` are the following:
 
 By default, the maximum memory that can be used by the Haskell runtime system is 128 MB. This can be changed by setting the `plhaskell.max_memory` variable in the `postgresql.conf` file. 
 
+## Temporary Files
+
+PL/Haskell creates temporary files. By default, these are placed in the `/tmp` directory. The location can be overloaded by setting the environment variable `TMPDIR` to the absolute path of a different directory.
+
 ## GHC Version
 
 The function `ghc_version` takes no arguments and returns the version of the underlying GHC API. Values are:
