@@ -278,6 +278,14 @@ The constructors for `QueryResultValue` are the following:
 
 By default, the maximum memory that can be used by the Haskell runtime system is 128 MB. This can be changed by setting the `plhaskell.max_memory` variable in the `postgresql.conf` file. 
 
+## GHC Version
+
+The function `ghc_version` takes no arguments and returns the version of the underlying GHC API. Values are:
+
+* 804 for GHC 8.4.x
+* 806 for GHC 8.6.x
+* etc...
+
 ## Examples
 
 ### Addition

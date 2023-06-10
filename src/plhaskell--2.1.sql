@@ -47,3 +47,11 @@ CREATE TRUSTED LANGUAGE plhaskell
   VALIDATOR plhaskell_validator;
 
 COMMENT ON LANGUAGE plhaskell IS 'PL/Haskell procedural language';
+
+CREATE FUNCTION ghc_version()
+  RETURNS integer
+  IMMUTABLE
+  PARALLEL SAFE
+  LANGUAGE c AS 'MODULE_PATHNAME';
+
+COMMENT ON FUNCTION ghc_version() IS 'GHC API version used by PL/Haskell procedural language';

@@ -28,7 +28,7 @@
 module PLHaskell () where
 
 import Control.Monad                (forM, forM_, (>=>))
-import Data.Int                     (Int16)
+import Data.Int                     (Int16, Int32)
 import Data.List                    (intercalate)
 import Data.Maybe                   (fromMaybe)
 import Data.Word                    (Word16)
@@ -37,7 +37,7 @@ import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Utils        (fromBool, toBool)
 import Foreign.Ptr                  (Ptr, plusPtr, ptrToWordPtr)
 import Foreign.Storable             (Storable, peekByteOff, peekElemOff)
-import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
+import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
 import Prelude                      (Bool (False, True), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, return, show, undefined, ($), (++), (-), (.), (>>=))
 
 import MemoryUtils                  (pWithCString)
@@ -331,3 +331,8 @@ mkIterator pCallInfo = execute $ do
     runStmt "function <- wrapVoidFunc (iterate pList pMoreResults)"
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo))
     runStmt "poke pFunction function"
+
+-- Version of the underlying GHC API.
+foreign export capi "hint_ghc_version" hint_ghc_version :: Int32
+hint_ghc_version :: Int32
+hint_ghc_version = fromIntegral ghcVersion

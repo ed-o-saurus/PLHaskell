@@ -800,3 +800,9 @@ static void unlink_all(int code, Datum arg)
     for(struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
         unlink(p_call_info->mod_file_name);
 }
+
+PG_FUNCTION_INFO_V1(ghc_version);
+Datum ghc_version(PG_FUNCTION_ARGS)
+{
+    PG_RETURN_INT32(hint_ghc_version());
+}
