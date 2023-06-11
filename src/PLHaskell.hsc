@@ -136,10 +136,15 @@ getSignature pCallInfo = liftIO $ do
     argTypeNames <- forM [0 .. nargs-1] (getArgValueInfo pCallInfo >=> getTypeName)
     resultTypeName <- (#peek struct CallInfo, result) pCallInfo >>= getTypeName
 
+    CBool trusted <- (#peek struct CallInfo, trusted) pCallInfo
     CBool returnSet <- (#peek struct CallInfo, return_set) pCallInfo
-    if toBool returnSet
-        then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
-        else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
+    if toBool trusted
+        then if toBool returnSet
+            then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
+            else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
+        else if toBool returnSet
+            then return (intercalate " -> " (argTypeNames ++ ["IO [" ++ resultTypeName ++ "]"]))
+            else return (intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"]))
 
 writeResultDefTyp :: Word16 -> Ptr ValueInfo -> IO String
 writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
@@ -206,7 +211,7 @@ definePArgValueInfo pCallInfo i = do
     runStmt (interpolate "let pArgValueInfo? = wordPtrToPtr " i ++ (show . ptrToWordPtr) pArgValueInfo)
 
 -- Set up interpreter to evaluate a function
-setUpEvalInt :: Ptr CallInfo -> Interpreter (Int16, String)
+setUpEvalInt :: Ptr CallInfo -> Interpreter (Int16, String, Bool)
 setUpEvalInt pCallInfo = do
     set [languageExtensions := [OverloadedStrings, Safe], installedModulesInScope := False]
     modFileName <- getModFileName pCallInfo
@@ -224,6 +229,8 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
                  ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "ValueInfo", "getField", "readIsNull", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "iterate"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
+
+    CBool trusted <- (liftIO . (#peek struct CallInfo, trusted)) pCallInfo
 
     -- Check signature
     signature <- getSignature pCallInfo
@@ -247,7 +254,7 @@ setUpEvalInt pCallInfo = do
     forM_ [0 .. nargs-1] (definePArgValueInfo pCallInfo)
     runStmt ("let pResultValueInfo = wordPtrToPtr " ++ (show . ptrToWordPtr) pResultValueInfo)
 
-    return (nargs, funcName)
+    return (nargs, funcName, toBool trusted)
 
 -- Execute and interpreter monad and handle the result
 execute :: Interpreter () -> IO ()
@@ -271,7 +278,7 @@ checkSignature pCallInfo = execute $ do
     loadModules [modFileName]
 
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"         NotQualified (ImportList ["Bool", "Char", "Double", "Float", "Maybe"]),
+    setImportsF [ModuleImport "Prelude"         NotQualified (ImportList ["Bool", "Char", "Double", "Float", "Maybe", "IO"]),
                  ModuleImport "Data.ByteString" NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"        NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Text"       NotQualified (ImportList ["Text"]),
@@ -289,12 +296,14 @@ checkSignature pCallInfo = execute $ do
 foreign export capi "mk_function" mkFunction :: Ptr CallInfo -> IO ()
 mkFunction :: Ptr CallInfo -> IO ()
 mkFunction pCallInfo = execute $ do
-    (nargs, funcName) <- setUpEvalInt pCallInfo
+    (nargs, funcName, trusted) <- setUpEvalInt pCallInfo
 
     -- Build the Function
     let prog_read_args = concatMap (interpolate "arg? <- readArg? pArgValueInfo?;") [0 .. nargs-1]
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
-    let prog_call = "result <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ");"
+    let prog_call = if trusted
+        then "result <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ");"
+        else "result <-       (PGmodule." ++ funcName ++ argsNames ++ ");"
     let prog_write_result = "writeResult result pResultValueInfo"
     runStmt ("function <- wrapVoidFunc (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})")
 
@@ -310,14 +319,17 @@ mkFunction pCallInfo = execute $ do
 foreign export capi "mk_iterator" mkIterator :: Ptr CallInfo -> IO ()
 mkIterator :: Ptr CallInfo -> IO ()
 mkIterator pCallInfo = execute $ do
-    (nargs, funcName) <- setUpEvalInt pCallInfo
+    (nargs, funcName, trusted) <- setUpEvalInt pCallInfo
 
     -- Get the arguments
     forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgValueInfo?"))
 
     -- Set writeResultList to be a list of actions each of which loads a result into the result ValueInfo struct
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
-    runStmt ("results <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ")")
+    if trusted
+        then runStmt ("results <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ")")
+        else runStmt ("results <-       (PGmodule." ++ funcName ++ argsNames ++ ")")
+
     runStmt "let writeResultList = map ((flip writeResult) pResultValueInfo) results"
 
     -- poke the stable pointer value into the List field of the CallInfo struct

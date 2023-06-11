@@ -55,6 +55,7 @@ struct CallInfo
 {
     char *func_name; // Name of function
     char *mod_file_name; // Temporary file where code is stored
+    bool trusted; // Is the language the trusted version?
     int16 nargs; // Number of arguments
     struct ValueInfo **args; // Arguments
     struct ValueInfo *result; // Returned result

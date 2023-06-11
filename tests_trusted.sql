@@ -27,7 +27,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -36,7 +36,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -45,7 +45,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -54,7 +54,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -63,7 +63,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -72,7 +72,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -81,7 +81,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -90,7 +90,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 
@@ -99,7 +99,7 @@ $$
     import PGutils (PGm)
 
     echo :: a -> PGm a
-    echo a = return a
+    echo = return
 $$
 LANGUAGE plhaskell;
 

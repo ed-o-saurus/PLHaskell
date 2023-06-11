@@ -26,6 +26,7 @@
 #include "postgres.h"
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_class_d.h"
+#include "catalog/pg_language_d.h"
 #include "catalog/pg_proc_d.h"
 #include "catalog/pg_type_d.h"
 #include "utils/guc.h"
@@ -263,8 +264,8 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 // Fill CallInfo struct
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set)
 {
-    HeapTuple proctup;
-    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel;
+    HeapTuple proctup, lantup;
+    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel, prolang, lanpltrusted;
     ArrayType *proargtypes_arr;
     Oid *argtypes;
     bool is_null;
@@ -277,6 +278,20 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
         ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
+
+    prolang = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prolang, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_proc.prolang is NULL"));
+
+    lantup = SearchSysCache1(LANGOID, prolang);
+
+    lanpltrusted = SysCacheGetAttr(LANGOID, lantup, Anum_pg_language_lanpltrusted, &is_null);
+    if(is_null)
+           ereport(ERROR, errmsg("pg_language.lanpltrusted is NULL"));
+
+    p_call_info->trusted = DatumGetBool(lanpltrusted);
+
+    ReleaseSysCache(lantup);
 
     provariadic = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provariadic, &is_null);
     if(is_null)
