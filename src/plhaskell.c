@@ -216,7 +216,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(plhaskell_validator);
 Datum plhaskell_validator(PG_FUNCTION_ARGS)
 {
-    struct CallInfo *p_call_info;
+    struct CallInfo *p_call_info, *prev_p_call_info;
     Oid funcoid = PG_GETARG_OID(0);
     MemoryContextCallback *cb;
 
@@ -252,8 +252,10 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 
     build_call_info(p_call_info, funcoid, DatumGetBool(proretset));
 
-    // Raise error if the function's signature is incorrect
-    check_signature(p_call_info);
+    prev_p_call_info = current_p_call_info;
+    current_p_call_info = p_call_info;
+    check_signature(p_call_info); // Raise error if the function's signature is incorrect
+    current_p_call_info = prev_p_call_info;
 
     PG_RETURN_VOID();
 }
