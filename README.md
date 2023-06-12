@@ -322,7 +322,7 @@ LANGUAGE plhaskell;
 
 This section shows how to return a set of results. The functions listed produce lists of prime numbers using the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes).
 
-#### Composite type
+#### Composite Type
 
 The function in this section returns a set of composite results.
 
@@ -366,7 +366,7 @@ The following is produced
   9 | 23  |
  10 | 29  |
 
-#### Infinite list
+#### Infinite List
 
 The following function returns a infinite list of prime numbers
 
@@ -438,7 +438,7 @@ $$
 LANGUAGE plhaskell;
 ```
 
-### Queries
+### Query
 
 The following deletes all elements of table `t` and returns the number of rows removed.
 
