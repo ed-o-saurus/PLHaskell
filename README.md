@@ -459,8 +459,6 @@ LANGUAGE plhaskell;
 The following returns the last names of students with the passed first name.
 
 ```
-DROP FUNCTION last_names(text);
-
 CREATE FUNCTION last_names(text) RETURNS SETOF text IMMUTABLE AS
 $$
     import PGutils (PGm, query, QueryResults (SelectResults), QueryParam (QueryParamText), QueryResultValue (QueryResultValueText))
