@@ -219,7 +219,7 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "flip", "map", "return", "(>>=)"]),
+    setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "flip", "map", "return", "($)", "(>>=)"]),
                  ModuleImport "Data.ByteString"   NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"          NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Text"         NotQualified (ImportList ["Text"]),
@@ -302,8 +302,8 @@ mkFunction pCallInfo = execute $ do
     let prog_read_args = concatMap (interpolate "arg? <- readArg? pArgValueInfo?;") [0 .. nargs-1]
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     let prog_call = if trusted
-        then "result <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ");"
-        else "result <-       (PGmodule." ++ funcName ++ argsNames ++ ");"
+        then "result <- unPGm $ PGmodule." ++ funcName ++ argsNames ++ ";"
+        else "result <-         PGmodule." ++ funcName ++ argsNames ++ ";"
     let prog_write_result = "writeResult result pResultValueInfo"
     runStmt ("function <- wrapVoidFunc (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})")
 
@@ -327,8 +327,8 @@ mkIterator pCallInfo = execute $ do
     -- Set writeResultList to be a list of actions each of which loads a result into the result ValueInfo struct
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     if trusted
-        then runStmt ("results <- unPGm (PGmodule." ++ funcName ++ argsNames ++ ")")
-        else runStmt ("results <-       (PGmodule." ++ funcName ++ argsNames ++ ")")
+        then runStmt ("results <- unPGm $ PGmodule." ++ funcName ++ argsNames)
+        else runStmt ("results <-         PGmodule." ++ funcName ++ argsNames)
 
     runStmt "let writeResultList = map ((flip writeResult) pResultValueInfo) results"
 
