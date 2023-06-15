@@ -343,6 +343,6 @@ mkIterator pCallInfo = execute $ do
     runStmt "poke pFunction function"
 
 -- Version of the underlying GHC API.
-foreign export capi "hint_ghc_version" hint_ghc_version :: Int32
-hint_ghc_version :: Int32
-hint_ghc_version = fromIntegral ghcVersion
+foreign export capi "hint_ghc_version" hintGhcVersion :: Int32
+hintGhcVersion :: Int32
+hintGhcVersion = fromIntegral ghcVersion
