@@ -185,7 +185,11 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
             build_call_info(p_call_info, funcoid, false);
+
+            prev_p_call_info = current_p_call_info;
+            current_p_call_info = p_call_info;
             mk_function(p_call_info);
+            current_p_call_info = prev_p_call_info;
 
             MemoryContextSwitchTo(old_context);
         }
