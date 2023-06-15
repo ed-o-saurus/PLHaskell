@@ -155,7 +155,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        if(p_call_info->more_results)
+        if(p_call_info->list) // Is there another result?
         {
             rsi->isDone = ExprMultipleResult;
             return read_value_info(p_call_info->result, &fcinfo->isnull); // Get the next result

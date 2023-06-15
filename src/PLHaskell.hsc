@@ -337,10 +337,8 @@ mkIterator pCallInfo = execute $ do
     runStmt ("let pList = wordPtrToPtr " ++ show ((#ptr struct CallInfo, list) pCallInfo))
     runStmt "poke pList spList"
 
-    runStmt ("let pMoreResults = wordPtrToPtr " ++ show ((#ptr struct CallInfo, more_results) pCallInfo))
-
     -- poke the iterator into the Function field of the CallInfo struct
-    runStmt "function <- wrapVoidFunc (iterate pList pMoreResults)"
+    runStmt "function <- wrapVoidFunc (iterate pList)"
     runStmt ("let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo))
     runStmt "poke pFunction function"
 

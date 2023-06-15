@@ -190,17 +190,15 @@ writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (f
 writeVoid :: () -> Ptr ValueInfo -> IO ()
 writeVoid () _ = return ()
 
-iterate :: Ptr (StablePtr [IO ()]) -> Ptr CBool -> IO ()
-iterate pList pMoreResults = do
+iterate :: Ptr (StablePtr [IO ()]) -> IO ()
+iterate pList = do
     spList <- peek pList
     writeResultList <- deRefStablePtr spList
     freeStablePtr spList
     case writeResultList of
         [] -> do
-            poke pMoreResults (CBool (fromBool False))
             poke pList (castPtrToStablePtr nullPtr)
         (writeResult:tail) -> do
-            poke pMoreResults (CBool (fromBool True))
             (newStablePtr tail) >>= (poke pList)
             writeResult
 
