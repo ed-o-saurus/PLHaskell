@@ -36,6 +36,8 @@
 
 extern char pkglib_path[];
 
+typedef void (*call_info_func)(void*);
+
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set);
 static void build_value_info(struct ValueInfo *p_value_info, Oid typeoid);
 
@@ -46,6 +48,8 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
 
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
+
+static void call_function(void *p_call_info);
 
 static int rts_msg_fn(int elevel, const char *s, va_list ap);
 
@@ -58,6 +62,8 @@ static void rts_debug_msg_fn(const char *s, va_list ap);
 static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void unlink_all(int code, Datum arg);
+
+void call_wrapper(call_info_func func, struct CallInfo *p_call_info);
 
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
@@ -76,7 +82,6 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     Datum proretset;
     bool is_null;
     int spi_code;
-    struct CallInfo *prev_p_call_info;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
@@ -127,10 +132,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             if(spi_code < 0)
                 ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-            prev_p_call_info = current_p_call_info;
-            current_p_call_info = p_call_info;
-            mk_iterator(p_call_info); // Setup the iterator and list
-            current_p_call_info = prev_p_call_info;
+            // Setup the iterator and list
+            call_wrapper(mk_iterator, p_call_info);
 
             spi_code = SPI_finish();
             if(spi_code < 0)
@@ -146,10 +149,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        prev_p_call_info = current_p_call_info;
-        current_p_call_info = p_call_info;
-        (*p_call_info->function)(); // Run the function
-        current_p_call_info = prev_p_call_info;
+        // Run the function
+        call_wrapper(call_function, p_call_info);
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -186,10 +187,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
             build_call_info(p_call_info, funcoid, false);
 
-            prev_p_call_info = current_p_call_info;
-            current_p_call_info = p_call_info;
-            mk_function(p_call_info);
-            current_p_call_info = prev_p_call_info;
+            // Make the function
+            call_wrapper(mk_function, p_call_info);
 
             MemoryContextSwitchTo(old_context);
         }
@@ -204,10 +203,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        prev_p_call_info = current_p_call_info;
-        current_p_call_info = p_call_info;
-        (*p_call_info->function)(); // Run the function
-        current_p_call_info = prev_p_call_info;
+        // Run the function
+        call_wrapper(call_function, p_call_info);
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -221,7 +218,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(plhaskell_validator);
 Datum plhaskell_validator(PG_FUNCTION_ARGS)
 {
-    struct CallInfo *p_call_info, *prev_p_call_info;
+    struct CallInfo *p_call_info;
     Oid funcoid = PG_GETARG_OID(0);
     MemoryContextCallback *cb;
 
@@ -257,10 +254,8 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 
     build_call_info(p_call_info, funcoid, DatumGetBool(proretset));
 
-    prev_p_call_info = current_p_call_info;
-    current_p_call_info = p_call_info;
-    check_signature(p_call_info); // Raise error if the function's signature is incorrect
-    current_p_call_info = prev_p_call_info;
+    // Raise error if the function's signature is incorrect
+    call_wrapper(check_signature, p_call_info);
 
     PG_RETURN_VOID();
 }
@@ -716,6 +711,11 @@ void plhaskell_report(int elevel, char *msg)
         ereport(elevel, errmsg("%s", msg));
 }
 
+static void call_function(void *p_call_info)
+{
+    (*((struct CallInfo*)p_call_info)->function)();
+}
+
 static int rts_msg_fn(int elevel, const char *s, va_list ap)
 {
     char *buf;
@@ -840,4 +840,12 @@ PG_FUNCTION_INFO_V1(ghc_version);
 Datum ghc_version(PG_FUNCTION_ARGS)
 {
     PG_RETURN_INT32(hint_ghc_version());
+}
+
+void call_wrapper(call_info_func func, struct CallInfo *p_call_info)
+{
+    struct CallInfo *prev_p_call_info = current_p_call_info;
+    current_p_call_info = p_call_info;
+    (*func)(p_call_info); // Call the function
+    current_p_call_info = prev_p_call_info;
 }
