@@ -718,16 +718,11 @@ static void call_function(void *p_call_info)
 
 static int rts_msg_fn(int elevel, const char *s, va_list ap)
 {
-    char *buf;
+    char buf[4096];
     int len;
 
-    len = vsnprintf(NULL, 0, s, ap);
-    buf = palloc(len+1); // Don't forget the \0 terminator
-    vsnprintf(buf, len+1, s, ap);
-
+    len = vsnprintf(buf, 4096, s, ap);
     plhaskell_report(elevel, buf);
-
-    pfree(buf);
 
     return len;
 }
