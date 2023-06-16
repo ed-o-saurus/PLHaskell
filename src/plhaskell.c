@@ -378,7 +378,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
             ereport(ERROR, errmsg("$TMPDIR is not an absolute path"));
 
         p_call_info->mod_file_name = palloc(strlen(temp_dir)+14);
-        sprintf(p_call_info->mod_file_name, "%s/ModXXXXXX.hs", temp_dir);
+        snprintf(p_call_info->mod_file_name, strlen(temp_dir)+14, "%s/ModXXXXXX.hs", temp_dir);
     }
     else
     {
@@ -658,7 +658,7 @@ static void enter(void)
     on_proc_exit(unlink_all, (Datum)0);
 
     // Add the directory containing PGutils to the GHC Package Path
-    sprintf(GHC_PackagePath, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
+    snprintf(GHC_PackagePath, MAXPGPATH+18, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
     setenv("GHC_PACKAGE_PATH", GHC_PackagePath, true);
 
     DefineCustomIntVariable("plhaskell.max_memory",
