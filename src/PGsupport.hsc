@@ -103,7 +103,7 @@ instance ReadWrite ByteString where
         packCStringLen (pData, fromIntegral len)
 
     write result = useAsCStringLen result (\(src, len) -> do
-        p <- palloc (fromIntegral (len + (#const VARHDRSZ)))
+        p <- palloc $ fromIntegral (len + (#const VARHDRSZ))
         let value = Datum (ptrToWordPtr p)
         setVarSize value (fromIntegral len)
         pData <- getVarData value
