@@ -28,6 +28,7 @@
 #include "catalog/pg_class_d.h"
 #include "catalog/pg_language_d.h"
 #include "catalog/pg_proc_d.h"
+#include "catalog/pg_tablespace_d.h"
 #include "catalog/pg_type_d.h"
 #include "utils/guc.h"
 #include "utils/syscache.h"
@@ -270,7 +271,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     bool is_null;
     text *src;
     int modfd;
-    char *temp_dir;
+    char tempdirpath[MAXPGPATH];
 
     p_call_info->return_set = return_set;
 
@@ -372,19 +373,9 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     src = DatumGetTextPP(prosrc);
 
-    if ((temp_dir=getenv("TMPDIR")))
-    {
-        if(temp_dir[0] != '/')
-            ereport(ERROR, errmsg("$TMPDIR is not an absolute path"));
-
-        p_call_info->mod_file_name = palloc(strlen(temp_dir)+14);
-        snprintf(p_call_info->mod_file_name, strlen(temp_dir)+14, "%s/ModXXXXXX.hs", temp_dir);
-    }
-    else
-    {
-        p_call_info->mod_file_name = palloc(18);
-        strcpy(p_call_info->mod_file_name, "/tmp/ModXXXXXX.hs");
-    }
+    TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
+    p_call_info->mod_file_name = palloc0(MAXPGPATH);
+    snprintf(p_call_info->mod_file_name, MAXPGPATH, "%s/ModXXXXXX.hs", tempdirpath);
 
     modfd = mkstemps(p_call_info->mod_file_name, 3);
     if(modfd < 0)
@@ -654,12 +645,17 @@ static void enter(void)
     static int argc = sizeof(argv) / sizeof(char*);
     static char **argv_rts = argv;
     RtsConfig conf = defaultRtsConfig;
+    char tempdirpath[MAXPGPATH];
 
     on_proc_exit(unlink_all, (Datum)0);
 
     // Add the directory containing PGutils to the GHC Package Path
     snprintf(GHC_PackagePath, MAXPGPATH+18, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
     setenv("GHC_PACKAGE_PATH", GHC_PackagePath, true);
+
+    TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
+    MakePGDirectory(tempdirpath);
+    setenv("TMPDIR", tempdirpath, true);
 
     DefineCustomIntVariable("plhaskell.max_memory",
                              gettext_noop("Maximum memory for PL/Haskell"),
@@ -691,21 +687,23 @@ static void gcDoneHook(const struct GCDetails_ *stats)
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
+    int mod_file_name_len = strlen(current_p_call_info->mod_file_name);
+
     // Strip trailing new-line if necessary
     if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
         msg[strlen(msg)-1] = '\0';
 
     // Replace temp file name with name of function
-    if(strncmp(msg, current_p_call_info->mod_file_name, 17)==0 && msg[17]==':')
+    if(strncmp(msg, current_p_call_info->mod_file_name, mod_file_name_len)==0 && msg[mod_file_name_len]==':')
     {
         int i;
         for(i=18; isdigit(msg[i]); i++);
 
         // Reduce line number by one to account for added line of code in file
         if(msg[i]==':')
-            ereport(elevel, errmsg("%s:%d:%s", current_p_call_info->func_name, atoi(msg+18)-1, msg+i+1));
+            ereport(elevel, errmsg("%s:%d:%s", current_p_call_info->func_name, atoi(msg+mod_file_name_len+1)-1, msg+i+1));
         else
-            ereport(elevel, errmsg("%s:%s", current_p_call_info->func_name, msg+18));
+            ereport(elevel, errmsg("%s:%s", current_p_call_info->func_name, msg+mod_file_name_len+1));
     }
     else
         ereport(elevel, errmsg("%s", msg));
@@ -828,7 +826,8 @@ void free_tuptable(struct SPITupleTable *tuptable)
 static void unlink_all(int code, Datum arg)
 {
     for(struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
-        unlink(p_call_info->mod_file_name);
+        if(p_call_info->mod_file_name)
+            unlink(p_call_info->mod_file_name);
 }
 
 PG_FUNCTION_INFO_V1(ghc_version);
