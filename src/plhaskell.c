@@ -272,6 +272,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     text *src;
     int modfd;
     char tempdirpath[MAXPGPATH];
+    FILE *modfile;
 
     p_call_info->return_set = return_set;
 
@@ -376,36 +377,13 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
     p_call_info->mod_file_name = palloc0(MAXPGPATH);
     snprintf(p_call_info->mod_file_name, MAXPGPATH, "%s/ModXXXXXX.hs", tempdirpath);
-
-    modfd = mkstemps(p_call_info->mod_file_name, 3);
-    if(modfd < 0)
+    modfile = fdopen(mkstemps(p_call_info->mod_file_name, 3), "w");
+    if(!modfile)
         ereport(ERROR, errmsg("Unable to create temporary file (%s)", p_call_info->mod_file_name));
 
-    if(write(modfd, "module PGmodule (", 17) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    if(write(modfd, p_call_info->func_name, strlen(p_call_info->func_name)) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    if(write(modfd, ") where\n", 8) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    if(write(modfd, VARDATA_ANY(src), VARSIZE_ANY_EXHDR(src)) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    close(modfd);
+    fprintf(modfile, "module PGmodule (%s) where\n", p_call_info->func_name);
+    fwrite(VARDATA_ANY(src), VARSIZE_ANY_EXHDR(src), 1, modfile);
+    fclose(modfile);
 
     ReleaseSysCache(proctup);
 
