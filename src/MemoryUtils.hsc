@@ -82,7 +82,6 @@ pWithArrayLen :: Storable a => [a] -> (Int -> Ptr a -> IO b) -> IO b
 pWithArrayLen vals action = do
     pallocArray len $ \ptr -> do
         pokeArray ptr vals
-        retVal <- action len ptr
-        return retVal
+        action len ptr
     where
         len = length vals

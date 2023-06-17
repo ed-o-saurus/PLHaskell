@@ -26,7 +26,9 @@
 #include "postgres.h"
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_class_d.h"
+#include "catalog/pg_language_d.h"
 #include "catalog/pg_proc_d.h"
+#include "catalog/pg_tablespace_d.h"
 #include "catalog/pg_type_d.h"
 #include "utils/guc.h"
 #include "utils/syscache.h"
@@ -34,6 +36,8 @@
 #include "storage/ipc.h"
 
 extern char pkglib_path[];
+
+typedef void (*call_info_func)(void*);
 
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set);
 static void build_value_info(struct ValueInfo *p_value_info, Oid typeoid);
@@ -46,6 +50,8 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 
+static void call_function(void *p_call_info);
+
 static int rts_msg_fn(int elevel, const char *s, va_list ap);
 
 #if __GLASGOW_HASKELL__ >= 902
@@ -57,6 +63,8 @@ static void rts_debug_msg_fn(const char *s, va_list ap);
 static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void unlink_all(int code, Datum arg);
+
+void call_wrapper(call_info_func func, struct CallInfo *p_call_info);
 
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
@@ -75,7 +83,6 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     Datum proretset;
     bool is_null;
     int spi_code;
-    struct CallInfo *prev_p_call_info;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
@@ -126,10 +133,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             if(spi_code < 0)
                 ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-            prev_p_call_info = current_p_call_info;
-            current_p_call_info = p_call_info;
-            mk_iterator(p_call_info); // Setup the iterator and list
-            current_p_call_info = prev_p_call_info;
+            // Setup the iterator and list
+            call_wrapper(mk_iterator, p_call_info);
 
             spi_code = SPI_finish();
             if(spi_code < 0)
@@ -145,16 +150,14 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        prev_p_call_info = current_p_call_info;
-        current_p_call_info = p_call_info;
-        (*p_call_info->function)(); // Run the function
-        current_p_call_info = prev_p_call_info;
+        // Run the function
+        call_wrapper(call_function, p_call_info);
 
         spi_code = SPI_finish();
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        if(p_call_info->more_results)
+        if(p_call_info->list) // Is there another result?
         {
             rsi->isDone = ExprMultipleResult;
             return read_value_info(p_call_info->result, &fcinfo->isnull); // Get the next result
@@ -184,7 +187,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
             build_call_info(p_call_info, funcoid, false);
-            mk_function(p_call_info);
+
+            // Make the function
+            call_wrapper(mk_function, p_call_info);
 
             MemoryContextSwitchTo(old_context);
         }
@@ -199,10 +204,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        prev_p_call_info = current_p_call_info;
-        current_p_call_info = p_call_info;
-        (*p_call_info->function)(); // Run the function
-        current_p_call_info = prev_p_call_info;
+        // Run the function
+        call_wrapper(call_function, p_call_info);
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -253,7 +256,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     build_call_info(p_call_info, funcoid, DatumGetBool(proretset));
 
     // Raise error if the function's signature is incorrect
-    check_signature(p_call_info);
+    call_wrapper(check_signature, p_call_info);
 
     PG_RETURN_VOID();
 }
@@ -261,19 +264,35 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 // Fill CallInfo struct
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set)
 {
-    HeapTuple proctup;
-    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel;
+    HeapTuple proctup, lantup;
+    Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel, prolang, lanpltrusted;
     ArrayType *proargtypes_arr;
     Oid *argtypes;
     bool is_null;
     text *src;
     int modfd;
+    char tempdirpath[MAXPGPATH];
+    FILE *modfile;
 
     p_call_info->return_set = return_set;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
         ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
+
+    prolang = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prolang, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_proc.prolang is NULL"));
+
+    lantup = SearchSysCache1(LANGOID, prolang);
+
+    lanpltrusted = SysCacheGetAttr(LANGOID, lantup, Anum_pg_language_lanpltrusted, &is_null);
+    if(is_null)
+           ereport(ERROR, errmsg("pg_language.lanpltrusted is NULL"));
+
+    p_call_info->trusted = DatumGetBool(lanpltrusted);
+
+    ReleaseSysCache(lantup);
 
     provariadic = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provariadic, &is_null);
     if(is_null)
@@ -355,36 +374,16 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     src = DatumGetTextPP(prosrc);
 
-    p_call_info->mod_file_name = palloc(18);
-    memcpy(p_call_info->mod_file_name, "/tmp/ModXXXXXX.hs", 18);
+    TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
+    p_call_info->mod_file_name = palloc0(MAXPGPATH);
+    snprintf(p_call_info->mod_file_name, MAXPGPATH, "%s/ModXXXXXX.hs", tempdirpath);
+    modfile = fdopen(mkstemps(p_call_info->mod_file_name, 3), "w");
+    if(!modfile)
+        ereport(ERROR, errmsg("Unable to create temporary file (%s)", p_call_info->mod_file_name));
 
-    modfd = mkstemps(p_call_info->mod_file_name, 3);
-
-    if(write(modfd, "module PGmodule (", 17) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    if(write(modfd, p_call_info->func_name, strlen(p_call_info->func_name)) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    if(write(modfd, ") where\n", 8) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    if(write(modfd, VARDATA_ANY(src), VARSIZE_ANY_EXHDR(src)) < 0)
-    {
-        close(modfd);
-        ereport(ERROR, errmsg("Unable to write to module file"));
-    }
-
-    close(modfd);
+    fprintf(modfile, "module PGmodule (%s) where\n", p_call_info->func_name);
+    fwrite(VARDATA_ANY(src), VARSIZE_ANY_EXHDR(src), 1, modfile);
+    fclose(modfile);
 
     ReleaseSysCache(proctup);
 
@@ -624,12 +623,17 @@ static void enter(void)
     static int argc = sizeof(argv) / sizeof(char*);
     static char **argv_rts = argv;
     RtsConfig conf = defaultRtsConfig;
+    char tempdirpath[MAXPGPATH];
 
     on_proc_exit(unlink_all, (Datum)0);
 
     // Add the directory containing PGutils to the GHC Package Path
-    sprintf(GHC_PackagePath, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
+    snprintf(GHC_PackagePath, MAXPGPATH+18, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
     setenv("GHC_PACKAGE_PATH", GHC_PackagePath, true);
+
+    TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
+    MakePGDirectory(tempdirpath);
+    setenv("TMPDIR", tempdirpath, true);
 
     DefineCustomIntVariable("plhaskell.max_memory",
                              gettext_noop("Maximum memory for PL/Haskell"),
@@ -661,38 +665,40 @@ static void gcDoneHook(const struct GCDetails_ *stats)
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
+    int mod_file_name_len = strlen(current_p_call_info->mod_file_name);
+
     // Strip trailing new-line if necessary
     if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
         msg[strlen(msg)-1] = '\0';
 
     // Replace temp file name with name of function
-    if(strncmp(msg, first_p_call_info->mod_file_name, 17)==0 && msg[17]==':')
+    if(strncmp(msg, current_p_call_info->mod_file_name, mod_file_name_len)==0 && msg[mod_file_name_len]==':')
     {
         int i;
         for(i=18; isdigit(msg[i]); i++);
 
         // Reduce line number by one to account for added line of code in file
         if(msg[i]==':')
-            ereport(elevel, errmsg("%s:%d:%s", first_p_call_info->func_name, atoi(msg+18)-1, msg+i+1));
+            ereport(elevel, errmsg("%s:%d:%s", current_p_call_info->func_name, atoi(msg+mod_file_name_len+1)-1, msg+i+1));
         else
-            ereport(elevel, errmsg("%s:%s", first_p_call_info->func_name, msg+18));
+            ereport(elevel, errmsg("%s:%s", current_p_call_info->func_name, msg+mod_file_name_len+1));
     }
     else
         ereport(elevel, errmsg("%s", msg));
 }
 
+static void call_function(void *p_call_info)
+{
+    (*((struct CallInfo*)p_call_info)->function)();
+}
+
 static int rts_msg_fn(int elevel, const char *s, va_list ap)
 {
-    char *buf;
+    char buf[4096];
     int len;
 
-    len = vsnprintf(NULL, 0, s, ap);
-    buf = palloc(len+1); // Don't forget the \0 terminator
-    vsnprintf(buf, len+1, s, ap);
-
+    len = vsnprintf(buf, 4096, s, ap);
     plhaskell_report(elevel, buf);
-
-    pfree(buf);
 
     return len;
 }
@@ -798,5 +804,20 @@ void free_tuptable(struct SPITupleTable *tuptable)
 static void unlink_all(int code, Datum arg)
 {
     for(struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
-        unlink(p_call_info->mod_file_name);
+        if(p_call_info->mod_file_name)
+            unlink(p_call_info->mod_file_name);
+}
+
+PG_FUNCTION_INFO_V1(ghc_version);
+Datum ghc_version(PG_FUNCTION_ARGS)
+{
+    PG_RETURN_INT32(hint_ghc_version());
+}
+
+void call_wrapper(call_info_func func, struct CallInfo *p_call_info)
+{
+    struct CallInfo *prev_p_call_info = current_p_call_info;
+    current_p_call_info = p_call_info;
+    (*func)(p_call_info); // Call the function
+    current_p_call_info = prev_p_call_info;
 }

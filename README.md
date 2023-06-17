@@ -158,28 +158,30 @@ A policy file designed to accommodate Red Hat based systems can be built by runn
 
 ### Testing
 
-A test battery is provided in the `tests.sql` file in the root directory. It can be run with the command
+Test batteries are provided in the `tests_trusted.sql` and `tests_untrusted.sql` files in the root directory. They can be run with the commands
 
-```
-psql -f tests.sql
-```
+**`$>`** `psql -f tests_trusted.sql`
 
-If successful, it will terminate with the notice `All tests passed`.
+**`$>`** `psql -f tests_untrusted.sql`
+
+If successful, they will terminate with the notice `All tests passed`.
 
 ## Trust
 
-PL/Haskell is a "trusted" language. The PostgreSQL manual explains:
+The package provides two language variants. `plhaskell` is a "trusted" language. The PostgreSQL manual explains:
 <blockquote>
 The optional key word TRUSTED specifies that the language does not grant access to data that the user would not otherwise have. Trusted languages are designed for ordinary database users (those without superuser privilege) and allows them to safely create functions and procedures.
 </blockquote>
 
 As such, unprivileged users are permitted to write and execute functions without the possibility that they will be able to access information or resources that are not allowed to access. This is accomplished by enforcing Haskell's strong type system.
 
+`plhaskellu` is an "untrusted" language. It affords the user more flexibility but lacks the safeguards of the trusted variant. As such, only users with PostgreSQL superuser privilege can create functions with this variant.
+
 ## Usage
 
 To install the language in a database, run the SQL command `CREATE EXTENSION plhaskell;`.
 
-Functions in PL/Haskell are created the same manner as other PostgreSQL functions. The code must be valid Haskell. It must import the `PGm` monad type from the `PGutils` module.
+Functions in PL/Haskell are created the same manner as other PostgreSQL functions. The code must be valid Haskell.
 
 The code must contain a function with the same name as the PostgreSQL function. Each of its arguments must be of the type `Maybe `*`arg`* where *`arg`* is the Haskell type as determined by the PostgreSQL type as indicated by the following table.
 
@@ -195,13 +197,13 @@ PostgreSQL Type |   Module          | Haskell Type
 `real`          | `Prelude`         | `Float`
 `float`         | `Prelude`         | `Double`
 
-The function must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function.
+Trusted functions must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function while untrusted functions must return type `IO (Maybe `*`result`*`)`. The `PGm`  monad type can be imported from the `PGutils` module.
 
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
 ### Returning Sets
 
-Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]` where *`result`* is the appropriate Haskell type as determined by the return type of function.
+Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]` or `IO [Maybe `*`result`*`]` where *`result`* is the appropriate Haskell type as determined by the return type of function.
 
 ### Reporting Messages and Raising Error
 
@@ -274,9 +276,21 @@ The constructors for `QueryResultValue` are the following:
 `QueryResultValueFloat8    (Maybe Double)`             |
 `QueryResultValueComposite (Maybe [QueryResultValue])` |
 
+### Converting `PGm` to `IO`
+
+The function `umPGm :: PGm a -> IO a` from the `PGutils` module can be used to convert a `PGm` action to an `IO` action.
+
 ## Maximum Memory
 
 By default, the maximum memory that can be used by the Haskell runtime system is 128 MB. This can be changed by setting the `plhaskell.max_memory` variable in the `postgresql.conf` file. 
+
+## GHC Version
+
+The function `ghc_version` takes no arguments and returns the version of the underlying GHC API. Values are:
+
+* 804 for GHC 8.4.x
+* 806 for GHC 8.6.x
+* etc...
 
 ## Examples
 
@@ -422,7 +436,7 @@ LIMIT 25
 
 ### Message
 
-The following demonstrates how to show a notice from within a function.
+The following demonstrate how to show a notice from within a function.
 
 ```
 CREATE FUNCTION forty_two() RETURNS int IMMUTABLE AS
@@ -438,9 +452,23 @@ $$
 LANGUAGE plhaskell;
 ```
 
+```
+CREATE FUNCTION forty_two() RETURNS int IMMUTABLE AS
+$$
+    import PGutils (unPGm, report, notice)
+    import Data.Int (Int32)
+
+    forty_two :: IO (Maybe Int32)
+    forty_two = do
+        unPGm $ report notice "Don't Panic"
+        return (Just 42)
+$$
+LANGUAGE plhaskellu;
+```
+
 ### Query
 
-The following deletes all elements of table `t` and returns the number of rows removed.
+The following delete all elements of table `t` and return the number of rows removed.
 
 ```
 CREATE FUNCTION remove_all() RETURNS bigint VOLATILE AS
@@ -456,7 +484,21 @@ $$
 LANGUAGE plhaskell;
 ```
 
-The following returns the last names of students with the passed first name.
+```
+CREATE FUNCTION remove_all() RETURNS bigint VOLATILE AS
+$$
+    import PGutils (unPGm, query, QueryResults (DeleteResults))
+    import Data.Int (Int64)
+
+    remove_all :: IO (Maybe Int64)
+    remove_all = do
+        DeleteResults processed <- unPGm $ query "DELETE FROM t" []
+        return (Just (fromIntegral processed))
+$$
+LANGUAGE plhaskellu;
+```
+
+The following return the last names of students with the passed first name.
 
 ```
 CREATE FUNCTION last_names(text) RETURNS SETOF text IMMUTABLE AS
@@ -473,4 +515,21 @@ $$
         return (map extract_text results)
 $$
 LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION last_names(text) RETURNS SETOF text IMMUTABLE AS
+$$
+    import PGutils (unPGm, query, QueryResults (SelectResults), QueryParam (QueryParamText), QueryResultValue (QueryResultValueText))
+    import Data.Text (Text)
+
+    extract_text :: [QueryResultValue] -> Maybe Text
+    extract_text [QueryResultValueText name] = name
+
+    last_names :: Maybe Text -> IO [Maybe Text]
+    last_names first_name = do
+        SelectResults _processed _header results <- unPGm $ query "SELECT last_name FROM students WHERE first_name = $1" [QueryParamText first_name]
+        return (map extract_text results)
+$$
+LANGUAGE plhaskellu;
 ```

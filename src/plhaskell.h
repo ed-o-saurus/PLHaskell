@@ -55,12 +55,12 @@ struct CallInfo
 {
     char *func_name; // Name of function
     char *mod_file_name; // Temporary file where code is stored
+    bool trusted; // Is the language the trusted version?
     int16 nargs; // Number of arguments
     struct ValueInfo **args; // Arguments
     struct ValueInfo *result; // Returned result
     bool return_set; // Does the function return a set of values?
     bool spi_read_only; // Use read-only mode on internal queries
-    bool more_results; // Are there more results to return from a set?
     void (*function)(void); // Pointer to the function to be called to read Args and populate Result
     HsStablePtr list; // Stable pointer to list of results
 
