@@ -270,7 +270,6 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     Oid *argtypes;
     bool is_null;
     text *src;
-    int modfd;
     char tempdirpath[MAXPGPATH];
     FILE *modfile;
 
