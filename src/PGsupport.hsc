@@ -203,4 +203,4 @@ iterate pList = do
             writeResult
 
 foreign import ccall "wrapper"
-    wrapVoidFunc :: (IO ()) -> IO (FunPtr (IO ()))
+    wrapVoidFunc :: IO () -> IO (FunPtr (IO ()))
