@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), voidDatum, getField, readIsNull, wrapVoidFunc, writeNull, writeNotNull, writeVoid, iterate) where
+module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), voidDatum, getField, readIsNull, wrapVoidFunc, writeNull, writeNotNull, writeVoid, iterate, mkResultList) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<&>))
@@ -37,7 +37,7 @@ import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, return, ($), (+), (.), (>>=))
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>=))
 
 import MemoryUtils           (palloc)
 
@@ -189,6 +189,10 @@ writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (f
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
 writeVoid () _ = return ()
+
+-- Convert a list of values to a list of actions with that execute writeResult on the elements of the list
+mkResultList :: (Maybe a -> Ptr ValueInfo -> IO ())-> [Maybe a] -> Ptr ValueInfo -> [IO ()]
+mkResultList writeResult results pResultValueInfo = map ((flip writeResult) pResultValueInfo) results
 
 iterate :: Ptr (StablePtr [IO ()]) -> IO ()
 iterate pList = do

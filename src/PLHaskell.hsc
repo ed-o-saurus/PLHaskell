@@ -219,7 +219,7 @@ setUpEvalInt pCallInfo = do
 
     --Name of function
     funcName <- getFuncName pCallInfo
-    setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "flip", "map", "return", "($)", "(>>=)"]),
+    setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "return", "($)", "(>>=)"]),
                  ModuleImport "Data.ByteString"   NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"          NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Text"         NotQualified (ImportList ["Text"]),
@@ -227,7 +227,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "ValueInfo", "getField", "readIsNull", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "iterate"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "ValueInfo", "getField", "readIsNull", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "iterate", "mkResultList"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo
@@ -330,7 +330,7 @@ mkIterator pCallInfo = execute $ do
         then runStmt $ "results <- unPGm $ PGmodule." ++ funcName ++ argsNames
         else runStmt $ "results <-         PGmodule." ++ funcName ++ argsNames
 
-    runStmt "let writeResultList = map ((flip writeResult) pResultValueInfo) results"
+    runStmt "let writeResultList = mkResultList writeResult results pResultValueInfo"
 
     -- poke the stable pointer value into the List field of the CallInfo struct
     runStmt   "spList <- newStablePtr writeResultList"
