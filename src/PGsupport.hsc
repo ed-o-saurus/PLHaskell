@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), voidDatum, getField, readIsNull, wrapVoidFunc, writeNull, writeNotNull, writeVoid, iterate, mkResultList) where
+module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeNotNull, writeNull, writeVoid) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<&>))
