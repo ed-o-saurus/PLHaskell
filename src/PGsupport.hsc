@@ -37,7 +37,7 @@ import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>=))
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>), (>>=))
 
 import MemoryUtils           (palloc)
 
@@ -200,11 +200,8 @@ iterate pList = do
     writeResultList <- deRefStablePtr spList
     freeStablePtr spList
     case writeResultList of
-        [] -> do
-            poke pList (castPtrToStablePtr nullPtr)
-        (writeResult:tail) -> do
-            (newStablePtr tail) >>= (poke pList)
-            writeResult
+        [] -> poke pList (castPtrToStablePtr nullPtr)
+        (writeResult:tail) -> (newStablePtr tail) >>= (poke pList) >> writeResult
 
 foreign import ccall "wrapper"
     wrapVoidFunc :: IO () -> IO (FunPtr (IO ()))
