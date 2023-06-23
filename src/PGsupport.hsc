@@ -37,12 +37,12 @@ import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), Show, fromIntegral, return, ($), (+), (.), (>>=))
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, return, ($), (+), (.), (>>=))
 
 import MemoryUtils           (palloc)
 
 data ValueInfo
-newtype Datum = Datum WordPtr deriving newtype (Storable, Show)
+newtype Datum = Datum WordPtr deriving newtype (Storable)
 
 voidDatum :: Datum
 voidDatum = Datum (ptrToWordPtr nullPtr)
