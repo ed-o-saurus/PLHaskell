@@ -38,7 +38,7 @@ import Foreign.Marshal.Utils        (fromBool, toBool)
 import Foreign.Ptr                  (Ptr, plusPtr, ptrToWordPtr)
 import Foreign.Storable             (Storable, peekByteOff, peekElemOff)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False, True), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, return, show, undefined, ($), (++), (-), (.), (>>=))
+import Prelude                      (Bool (False), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>=))
 
 import MemoryUtils                  (pWithCString)
 
@@ -77,8 +77,7 @@ getDataType _ = Nothing
 
 -- Is a type supported
 typeAvailable :: Oid -> Bool
-typeAvailable oid = case (getDataType oid) of Just _  -> True
-                                              Nothing -> False
+typeAvailable oid = not $ null $ getDataType oid
 
 -- Run the function pointed to by the stable pointer
 foreign export capi "type_available" c_typeAvailable :: Oid -> IO CBool
