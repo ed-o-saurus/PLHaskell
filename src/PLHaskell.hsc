@@ -200,8 +200,7 @@ readArgDef pValueInfo = do
 
 defineReadArg :: Ptr CallInfo -> Int16 -> Interpreter ()
 defineReadArg pCallInfo i = do
-    pArgValueInfo <- liftIO $ getArgValueInfo pCallInfo i
-    argDef <- liftIO $ readArgDef pArgValueInfo
+    argDef <- liftIO $ getArgValueInfo pCallInfo i >>= readArgDef
     runStmt $ interpolate ("let readArg? = " ++ argDef) i
 
 definePArgValueInfo :: Ptr CallInfo -> Int16 -> Interpreter ()
