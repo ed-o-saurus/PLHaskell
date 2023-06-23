@@ -37,8 +37,6 @@
 
 extern char pkglib_path[];
 
-typedef void (*call_info_func)(void*);
-
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set);
 static void build_value_info(struct ValueInfo *p_value_info, Oid typeoid);
 
@@ -64,7 +62,7 @@ static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void unlink_all(int code, Datum arg);
 
-void call_wrapper(call_info_func func, struct CallInfo *p_call_info);
+void call_wrapper(void (*func)(void*), struct CallInfo *p_call_info);
 
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
@@ -813,7 +811,7 @@ Datum ghc_version(PG_FUNCTION_ARGS)
     PG_RETURN_INT32(hint_ghc_version());
 }
 
-void call_wrapper(call_info_func func, struct CallInfo *p_call_info)
+void call_wrapper(void (*func)(void*), struct CallInfo *p_call_info)
 {
     struct CallInfo *prev_p_call_info = current_p_call_info;
     current_p_call_info = p_call_info;
