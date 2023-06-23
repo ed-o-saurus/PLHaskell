@@ -80,8 +80,7 @@ pWithArray vals = pWithArrayLen vals . const
 
 pWithArrayLen :: Storable a => [a] -> (Int -> Ptr a -> IO b) -> IO b
 pWithArrayLen vals action = do
+    let len = length vals
     pallocArray len $ \ptr -> do
         pokeArray ptr vals
         action len ptr
-    where
-        len = length vals
