@@ -44,7 +44,7 @@ foreign import capi unsafe "postgres.h palloc"
 foreign import capi unsafe "postgres.h palloc0"
     palloc0 :: CSize -> IO (Ptr a)
 
--- Allocate memory using postgres' mechanism
+-- Free memory using postgres' mechanism
 foreign import capi unsafe "postgres.h pfree"
     pfree :: Ptr a -> IO ()
 

@@ -256,7 +256,7 @@ setUpEvalInt pCallInfo = do
 
     return (nargs, funcName, toBool trusted)
 
--- Execute and interpreter monad and handle the result
+-- Execute an interpreter monad and handle the result
 execute :: Interpreter () -> IO ()
 execute int = do
     r <- runInterpreter int
