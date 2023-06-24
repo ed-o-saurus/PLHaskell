@@ -66,19 +66,19 @@ class ReadWrite a where
     readType :: Ptr ValueInfo -> IO (Maybe a)
     readType pValueInfo = do
         value <- (#peek struct ValueInfo, value) pValueInfo
-        CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
-        if (toBool isNull)
+        isNull <- readIsNull pValueInfo
+        if isNull
         then return Nothing
         else read value <&> Just
 
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
         (#poke struct ValueInfo, value) pValueInfo voidDatum
-        (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
+        writeNull pValueInfo
 
     writeType (Just result) pValueInfo = do
         write result >>= (#poke struct ValueInfo, value) pValueInfo
-        (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
+        writeNotNull pValueInfo
 
 -- Get the size of a variable length array
 foreign import capi unsafe "postgres.h VARSIZE_ANY_EXHDR"
