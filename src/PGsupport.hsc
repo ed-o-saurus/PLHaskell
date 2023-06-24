@@ -65,11 +65,12 @@ class ReadWrite a where
 
     readType :: Ptr ValueInfo -> IO (Maybe a)
     readType pValueInfo = do
-        value <- (#peek struct ValueInfo, value) pValueInfo
         isNull <- readIsNull pValueInfo
         if isNull
         then return Nothing
-        else read value <&> Just
+        else do
+            value <- (#peek struct ValueInfo, value) pValueInfo
+            read value <&> Just
 
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
