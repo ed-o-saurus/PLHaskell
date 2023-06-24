@@ -50,7 +50,7 @@ foreign import capi unsafe "postgres.h pfree"
 
 pallocArray :: forall a b . Storable a => Int -> (Ptr a -> IO b) -> IO b
 pallocArray size action = do
-    ptr <- palloc (fromIntegral (size * sizeOf (undefined :: a)))
+    ptr <- palloc $ fromIntegral $ size * sizeOf (undefined :: a)
     retVal <- action ptr
     pfree ptr
     return retVal

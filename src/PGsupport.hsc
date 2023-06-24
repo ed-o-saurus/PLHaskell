@@ -45,19 +45,19 @@ data ValueInfo
 newtype Datum = Datum WordPtr deriving newtype (Storable)
 
 voidDatum :: Datum
-voidDatum = Datum (ptrToWordPtr nullPtr)
+voidDatum = Datum $ ptrToWordPtr nullPtr
 
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo i = do
     fields <- (#peek struct ValueInfo, fields) pValueInfo
-    peekElemOff fields (fromIntegral i)
+    peekElemOff fields $ fromIntegral i
 
 -- Determine the value of the isNull field of a ValueInfo struct
 readIsNull :: Ptr ValueInfo -> IO Bool
 readIsNull pValueInfo = do
     CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
-    return (toBool isNull)
+    return $ toBool isNull
 
 class ReadWrite a where
     read :: Datum -> IO a
@@ -104,7 +104,7 @@ instance ReadWrite ByteString where
 
     write result = useAsCStringLen result (\(src, len) -> do
         p <- palloc $ fromIntegral (len + (#const VARHDRSZ))
-        let value = Datum (ptrToWordPtr p)
+        let value = Datum $ ptrToWordPtr p
         setVarSize value (fromIntegral len)
         pData <- getVarData value
         copyBytes pData src len
@@ -180,11 +180,11 @@ instance ReadWrite Double where
 
 -- Set isNull to true
 writeNull :: Ptr ValueInfo -> IO ()
-writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (fromBool True))
+writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
 
 -- Set isNull to false
 writeNotNull :: Ptr ValueInfo -> IO ()
-writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (fromBool False))
+writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
 
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()

@@ -107,12 +107,12 @@ getTypeNameTyp (#const VOID_TYPE) _pValueInfo = return "()"
 
 getTypeNameTyp (#const BASE_TYPE) pValueInfo = do
     typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return ("Maybe " ++ baseName typeOid)
+    return $ "Maybe " ++ baseName typeOid
 
 getTypeNameTyp (#const COMPOSITE_TYPE) pValueInfo = do
     count <- (#peek struct ValueInfo, count) pValueInfo
     names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
-    return ("Maybe (" ++ intercalate ", " names ++ ")")
+    return $ "Maybe (" ++ intercalate ", " names ++ ")"
 
 getTypeNameTyp _typ _pValueInfo = undefined
 
@@ -139,18 +139,18 @@ getSignature pCallInfo = liftIO $ do
     CBool returnSet <- (#peek struct CallInfo, return_set) pCallInfo
     if toBool trusted
         then if toBool returnSet
-            then return (intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"]))
-            else return (intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"]))
+            then return $ intercalate " -> " (argTypeNames ++ ["PGm [" ++ resultTypeName ++ "]"])
+            else return $ intercalate " -> " (argTypeNames ++ ["PGm (" ++ resultTypeName ++ ")"])
         else if toBool returnSet
-            then return (intercalate " -> " (argTypeNames ++ ["IO [" ++ resultTypeName ++ "]"]))
-            else return (intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"]))
+            then return $ intercalate " -> " (argTypeNames ++ ["IO [" ++ resultTypeName ++ "]"])
+            else return $ intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"])
 
 writeResultDefTyp :: Word16 -> Ptr ValueInfo -> IO String
 writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
 
 writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
     typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return ("(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())")
+    return $ "(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())"
 
 writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do {
@@ -159,10 +159,10 @@ writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     count <- (#peek struct ValueInfo, count) pValueInfo
     fieldsDef <- forM [0 .. count-1] getFieldDef
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-    return ("\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
+    return $ "\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
     \                                              Just (" ++ fieldsList ++ ") -> do;\
     \                                                                              writeNotNull pValueInfo;" ++
-                                                                                   concat fieldsDef)
+                                                                                   concat fieldsDef
 
 writeResultDefTyp _typ _pValueInfo = undefined
 
@@ -175,7 +175,7 @@ writeResultDef pValueInfo = do
 readArgDefTyp :: Word16 -> Ptr ValueInfo -> IO String
 readArgDefTyp (#const BASE_TYPE) pValueInfo = do
     typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return ("(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))")
+    return $ "(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))"
 
 readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     let getFieldDef i = do {
@@ -184,7 +184,7 @@ readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     count <- (#peek struct ValueInfo, count) pValueInfo
     fieldsDef <- forM [0 .. count-1] getFieldDef
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-    return ("\\pValueInfo -> do {\
+    return $ "\\pValueInfo -> do {\
     \                                isNull <- readIsNull pValueInfo;\
     \                                if isNull; \
     \                                    then return Nothing;\
@@ -192,7 +192,7 @@ readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
                                              concat fieldsDef ++
                                              "return (Just (" ++ fieldsList ++ "))\
     \                                    }\
-    \                        }")
+    \                        }"
 
 readArgDefTyp _typ _pValueInfo = undefined
 
@@ -265,7 +265,7 @@ execute int = do
     case r of
         Left (UnknownError msg)    -> raiseError msg
         Left (WontCompile [])      -> raiseError "PL/Haskell : Unknown Compiler Error"
-        Left (WontCompile (err:_)) -> raiseError (errMsg err)
+        Left (WontCompile (err:_)) -> raiseError $ errMsg err
         Left (NotAllowed msg)      -> raiseError msg
         Left (GhcException msg)    -> raiseError msg
         Right ()                   -> return ()
@@ -288,10 +288,10 @@ checkSignature pCallInfo = execute $ do
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     signature <- getSignature pCallInfo
-    r <- typeChecks ("PGmodule." ++ funcName ++ "::" ++ signature)
+    r <- typeChecks $ "PGmodule." ++ funcName ++ "::" ++ signature
     if r
         then return ()
-        else liftIO $ raiseError ("Expected Signature : " ++ funcName ++ " :: " ++ signature)
+        else liftIO $ raiseError $ "Expected Signature : " ++ funcName ++ " :: " ++ signature
 
 -- Set the Function field of the CallInfo struct to a function that
 -- will read the arguments, call the function, and write the result
@@ -307,7 +307,7 @@ mkFunction pCallInfo = execute $ do
         then "result <- unPGm $ PGmodule." ++ funcName ++ argsNames ++ ";"
         else "result <-         PGmodule." ++ funcName ++ argsNames ++ ";"
     let prog_write_result = "writeResult result pResultValueInfo"
-    runStmt $ "function <- wrapVoidFunc (do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})"
+    runStmt $ "function <- wrapVoidFunc $ do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "}"
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
     runStmt $ "let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo)
