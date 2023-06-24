@@ -73,7 +73,7 @@ getDataType (#const INT4OID)   = Just "Int32"
 getDataType (#const INT8OID)   = Just "Int64"
 getDataType (#const FLOAT4OID) = Just "Float"
 getDataType (#const FLOAT8OID) = Just "Double"
-getDataType _ = Nothing
+getDataType _oid = Nothing
 
 -- Is a type supported
 typeAvailable :: Oid -> Bool

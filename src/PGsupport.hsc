@@ -188,7 +188,7 @@ writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool (f
 
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
-writeVoid () _ = return ()
+writeVoid () _pValueInfo = return ()
 
 -- Convert a list of values to a list of actions with that execute writeResult on the elements of the list
 mkResultList :: (Maybe a -> Ptr ValueInfo -> IO ())-> [Maybe a] -> Ptr ValueInfo -> [IO ()]
