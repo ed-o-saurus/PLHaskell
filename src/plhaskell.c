@@ -662,26 +662,32 @@ static void gcDoneHook(const struct GCDetails_ *stats)
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
-    int mod_file_name_len = strlen(current_p_call_info->mod_file_name);
+    char *filename_location;
 
     // Strip trailing new-line if necessary
     if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
         msg[strlen(msg)-1] = '\0';
 
-    // Replace temp file name with name of function
-    if(strncmp(msg, current_p_call_info->mod_file_name, mod_file_name_len)==0 && msg[mod_file_name_len]==':')
-    {
-        int i;
-        for(i=18; isdigit(msg[i]); i++);
+    filename_location = strstr(msg, current_p_call_info->mod_file_name);
 
-        // Reduce line number by one to account for added line of code in file
-        if(msg[i]==':')
-            ereport(elevel, errmsg("%s:%d:%s", current_p_call_info->func_name, atoi(msg+mod_file_name_len+1)-1, msg+i+1));
-        else
-            ereport(elevel, errmsg("%s:%s", current_p_call_info->func_name, msg+mod_file_name_len+1));
-    }
-    else
+    if(!filename_location)
         ereport(elevel, errmsg("%s", msg));
+    else
+    {
+        int filename_length = strlen(current_p_call_info->mod_file_name);
+        *filename_location = '\0';
+
+        if(filename_location[filename_length]==':' && isdigit(filename_location[filename_length+1]))
+        {
+            char *i;
+            for(i=filename_location+filename_length+1; isdigit(*i); i++);
+
+            // Reduce line number by one to account for added line of code in file
+            ereport(elevel, errmsg("%s%s:%d%s", msg, current_p_call_info->func_name, atoi(filename_location+filename_length+1)-1, i));
+        }
+        else
+            ereport(elevel, errmsg("%s%s%s", msg, current_p_call_info->func_name, filename_location+filename_length));
+    }
 }
 
 static void call_function(void *p_call_info)
@@ -691,11 +697,16 @@ static void call_function(void *p_call_info)
 
 static int rts_msg_fn(int elevel, const char *s, va_list ap)
 {
-    char buf[4096];
+    char *buf;
     int len;
+    va_list apc;
+    va_copy(apc, ap);
 
-    len = vsnprintf(buf, 4096, s, ap);
+    len = vsnprintf(NULL, 0, s, ap);
+    buf = palloc(len);
+    vsnprintf(buf, len, s, apc);
     plhaskell_report(elevel, buf);
+    pfree(buf);
 
     return len;
 }
