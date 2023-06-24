@@ -77,8 +77,7 @@ class ReadWrite a where
         (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
 
     writeType (Just result) pValueInfo = do
-        value <- write result
-        (#poke struct ValueInfo, value) pValueInfo value
+        write result >>= (#poke struct ValueInfo, value) pValueInfo
         (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
 
 -- Get the size of a variable length array
