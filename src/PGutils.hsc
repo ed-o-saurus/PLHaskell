@@ -38,15 +38,15 @@ import Data.Text             (Text, pack)
 import Data.Text.Encoding    (encodeUtf8)
 import Data.Word             (Word16, Word64)
 import Foreign.C.String      (peekCString, CString)
-import Foreign.C.Types       (CBool (CBool), CInt (CInt), CUInt (CUInt))
+import Foreign.C.Types       (CBool, CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Array (allocaArray)
-import Foreign.Marshal.Utils (fromBool, toBool)
+import Foreign.Marshal.Utils (fromBool)
 import Foreign.Ptr           (Ptr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Eq, Float, Functor, IO, Maybe (Nothing, Just), Monad, Num, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Datum, ReadWrite (readType, write), ValueInfo, getField, voidDatum)
+import PGsupport             (Datum, ReadWrite (readType, write), ValueInfo, getField, readIsNull, voidDatum)
 import MemoryUtils           (pUseAsCString, pWithArray, pWithArrayLen)
 
 newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
@@ -226,8 +226,8 @@ mkQueryResultValueTyp (#const BASE_TYPE) pValueInfo = do
     mkQueryResultValueTypOid typeOid pValueInfo
 
 mkQueryResultValueTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    CBool is_null <- (#peek struct ValueInfo, is_null) pValueInfo
-    if (toBool is_null)
+    is_null <- readIsNull pValueInfo
+    if is_null
     then return (QueryResultValueComposite Nothing)
     else do
         count <- (#peek struct ValueInfo, count) pValueInfo
