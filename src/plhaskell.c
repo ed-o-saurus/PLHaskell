@@ -21,8 +21,6 @@
 
 #include "Rts.h"
 
-#include <unistd.h>
-
 #include "postgres.h"
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_class_d.h"
