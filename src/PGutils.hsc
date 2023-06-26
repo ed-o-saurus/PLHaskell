@@ -234,7 +234,7 @@ mkQueryResultValueTyp (#const COMPOSITE_TYPE) pValueInfo = do
         fields <- mapM (getField pValueInfo) [0 .. count-1]
         mapM mkQueryResultValue fields <&> Just <&> QueryResultValueComposite
 
-mkQueryResultValueTyp _ _pValueInfo = undefined
+mkQueryResultValueTyp _typ _pValueInfo = undefined
 
 mkQueryResultValue :: Ptr ValueInfo -> IO QueryResultValue
 mkQueryResultValue pValueInfo = do
