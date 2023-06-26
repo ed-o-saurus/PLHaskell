@@ -49,7 +49,7 @@ newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
-interpolate "" _ = ""
+interpolate "" _n = ""
 interpolate ('?':ss) n = show n ++ interpolate ss n
 interpolate (s:ss) n = s : interpolate ss n
 
