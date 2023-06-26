@@ -153,11 +153,8 @@ writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
     return $ "(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())"
 
 writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    let getFieldDef i = do {
-        writeFieldDef <- getField pValueInfo i >>= writeResultDef;
-        return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") i}
     count <- (#peek struct ValueInfo, count) pValueInfo
-    fieldsDef <- forM [0 .. count-1] getFieldDef
+    fieldsDef <- forM [0 .. count-1] (writeGetFieldDef pValueInfo)
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
     return $ "\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
     \                                              Just (" ++ fieldsList ++ ") -> do;\
@@ -165,6 +162,11 @@ writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
                                                                                    concat fieldsDef
 
 writeResultDefTyp _typ _pValueInfo = undefined
+
+writeGetFieldDef :: Ptr ValueInfo -> Int16 -> IO String
+writeGetFieldDef pValueInfo i = do
+    writeFieldDef <- getField pValueInfo i >>= writeResultDef;
+    return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") i
 
 -- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
 writeResultDef :: Ptr ValueInfo -> IO String
@@ -178,11 +180,8 @@ readArgDefTyp (#const BASE_TYPE) pValueInfo = do
     return $ "(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))"
 
 readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    let getFieldDef i = do {
-        readFieldDef <- getField pValueInfo i >>= readArgDef;
-        return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i}
     count <- (#peek struct ValueInfo, count) pValueInfo
-    fieldsDef <- forM [0 .. count-1] getFieldDef
+    fieldsDef <- forM [0 .. count-1] (readGetFieldDef pValueInfo)
     let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
     return $ "\\pValueInfo -> do {\
     \                                isNull <- readIsNull pValueInfo;\
@@ -195,6 +194,11 @@ readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
     \                        }"
 
 readArgDefTyp _typ _pValueInfo = undefined
+
+readGetFieldDef :: Ptr ValueInfo -> Int16 -> IO String
+readGetFieldDef pValueInfo i = do
+    readFieldDef <- getField pValueInfo i >>= readArgDef
+    return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i
 
 -- Return a string representing a function to take and argument from a ValueInfo struct and return the Haskell value
 readArgDef :: Ptr ValueInfo -> IO String
