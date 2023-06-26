@@ -50,8 +50,8 @@ newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
 interpolate "" _ = ""
-interpolate ('?':ss) i = show i ++ interpolate ss i
-interpolate (s:ss) i = s : interpolate ss i
+interpolate ('?':ss) n = show n ++ interpolate ss n
+interpolate (s:ss) n = s : interpolate ss n
 
 -- Function to record message or raise exception
 foreign import capi safe "plhaskell.h plhaskell_report"
@@ -98,9 +98,9 @@ getFuncName pCallInfo = liftIO $ (#peek struct CallInfo, func_name) pCallInfo >>
 
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
-getField pValueInfo i = do
+getField pValueInfo j = do
     fields <- (#peek struct ValueInfo, fields) pValueInfo
-    peekElemOff fields (fromIntegral i)
+    peekElemOff fields (fromIntegral j)
 
 getTypeNameTyp :: Word16 -> Ptr ValueInfo -> IO String
 getTypeNameTyp (#const VOID_TYPE) _pValueInfo = return "()"
@@ -164,9 +164,9 @@ writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
 writeResultDefTyp _typ _pValueInfo = undefined
 
 writeGetFieldDef :: Ptr ValueInfo -> Int16 -> IO String
-writeGetFieldDef pValueInfo i = do
-    writeFieldDef <- getField pValueInfo i >>= writeResultDef;
-    return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") i
+writeGetFieldDef pValueInfo j = do
+    writeFieldDef <- getField pValueInfo j >>= writeResultDef;
+    return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") j
 
 -- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
 writeResultDef :: Ptr ValueInfo -> IO String
@@ -196,9 +196,9 @@ readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
 readArgDefTyp _typ _pValueInfo = undefined
 
 readGetFieldDef :: Ptr ValueInfo -> Int16 -> IO String
-readGetFieldDef pValueInfo i = do
-    readFieldDef <- getField pValueInfo i >>= readArgDef
-    return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") i
+readGetFieldDef pValueInfo j = do
+    readFieldDef <- getField pValueInfo j >>= readArgDef
+    return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") j
 
 -- Return a string representing a function to take and argument from a ValueInfo struct and return the Haskell value
 readArgDef :: Ptr ValueInfo -> IO String
