@@ -80,9 +80,9 @@ typeAvailable :: Oid -> Bool
 typeAvailable oid = not $ null $ getDataType oid
 
 -- Run the function pointed to by the stable pointer
-foreign export capi "type_available" c_typeAvailable :: Oid -> IO CBool
-c_typeAvailable :: Oid -> IO CBool
-c_typeAvailable oid = return $ CBool $ fromBool $ typeAvailable oid
+foreign export capi "type_available" c_typeAvailable :: Oid -> CBool
+c_typeAvailable :: Oid -> CBool
+c_typeAvailable oid = CBool $ fromBool $ typeAvailable oid
 
 -- Name of corresponding Haskell type
 baseName :: Oid -> String
