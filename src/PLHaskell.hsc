@@ -214,7 +214,7 @@ defineReadArg pCallInfo i = do
 definePArgValueInfo :: Ptr CallInfo -> Int16 -> Interpreter ()
 definePArgValueInfo pCallInfo i = do
     pArgValueInfo <- liftIO $ getArgValueInfo pCallInfo i
-    runStmt $ interpolate "let pArgValueInfo? = wordPtrToPtr " i ++ (show $ ptrToWordPtr pArgValueInfo)
+    runStmt $ interpolate "let pArgValueInfo? = wordPtrToPtr " i ++ show (ptrToWordPtr pArgValueInfo)
 
 -- Set up interpreter to evaluate a function
 setUpEvalInt :: Ptr CallInfo -> Interpreter (Int16, String, Bool)
@@ -258,7 +258,7 @@ setUpEvalInt pCallInfo = do
 
     -- Set pArgValueInfo? and pResultValueInfo to point to ValueInfo structs
     forM_ [0 .. nargs-1] (definePArgValueInfo pCallInfo)
-    runStmt $ "let pResultValueInfo = wordPtrToPtr " ++ (show $ ptrToWordPtr pResultValueInfo)
+    runStmt $ "let pResultValueInfo = wordPtrToPtr " ++ show (ptrToWordPtr pResultValueInfo)
 
     return (nargs, funcName, toBool trusted)
 
