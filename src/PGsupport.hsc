@@ -59,6 +59,18 @@ readIsNull pValueInfo = do
     CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
     return $ toBool isNull
 
+-- Set isNull to true
+writeNull :: Ptr ValueInfo -> IO ()
+writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
+
+-- Set isNull to false
+writeNotNull :: Ptr ValueInfo -> IO ()
+writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
+
+-- Do nothing when returning void
+writeVoid :: () -> Ptr ValueInfo -> IO ()
+writeVoid () _pValueInfo = return ()
+
 class ReadWrite a where
     read :: Datum -> IO a
     write :: a -> IO Datum
@@ -177,18 +189,6 @@ foreign import capi unsafe "postgres.h Float8GetDatum"
 instance ReadWrite Double where
     read = datumGetFloat8
     write = float8GetDatum
-
--- Set isNull to true
-writeNull :: Ptr ValueInfo -> IO ()
-writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
-
--- Set isNull to false
-writeNotNull :: Ptr ValueInfo -> IO ()
-writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
-
--- Do nothing when returning void
-writeVoid :: () -> Ptr ValueInfo -> IO ()
-writeVoid () _pValueInfo = return ()
 
 -- Convert a list of values to a list of actions with that execute writeResult on the elements of the list
 mkResultList :: (Maybe a -> Ptr ValueInfo -> IO ())-> [Maybe a] -> Ptr ValueInfo -> [IO ()]
