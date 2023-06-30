@@ -456,11 +456,11 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         p_value_info->natts = DatumGetInt16(relnatts);
 
         // Loop over all composite type attributes
-        for(int16 i=0; i<p_value_info->natts; i++)
+        for(int16 j=0; j<p_value_info->natts; j++)
         {
-            atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(classoid), Int16GetDatum(i+1));
+            atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(classoid), Int16GetDatum(j+1));
             if(!HeapTupleIsValid(atttup))
-                ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d", classoid, i+1));
+                ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d", classoid, j+1));
 
             atttypid = SysCacheGetAttr(ATTNUM, atttup, Anum_pg_attribute_atttypid, &is_null);
             if(is_null)
@@ -475,7 +475,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
                     ereport(ERROR, errmsg("PL/Haskell : Tuple size too large (%s)", type_name));
 
                 p_value_info->attnums = repalloc(p_value_info->attnums, p_value_info->count * sizeof(int16));
-                p_value_info->attnums[p_value_info->count-1] = i+1;
+                p_value_info->attnums[p_value_info->count-1] = j+1;
 
                 p_value_info->fields = repalloc(p_value_info->fields, p_value_info->count * sizeof(struct ValueInfo*));
                 p_value_info->fields[p_value_info->count-1] = palloc(sizeof(struct ValueInfo));
@@ -565,10 +565,10 @@ static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool i
         tmptup.t_tableOid = InvalidOid;
         tmptup.t_data = tuple;
 
-        for(int16 i=0; i<p_value_info->count; i++)
+        for(int16 j=0; j<p_value_info->count; j++)
         {
-            Datum value = heap_getattr(&tmptup, p_value_info->attnums[i], p_value_info->tupdesc, &is_null);
-            write_value_info(p_value_info->fields[i], value, is_null);
+            Datum value = heap_getattr(&tmptup, p_value_info->attnums[j], p_value_info->tupdesc, &is_null);
+            write_value_info(p_value_info->fields[j], value, is_null);
         }
 
         break;
@@ -597,10 +597,10 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null)
         values  = palloc(p_value_info->natts * sizeof(Datum));
         is_nulls = palloc(p_value_info->natts * sizeof(bool));
 
-        for(int16 i=0; i<p_value_info->count; i++)
+        for(int16 j=0; j<p_value_info->count; j++)
         {
-            int16 attnum = p_value_info->attnums[i];
-            values[attnum-1] = read_value_info(p_value_info->fields[i], is_nulls+(attnum-1));
+            int16 attnum = p_value_info->attnums[j];
+            values[attnum-1] = read_value_info(p_value_info->fields[j], is_nulls+(attnum-1));
         }
 
         return HeapTupleGetDatum(heap_form_tuple(p_value_info->tupdesc, values, is_nulls));
