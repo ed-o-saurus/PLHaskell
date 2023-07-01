@@ -28,7 +28,7 @@
 module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeNotNull, writeNull, writeVoid) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
-import Data.Functor          ((<&>))
+import Data.Functor          ((<$>))
 import Data.Int              (Int16, Int32, Int64)
 import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
@@ -82,7 +82,7 @@ class ReadWrite a where
         then return Nothing
         else do
             value <- (#peek struct ValueInfo, value) pValueInfo
-            read value <&> Just
+            Just <$> read value
 
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
@@ -123,11 +123,11 @@ instance ReadWrite ByteString where
         return value)
 
 instance ReadWrite Text where
-    read value = read value <&> decodeUtf8
+    read value = decodeUtf8 <$> read value
     write = write . encodeUtf8
 
 instance ReadWrite Char where
-    read value = read value <&> head
+    read value = head <$> read value
     write = write . singleton
 
 foreign import capi unsafe "postgres.h DatumGetBool"
@@ -137,7 +137,7 @@ foreign import capi unsafe "postgres.h BoolGetDatum"
     boolGetDatum :: CBool -> IO Datum
 
 instance ReadWrite Bool where
-    read value = datumGetBool value <&> toBool
+    read value = toBool <$> datumGetBool value
     write = boolGetDatum . CBool . fromBool
 
 foreign import capi unsafe "postgres.h DatumGetInt16"

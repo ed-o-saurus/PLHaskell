@@ -33,7 +33,7 @@ module PGutils (PGm, ErrorLevel, debug5, debug4, debug3, debug2, debug1, log, in
 import Control.Monad.Fail    (MonadFail (fail))
 import Data.ByteString       (ByteString)
 import Data.Int              (Int16, Int32, Int64)
-import Data.Functor          ((<&>))
+import Data.Functor          ((<$>))
 import Data.Text             (Text, pack)
 import Data.Text.Encoding    (encodeUtf8)
 import Data.Word             (Word16, Word64)
@@ -180,7 +180,7 @@ foreign import capi unsafe "plhaskell.h get_header_field"
 getHeaderField :: Ptr TupleTable -> Int16 -> IO Text
 getHeaderField pTupleTable fnumber = allocaArray (#const NAMEDATALEN) $ \pName -> do
     c_getHeaderField pTupleTable pName (fromIntegral fnumber)
-    peekCString pName <&> pack
+    pack <$> peekCString pName
 
 getHeader :: Ptr TupleTable -> IO [Text]
 getHeader pTupleTable = do
@@ -209,15 +209,15 @@ foreign import capi unsafe "plhaskell.h fill_value_info"
     fillValueInfo :: Ptr TupleTable -> Ptr ValueInfo -> Word64 -> CInt -> IO ()
 
 mkQueryResultValueTypOid :: Oid -> Ptr ValueInfo -> IO QueryResultValue
-mkQueryResultValueTypOid (#const BYTEAOID)  pValueInfo = readType pValueInfo <&> QueryResultValueByteA
-mkQueryResultValueTypOid (#const TEXTOID)   pValueInfo = readType pValueInfo <&> QueryResultValueText
-mkQueryResultValueTypOid (#const CHAROID)   pValueInfo = readType pValueInfo <&> QueryResultValueChar
-mkQueryResultValueTypOid (#const BOOLOID)   pValueInfo = readType pValueInfo <&> QueryResultValueBool
-mkQueryResultValueTypOid (#const INT2OID)   pValueInfo = readType pValueInfo <&> QueryResultValueInt2
-mkQueryResultValueTypOid (#const INT4OID)   pValueInfo = readType pValueInfo <&> QueryResultValueInt4
-mkQueryResultValueTypOid (#const INT8OID)   pValueInfo = readType pValueInfo <&> QueryResultValueInt8
-mkQueryResultValueTypOid (#const FLOAT4OID) pValueInfo = readType pValueInfo <&> QueryResultValueFloat4
-mkQueryResultValueTypOid (#const FLOAT8OID) pValueInfo = readType pValueInfo <&> QueryResultValueFloat8
+mkQueryResultValueTypOid (#const BYTEAOID)  pValueInfo = QueryResultValueByteA  <$> readType pValueInfo
+mkQueryResultValueTypOid (#const TEXTOID)   pValueInfo = QueryResultValueText   <$> readType pValueInfo
+mkQueryResultValueTypOid (#const CHAROID)   pValueInfo = QueryResultValueChar   <$> readType pValueInfo
+mkQueryResultValueTypOid (#const BOOLOID)   pValueInfo = QueryResultValueBool   <$> readType pValueInfo
+mkQueryResultValueTypOid (#const INT2OID)   pValueInfo = QueryResultValueInt2   <$> readType pValueInfo
+mkQueryResultValueTypOid (#const INT4OID)   pValueInfo = QueryResultValueInt4   <$> readType pValueInfo
+mkQueryResultValueTypOid (#const INT8OID)   pValueInfo = QueryResultValueInt8   <$> readType pValueInfo
+mkQueryResultValueTypOid (#const FLOAT4OID) pValueInfo = QueryResultValueFloat4 <$> readType pValueInfo
+mkQueryResultValueTypOid (#const FLOAT8OID) pValueInfo = QueryResultValueFloat8 <$> readType pValueInfo
 mkQueryResultValueTypOid _typeOid _pValueInfo = undefined
 
 mkQueryResultValueTyp :: Word16 -> Ptr ValueInfo -> IO QueryResultValue
@@ -232,7 +232,7 @@ mkQueryResultValueTyp (#const COMPOSITE_TYPE) pValueInfo = do
     else do
         count <- (#peek struct ValueInfo, count) pValueInfo
         fields <- mapM (getField pValueInfo) [0 .. count-1]
-        mapM mkQueryResultValue fields <&> Just <&> QueryResultValueComposite
+        (QueryResultValueComposite . Just) <$> mapM mkQueryResultValue fields
 
 mkQueryResultValueTyp _typ _pValueInfo = undefined
 
