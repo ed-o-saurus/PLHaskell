@@ -405,7 +405,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 
     if(type_oid == VOIDOID)
     {
-        p_value_info->type = VOID_TYPE;
+        p_value_info->value_type = VOID_TYPE;
         return;
     }
 
@@ -430,11 +430,11 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
             ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
 
         p_value_info->type_oid = type_oid;
-        p_value_info->type = BASE_TYPE;
+        p_value_info->value_type = BASE_TYPE;
 
         break;
     case TYPTYPE_COMPOSITE :
-        p_value_info->type = COMPOSITE_TYPE;
+        p_value_info->value_type = COMPOSITE_TYPE;
         p_value_info->count = 0;
         p_value_info->attnums = palloc(0);
         p_value_info->fields = palloc(0);
@@ -551,7 +551,7 @@ static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool i
     if((p_value_info->is_null=is_null))
         return;
 
-    switch(p_value_info->type)
+    switch(p_value_info->value_type)
     {
     case BASE_TYPE :
         p_value_info->value = value;
@@ -573,7 +573,7 @@ static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool i
 
         break;
     default :
-        ereport(ERROR, errmsg("Bad Type : %d", p_value_info->type));
+        ereport(ERROR, errmsg("Bad value_type : %d", p_value_info->value_type));
     }
 }
 
@@ -586,7 +586,7 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null)
     if((*is_null=p_value_info->is_null))
         return (Datum)0;
 
-    switch(p_value_info->type)
+    switch(p_value_info->value_type)
     {
     case VOID_TYPE :
         return (Datum)0;
@@ -605,7 +605,7 @@ static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null)
 
         return HeapTupleGetDatum(heap_form_tuple(p_value_info->tupdesc, values, is_nulls));
     default :
-        ereport(ERROR, errmsg("Bad Type : %d", p_value_info->type));
+        ereport(ERROR, errmsg("Bad value_type : %d", p_value_info->value_type));
     }
 }
 
@@ -739,7 +739,7 @@ struct ValueInfo *new_value_info(Oid typeoid)
 void delete_value_info(struct ValueInfo *p_value_info) __attribute__((visibility ("hidden")));
 void delete_value_info(struct ValueInfo *p_value_info)
 {
-    if(p_value_info->type == COMPOSITE_TYPE)
+    if(p_value_info->value_type == COMPOSITE_TYPE)
     {
         pfree(p_value_info->attnums);
         pfree(p_value_info->tupdesc);

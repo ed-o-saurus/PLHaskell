@@ -97,8 +97,8 @@ getFuncName :: Ptr CallInfo -> Interpreter String
 getFuncName pCallInfo = liftIO $ (#peek struct CallInfo, func_name) pCallInfo >>= peekCString
 
 -- Extract the value type from ValueInfo struct
-getType :: Ptr ValueInfo -> IO Word16
-getType pValueInfo = (#peek struct ValueInfo, type) pValueInfo
+getValueType :: Ptr ValueInfo -> IO Word16
+getValueType = (#peek struct ValueInfo, value_type)
 
 -- Extract type_oid from ValueInfo struct
 getTypeOid :: Ptr ValueInfo -> IO Oid
@@ -117,8 +117,8 @@ getField pValueInfo j = do
 -- Get Haskell type name based on ValueInfo struct
 getTypeName :: Ptr ValueInfo -> IO String
 getTypeName pValueInfo = do
-    typ <- getType pValueInfo
-    case typ of
+    valueType <- getValueType pValueInfo
+    case valueType of
         (#const VOID_TYPE) -> return "()"
         (#const BASE_TYPE) -> do
             typeOid <- getTypeOid pValueInfo
@@ -159,8 +159,8 @@ writeResultDef pValueInfo = let
         writeFieldDef <- getField pValueInfo j >>= writeResultDef;
         return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") j
     in do
-        typ <- getType pValueInfo
-        case typ of
+        valueType <- getValueType pValueInfo
+        case valueType of
             (#const VOID_TYPE) -> return "writeVoid"
             (#const BASE_TYPE) -> do
                 typeOid <- getTypeOid pValueInfo
@@ -182,8 +182,8 @@ readArgDef pValueInfo = let
         readFieldDef <- getField pValueInfo j >>= readArgDef
         return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") j
     in do
-        typ <- getType pValueInfo
-        case typ of
+        valueType <- getValueType pValueInfo
+        case valueType of
             (#const BASE_TYPE) -> do
                 typeOid <- getTypeOid pValueInfo
                 return $ "(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))"

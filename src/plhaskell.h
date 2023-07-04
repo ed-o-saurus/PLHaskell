@@ -33,7 +33,7 @@
 struct ValueInfo
 {
     bool is_null;
-    uint16 type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
+    uint16 value_type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
     union {
         struct { // BASE
             Oid type_oid; // OID of the type

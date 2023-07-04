@@ -93,8 +93,8 @@ data QueryParam = QueryParamByteA  (Maybe ByteString)
                 | QueryParamFloat8 (Maybe Double)
 
 -- Extract the value type from ValueInfo struct
-getType :: Ptr ValueInfo -> IO Word16
-getType = (#peek struct ValueInfo, type)
+getValueType :: Ptr ValueInfo -> IO Word16
+getValueType = (#peek struct ValueInfo, value_type)
 
 getTypeOid :: Ptr ValueInfo -> IO Oid
 getTypeOid = (#peek struct ValueInfo, type_oid)
@@ -218,8 +218,8 @@ foreign import capi unsafe "plhaskell.h fill_value_info"
 
 mkQueryResultValue :: Ptr ValueInfo -> IO QueryResultValue
 mkQueryResultValue pValueInfo = do
-    typ <- getType pValueInfo
-    case typ of
+    valueType <- getValueType pValueInfo
+    case valueType of
         (#const BASE_TYPE) -> do
             typeOid <- getTypeOid pValueInfo
             case typeOid of
