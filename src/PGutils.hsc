@@ -274,11 +274,11 @@ query q params = PGm $ do
     let argtypes = map getOid params
     isNullsValues <- mapM encode params
     let (isNulls, values) = unzip isNullsValues
-    pUseAsCString (encodeUtf8 q) $ \ptr -> do
+    pUseAsCString (encodeUtf8 q) $ \ptrQuery -> do
         pWithArrayLen argtypes $ \nargs ptrArgtypes -> do
             pWithArray values $ \ptrValues -> do
                 pWithArray isNulls $ \ptrIsNulls -> do
-                    spiCode <- runQuery ptr (fromIntegral nargs) ptrArgtypes ptrValues ptrIsNulls
+                    spiCode <- runQuery ptrQuery (fromIntegral nargs) ptrArgtypes ptrValues ptrIsNulls
                     processed <- peek pSPIProcessed
                     pTupleTable <- peek pSPITupTable
                     queryResult <- case spiCode of
