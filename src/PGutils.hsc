@@ -43,7 +43,7 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool)
 import Foreign.Ptr           (Ptr)
 import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff)
-import Prelude               (Applicative, Bool (False, True), Char, Double, Eq, Float, Functor, IO, Maybe (Nothing, Just), Monad, Num, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-))
+import Prelude               (Applicative, Bool (False, True), Char, Double, Eq, Float, Functor, IO, Maybe (Nothing, Just), Monad, Num, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-), (>>=))
 import System.IO.Unsafe      (unsafePerformIO)
 
 import PGsupport             (Datum, ReadWrite (readType, write), ValueInfo, getField, readIsNull, voidDatum)
@@ -98,6 +98,9 @@ getType = (#peek struct ValueInfo, type)
 
 getTypeOid :: Ptr ValueInfo -> IO Oid
 getTypeOid = (#peek struct ValueInfo, type_oid)
+
+getNatts :: Ptr TupleTable -> IO Int16
+getNatts pTupleTable = (#peek struct SPITupleTable, tupdesc) pTupleTable >>= (#peek struct TupleDescData, natts)
 
 -- Transform QueryParam to is_null and datum
 encode :: QueryParam -> IO (CBool, Datum)
@@ -191,8 +194,7 @@ getHeaderField pTupleTable fnumber = allocaArray (#const NAMEDATALEN) $ \pName -
 
 getHeader :: Ptr TupleTable -> IO [Text]
 getHeader pTupleTable = do
-    tupDesc <- (#peek struct SPITupleTable, tupdesc) pTupleTable
-    natts <- (#peek struct TupleDescData, natts) tupDesc
+    natts <- getNatts pTupleTable
     mapM (getHeaderField pTupleTable) [1 .. natts]
 
 foreign import capi unsafe "plhaskell.h get_oids"
@@ -200,8 +202,7 @@ foreign import capi unsafe "plhaskell.h get_oids"
 
 getOids :: Ptr TupleTable -> IO [Oid]
 getOids pTupleTable = do
-    tupDesc <- (#peek struct SPITupleTable, tupdesc) pTupleTable
-    natts <- (#peek struct TupleDescData, natts) tupDesc :: IO Int16
+    natts <- getNatts pTupleTable
     allocaArray (fromIntegral natts) $ \oids -> do
         c_getOids pTupleTable oids
         mapM (peekElemOff oids) [0 .. (fromIntegral natts)-1]

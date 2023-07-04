@@ -100,6 +100,14 @@ getFuncName pCallInfo = liftIO $ (#peek struct CallInfo, func_name) pCallInfo >>
 getType :: Ptr ValueInfo -> IO Word16
 getType pValueInfo = (#peek struct ValueInfo, type) pValueInfo
 
+-- Extract type_oid from ValueInfo struct
+getTypeOid :: Ptr ValueInfo -> IO Oid
+getTypeOid = (#peek struct ValueInfo, type_oid)
+
+-- Extract count of sub-fields from ValueInfo sruct
+getCount :: Ptr ValueInfo -> IO Int16
+getCount = (#peek struct ValueInfo, count)
+
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo j = do
@@ -113,10 +121,10 @@ getTypeName pValueInfo = do
     case typ of
         (#const VOID_TYPE) -> return "()"
         (#const BASE_TYPE) -> do
-            typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+            typeOid <- getTypeOid pValueInfo
             return $ "Maybe " ++ baseName typeOid
         (#const COMPOSITE_TYPE) -> do
-            count <- (#peek struct ValueInfo, count) pValueInfo
+            count <- getCount pValueInfo
             names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
             return $ "Maybe (" ++ intercalate ", " names ++ ")"
         _ -> undefined
@@ -155,10 +163,10 @@ writeResultDef pValueInfo = let
         case typ of
             (#const VOID_TYPE) -> return "writeVoid"
             (#const BASE_TYPE) -> do
-                typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+                typeOid <- getTypeOid pValueInfo
                 return $ "(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())"
             (#const COMPOSITE_TYPE) -> do
-                count <- (#peek struct ValueInfo, count) pValueInfo
+                count <- getCount pValueInfo
                 fieldsDef <- forM [0 .. count-1] getFieldDef
                 let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
                 return $ "\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
@@ -177,10 +185,10 @@ readArgDef pValueInfo = let
         typ <- getType pValueInfo
         case typ of
             (#const BASE_TYPE) -> do
-                typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+                typeOid <- getTypeOid pValueInfo
                 return $ "(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))"
             (#const COMPOSITE_TYPE) -> do
-                count <- (#peek struct ValueInfo, count) pValueInfo
+                count <- getCount pValueInfo
                 fieldsDef <- forM [0 .. count-1] getFieldDef
                 let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
                 return $ "\\pValueInfo -> do {\
