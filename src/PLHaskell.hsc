@@ -96,6 +96,7 @@ getModFileName pCallInfo = liftIO $ (#peek struct CallInfo, mod_file_name) pCall
 getFuncName :: Ptr CallInfo -> Interpreter String
 getFuncName pCallInfo = liftIO $ (#peek struct CallInfo, func_name) pCallInfo >>= peekCString
 
+-- Extract the value type from ValueInfo struct
 getType :: Ptr ValueInfo -> IO Word16
 getType pValueInfo = (#peek struct ValueInfo, type) pValueInfo
 

@@ -92,6 +92,13 @@ data QueryParam = QueryParamByteA  (Maybe ByteString)
                 | QueryParamFloat4 (Maybe Float)
                 | QueryParamFloat8 (Maybe Double)
 
+-- Extract the value type from ValueInfo struct
+getType :: Ptr ValueInfo -> IO Word16
+getType = (#peek struct ValueInfo, type)
+
+getTypeOid :: Ptr ValueInfo -> IO Oid
+getTypeOid = (#peek struct ValueInfo, type_oid)
+
 -- Transform QueryParam to is_null and datum
 encode :: QueryParam -> IO (CBool, Datum)
 encode (QueryParamByteA Nothing) = return (fromBool True, voidDatum)
@@ -208,38 +215,32 @@ foreign import capi unsafe "plhaskell.h delete_value_info"
 foreign import capi unsafe "plhaskell.h fill_value_info"
     fillValueInfo :: Ptr TupleTable -> Ptr ValueInfo -> Word64 -> CInt -> IO ()
 
-mkQueryResultValueTypOid :: Oid -> Ptr ValueInfo -> IO QueryResultValue
-mkQueryResultValueTypOid (#const BYTEAOID)  pValueInfo = QueryResultValueByteA  <$> readType pValueInfo
-mkQueryResultValueTypOid (#const TEXTOID)   pValueInfo = QueryResultValueText   <$> readType pValueInfo
-mkQueryResultValueTypOid (#const CHAROID)   pValueInfo = QueryResultValueChar   <$> readType pValueInfo
-mkQueryResultValueTypOid (#const BOOLOID)   pValueInfo = QueryResultValueBool   <$> readType pValueInfo
-mkQueryResultValueTypOid (#const INT2OID)   pValueInfo = QueryResultValueInt2   <$> readType pValueInfo
-mkQueryResultValueTypOid (#const INT4OID)   pValueInfo = QueryResultValueInt4   <$> readType pValueInfo
-mkQueryResultValueTypOid (#const INT8OID)   pValueInfo = QueryResultValueInt8   <$> readType pValueInfo
-mkQueryResultValueTypOid (#const FLOAT4OID) pValueInfo = QueryResultValueFloat4 <$> readType pValueInfo
-mkQueryResultValueTypOid (#const FLOAT8OID) pValueInfo = QueryResultValueFloat8 <$> readType pValueInfo
-mkQueryResultValueTypOid _typeOid _pValueInfo = undefined
-
-mkQueryResultValueTyp :: Word16 -> Ptr ValueInfo -> IO QueryResultValue
-mkQueryResultValueTyp (#const BASE_TYPE) pValueInfo = do
-    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    mkQueryResultValueTypOid typeOid pValueInfo
-
-mkQueryResultValueTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    is_null <- readIsNull pValueInfo
-    if is_null
-    then return (QueryResultValueComposite Nothing)
-    else do
-        count <- (#peek struct ValueInfo, count) pValueInfo
-        fields <- mapM (getField pValueInfo) [0 .. count-1]
-        (QueryResultValueComposite . Just) <$> mapM mkQueryResultValue fields
-
-mkQueryResultValueTyp _typ _pValueInfo = undefined
-
 mkQueryResultValue :: Ptr ValueInfo -> IO QueryResultValue
 mkQueryResultValue pValueInfo = do
-    typ <- (#peek struct ValueInfo, type) pValueInfo
-    mkQueryResultValueTyp typ pValueInfo
+    typ <- getType pValueInfo
+    case typ of
+        (#const BASE_TYPE) -> do
+            typeOid <- getTypeOid pValueInfo
+            case typeOid of
+                (#const BYTEAOID)  -> QueryResultValueByteA  <$> readType pValueInfo
+                (#const TEXTOID)   -> QueryResultValueText   <$> readType pValueInfo
+                (#const CHAROID)   -> QueryResultValueChar   <$> readType pValueInfo
+                (#const BOOLOID)   -> QueryResultValueBool   <$> readType pValueInfo
+                (#const INT2OID)   -> QueryResultValueInt2   <$> readType pValueInfo
+                (#const INT4OID)   -> QueryResultValueInt4   <$> readType pValueInfo
+                (#const INT8OID)   -> QueryResultValueInt8   <$> readType pValueInfo
+                (#const FLOAT4OID) -> QueryResultValueFloat4 <$> readType pValueInfo
+                (#const FLOAT8OID) -> QueryResultValueFloat8 <$> readType pValueInfo
+                _                  -> undefined
+        (#const COMPOSITE_TYPE) -> do
+            is_null <- readIsNull pValueInfo
+            if is_null
+            then return (QueryResultValueComposite Nothing)
+            else do
+                count <- (#peek struct ValueInfo, count) pValueInfo
+                fields <- mapM (getField pValueInfo) [0 .. count-1]
+                (QueryResultValueComposite . Just) <$> mapM mkQueryResultValue fields
+        _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr ValueInfo] -> Word64 -> IO [QueryResultValue]
 getRow pTupleTable pValueInfos rowNumber = do
@@ -255,37 +256,6 @@ getRows pTupleTable processed = do
     rows <- mapM (getRow pTupleTable pValueInfos) [0 .. processed-1]
     mapM_ deleteValueInfo pValueInfos
     return rows
-
-mkResults :: CInt -> Word64 -> Ptr TupleTable -> IO QueryResults
-mkResults (#const SPI_OK_SELECT) processed pTupleTable = do
-    header <- getHeader pTupleTable
-    rows <- getRows pTupleTable processed
-    return (SelectResults processed header rows)
-
-mkResults (#const SPI_OK_SELINTO)   processed _pTupleTable = return (SelectIntoResults processed)
-mkResults (#const SPI_OK_INSERT)    processed _pTupleTable = return (InsertResults     processed)
-mkResults (#const SPI_OK_DELETE)    processed _pTupleTable = return (DeleteResults     processed)
-mkResults (#const SPI_OK_UPDATE)    processed _pTupleTable = return (UpdateResults     processed)
-
-mkResults (#const SPI_OK_INSERT_RETURNING) processed pTupleTable = do
-    header <- getHeader pTupleTable
-    rows <- getRows pTupleTable processed
-    return (InsertReturningResults processed header rows)
-
-mkResults (#const SPI_OK_DELETE_RETURNING) processed pTupleTable = do
-    header <- getHeader pTupleTable
-    rows <- getRows pTupleTable processed
-    return (DeleteReturningResults processed header rows)
-
-mkResults (#const SPI_OK_UPDATE_RETURNING) processed pTupleTable = do
-    header <- getHeader pTupleTable
-    rows <- getRows pTupleTable processed
-    return (UpdateReturningResults processed header rows)
-
-mkResults (#const SPI_OK_UTILITY)   processed _pTupleTable = return (UtilityResults    processed)
-mkResults (#const SPI_OK_REWRITTEN) processed _pTupleTable = return (RewrittenResults  processed)
-
-mkResults _spiCode _processed _pTupleTable = undefined
 
 foreign import capi safe "plhaskell.h run_query"
     runQuery :: CString -> CInt -> Ptr Oid -> Ptr Datum -> Ptr CBool -> IO CInt
@@ -311,6 +281,29 @@ query q params = PGm $ do
                     spiCode <- runQuery ptr (fromIntegral nargs) ptrArgtypes ptrValues ptrIsNulls
                     processed <- peek pSPIProcessed
                     pTupleTable <- peek pSPITupTable
-                    queryResult <- mkResults spiCode processed pTupleTable
+                    queryResult <- case spiCode of
+                        (#const SPI_OK_SELECT) -> do
+                            header <- getHeader pTupleTable
+                            rows <- getRows pTupleTable processed
+                            return (SelectResults processed header rows)
+                        (#const SPI_OK_SELINTO) -> return (SelectIntoResults processed)
+                        (#const SPI_OK_INSERT)  -> return (InsertResults     processed)
+                        (#const SPI_OK_DELETE)  -> return (DeleteResults     processed)
+                        (#const SPI_OK_UPDATE)  -> return (UpdateResults     processed)
+                        (#const SPI_OK_INSERT_RETURNING) -> do
+                            header <- getHeader pTupleTable
+                            rows <- getRows pTupleTable processed
+                            return (InsertReturningResults processed header rows)
+                        (#const SPI_OK_DELETE_RETURNING) -> do
+                            header <- getHeader pTupleTable
+                            rows <- getRows pTupleTable processed
+                            return (DeleteReturningResults processed header rows)
+                        (#const SPI_OK_UPDATE_RETURNING) -> do
+                            header <- getHeader pTupleTable
+                            rows <- getRows pTupleTable processed
+                            return (UpdateReturningResults processed header rows)
+                        (#const SPI_OK_UTILITY)   -> return (UtilityResults    processed)
+                        (#const SPI_OK_REWRITTEN) -> return (RewrittenResults  processed)
+                        _ -> undefined
                     freeTupTable pTupleTable
                     return queryResult
