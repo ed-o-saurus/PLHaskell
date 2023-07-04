@@ -96,31 +96,29 @@ getModFileName pCallInfo = liftIO $ (#peek struct CallInfo, mod_file_name) pCall
 getFuncName :: Ptr CallInfo -> Interpreter String
 getFuncName pCallInfo = liftIO $ (#peek struct CallInfo, func_name) pCallInfo >>= peekCString
 
+getType :: Ptr ValueInfo -> IO Word16
+getType pValueInfo = (#peek struct ValueInfo, type) pValueInfo
+
 -- Get field of ValueInfo struct
 getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
 getField pValueInfo j = do
     fields <- (#peek struct ValueInfo, fields) pValueInfo
     peekElemOff fields (fromIntegral j)
 
-getTypeNameTyp :: Word16 -> Ptr ValueInfo -> IO String
-getTypeNameTyp (#const VOID_TYPE) _pValueInfo = return "()"
-
-getTypeNameTyp (#const BASE_TYPE) pValueInfo = do
-    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return $ "Maybe " ++ baseName typeOid
-
-getTypeNameTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    count <- (#peek struct ValueInfo, count) pValueInfo
-    names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
-    return $ "Maybe (" ++ intercalate ", " names ++ ")"
-
-getTypeNameTyp _typ _pValueInfo = undefined
-
 -- Get Haskell type name based on ValueInfo struct
 getTypeName :: Ptr ValueInfo -> IO String
 getTypeName pValueInfo = do
-    typ <- (#peek struct ValueInfo, type) pValueInfo
-    getTypeNameTyp typ pValueInfo
+    typ <- getType pValueInfo
+    case typ of
+        (#const VOID_TYPE) -> return "()"
+        (#const BASE_TYPE) -> do
+            typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+            return $ "Maybe " ++ baseName typeOid
+        (#const COMPOSITE_TYPE) -> do
+            count <- (#peek struct ValueInfo, count) pValueInfo
+            names <- forM [0 .. count-1] (getField pValueInfo >=> getTypeName)
+            return $ "Maybe (" ++ intercalate ", " names ++ ")"
+        _ -> undefined
 
 -- Get argument ValueInfo struct from CallInfo struct
 getArgValueInfo :: Ptr CallInfo -> Int16 -> IO (Ptr ValueInfo)
@@ -145,66 +143,55 @@ getSignature pCallInfo = liftIO $ do
             then return $ intercalate " -> " (argTypeNames ++ ["IO [" ++ resultTypeName ++ "]"])
             else return $ intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"])
 
-writeResultDefTyp :: Word16 -> Ptr ValueInfo -> IO String
-writeResultDefTyp (#const VOID_TYPE) _pValueInfo = return "writeVoid"
-
-writeResultDefTyp (#const BASE_TYPE) pValueInfo = do
-    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return $ "(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())"
-
-writeResultDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    count <- (#peek struct ValueInfo, count) pValueInfo
-    fieldsDef <- forM [0 .. count-1] (writeGetFieldDef pValueInfo)
-    let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-    return $ "\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
-    \                                              Just (" ++ fieldsList ++ ") -> do;\
-    \                                                                              writeNotNull pValueInfo;" ++
-                                                                                   concat fieldsDef
-
-writeResultDefTyp _typ _pValueInfo = undefined
-
-writeGetFieldDef :: Ptr ValueInfo -> Int16 -> IO String
-writeGetFieldDef pValueInfo j = do
-    writeFieldDef <- getField pValueInfo j >>= writeResultDef;
-    return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") j
-
 -- Return a string representing a function to take a Haskell result and write it to a ValueInfo struct
 writeResultDef :: Ptr ValueInfo -> IO String
-writeResultDef pValueInfo = do
-    typ <- (#peek struct ValueInfo, type) pValueInfo
-    writeResultDefTyp typ pValueInfo
-
-readArgDefTyp :: Word16 -> Ptr ValueInfo -> IO String
-readArgDefTyp (#const BASE_TYPE) pValueInfo = do
-    typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
-    return $ "(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))"
-
-readArgDefTyp (#const COMPOSITE_TYPE) pValueInfo = do
-    count <- (#peek struct ValueInfo, count) pValueInfo
-    fieldsDef <- forM [0 .. count-1] (readGetFieldDef pValueInfo)
-    let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-    return $ "\\pValueInfo -> do {\
-    \                                isNull <- readIsNull pValueInfo;\
-    \                                if isNull; \
-    \                                    then return Nothing;\
-    \                                    else do {" ++
-                                             concat fieldsDef ++
-                                             "return (Just (" ++ fieldsList ++ "))\
-    \                                    }\
-    \                        }"
-
-readArgDefTyp _typ _pValueInfo = undefined
-
-readGetFieldDef :: Ptr ValueInfo -> Int16 -> IO String
-readGetFieldDef pValueInfo j = do
-    readFieldDef <- getField pValueInfo j >>= readArgDef
-    return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") j
+writeResultDef pValueInfo = let
+    getFieldDef j = do
+        writeFieldDef <- getField pValueInfo j >>= writeResultDef;
+        return $ interpolate ("getField pValueInfo ? >>= (" ++ writeFieldDef ++ ") field?;") j
+    in do
+        typ <- getType pValueInfo
+        case typ of
+            (#const VOID_TYPE) -> return "writeVoid"
+            (#const BASE_TYPE) -> do
+                typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+                return $ "(writeType :: Maybe " ++ baseName typeOid ++ " -> Ptr ValueInfo -> IO ())"
+            (#const COMPOSITE_TYPE) -> do
+                count <- (#peek struct ValueInfo, count) pValueInfo
+                fieldsDef <- forM [0 .. count-1] getFieldDef
+                let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
+                return $ "\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
+                \                                               Just (" ++ fieldsList ++ ") -> do;\
+                \                                                                              writeNotNull pValueInfo;" ++
+                                                                                            concat fieldsDef
+            _ -> undefined
 
 -- Return a string representing a function to take and argument from a ValueInfo struct and return the Haskell value
 readArgDef :: Ptr ValueInfo -> IO String
-readArgDef pValueInfo = do
-    typ <- (#peek struct ValueInfo, type) pValueInfo
-    readArgDefTyp typ pValueInfo
+readArgDef pValueInfo = let
+    getFieldDef j = do
+        readFieldDef <- getField pValueInfo j >>= readArgDef
+        return $ interpolate ("field? <- getField pValueInfo ? >>= (" ++ readFieldDef ++ ");") j
+    in do
+        typ <- getType pValueInfo
+        case typ of
+            (#const BASE_TYPE) -> do
+                typeOid <- (#peek struct ValueInfo, type_oid) pValueInfo
+                return $ "(readType :: Ptr ValueInfo -> IO (Maybe " ++ baseName typeOid ++ "))"
+            (#const COMPOSITE_TYPE) -> do
+                count <- (#peek struct ValueInfo, count) pValueInfo
+                fieldsDef <- forM [0 .. count-1] getFieldDef
+                let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
+                return $ "\\pValueInfo -> do {\
+                \                                isNull <- readIsNull pValueInfo;\
+                \                                if isNull; \
+                \                                    then return Nothing;\
+                \                                    else do {" ++
+                                                        concat fieldsDef ++
+                                                        "return (Just (" ++ fieldsList ++ "))\
+                \                                    }\
+                \                        }"
+            _ -> undefined
 
 defineReadArg :: Ptr CallInfo -> Int16 -> Interpreter ()
 defineReadArg pCallInfo i = do
