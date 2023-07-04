@@ -114,6 +114,9 @@ getField pValueInfo j = do
     fields <- (#peek struct ValueInfo, fields) pValueInfo
     peekElemOff fields (fromIntegral j)
 
+setPtr :: String -> Ptr a -> Interpreter ()
+setPtr name ptr = runStmt $ "let " ++ name ++ " = wordPtrToPtr " ++ show (ptrToWordPtr ptr)
+
 -- Get Haskell type name based on ValueInfo struct
 getTypeName :: Ptr ValueInfo -> IO String
 getTypeName pValueInfo = do
@@ -210,7 +213,7 @@ defineReadArg pCallInfo i = do
 definePArgValueInfo :: Ptr CallInfo -> Int16 -> Interpreter ()
 definePArgValueInfo pCallInfo i = do
     pArgValueInfo <- liftIO $ getArgValueInfo pCallInfo i
-    runStmt $ interpolate "let pArgValueInfo? = wordPtrToPtr " i ++ show (ptrToWordPtr pArgValueInfo)
+    setPtr (interpolate "pArgValueInfo?" i) pArgValueInfo
 
 -- Set up interpreter to evaluate a function
 setUpEvalInt :: Ptr CallInfo -> Interpreter (Int16, String, Bool)
@@ -254,7 +257,7 @@ setUpEvalInt pCallInfo = do
 
     -- Set pArgValueInfo? and pResultValueInfo to point to ValueInfo structs
     forM_ [0 .. nargs-1] (definePArgValueInfo pCallInfo)
-    runStmt $ "let pResultValueInfo = wordPtrToPtr " ++ show (ptrToWordPtr pResultValueInfo)
+    setPtr "pResultValueInfo" pResultValueInfo
 
     return (nargs, funcName, toBool trusted)
 
@@ -310,8 +313,8 @@ mkFunction pCallInfo = execute $ do
     runStmt $ "function <- wrapVoidFunc $ do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "}"
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
-    runStmt $ "let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo)
-    runStmt   "poke pFunction function"
+    setPtr "pFunction" ((#ptr struct CallInfo, function) pCallInfo)
+    runStmt "poke pFunction function"
 
 -- Set the List field of the CallInfo struct to the list returns by the function
 -- Set the Function field of the CallInfo struct to a function that will iterate through the list
@@ -335,14 +338,14 @@ mkIterator pCallInfo = execute $ do
     runStmt "let writeResultList = mkResultList writeResult results pResultValueInfo"
 
     -- poke the stable pointer value into the List field of the CallInfo struct
-    runStmt   "spList <- newStablePtr writeResultList"
-    runStmt $ "let pList = wordPtrToPtr " ++ show ((#ptr struct CallInfo, list) pCallInfo)
-    runStmt   "poke pList spList"
+    runStmt "spList <- newStablePtr writeResultList"
+    setPtr "pList" ((#ptr struct CallInfo, list) pCallInfo)
+    runStmt "poke pList spList"
 
     -- poke the iterator into the Function field of the CallInfo struct
-    runStmt   "function <- wrapVoidFunc (iterate pList)"
-    runStmt $ "let pFunction = wordPtrToPtr " ++ show ((#ptr struct CallInfo, function) pCallInfo)
-    runStmt   "poke pFunction function"
+    runStmt "function <- wrapVoidFunc (iterate pList)"
+    setPtr "pFunction" ((#ptr struct CallInfo, function) pCallInfo)
+    runStmt "poke pFunction function"
 
 -- Version of the underlying GHC API.
 foreign export capi "hint_ghc_version" hintGhcVersion :: Int32
