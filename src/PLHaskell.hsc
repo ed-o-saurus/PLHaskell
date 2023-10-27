@@ -172,9 +172,9 @@ writeResultDef pValueInfo = let
                 count <- getCount pValueInfo
                 fieldsDef <- forM [0 .. count-1] getFieldDef
                 let fieldsList = intercalate ", " (map (interpolate "field?") [0 .. count-1])
-                return $ "\\result pValueInfo -> case result of Nothing -> writeNull pValueInfo;\
+                return $ "\\result pValueInfo -> case result of Nothing -> writeIsNull True pValueInfo;\
                 \                                               Just (" ++ fieldsList ++ ") -> do;\
-                \                                                                              writeNotNull pValueInfo;" ++
+                \                                                                              writeIsNull False pValueInfo;" ++
                                                                                             concat fieldsDef
             _ -> undefined
 
@@ -232,7 +232,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "ValueInfo", "getField", "readIsNull", "wrapVoidFunc", "writeNull", "writeNotNull", "writeVoid", "iterate", "mkResultList"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "ValueInfo", "getField", "readIsNull", "wrapVoidFunc", "writeIsNull", "writeVoid", "iterate", "mkResultList"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo

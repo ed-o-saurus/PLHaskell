@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeNotNull, writeNull, writeVoid) where
+module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeIsNull, writeVoid) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
@@ -59,13 +59,9 @@ readIsNull pValueInfo = do
     CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
     return $ toBool isNull
 
--- Set isNull to true
-writeNull :: Ptr ValueInfo -> IO ()
-writeNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool True)
-
--- Set isNull to false
-writeNotNull :: Ptr ValueInfo -> IO ()
-writeNotNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool False)
+-- Set isNull
+writeIsNull :: Bool-> Ptr ValueInfo -> IO ()
+writeIsNull isNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool isNull)
 
 -- Do nothing when returning void
 writeVoid :: () -> Ptr ValueInfo -> IO ()
@@ -87,11 +83,11 @@ class ReadWrite a where
     writeType :: Maybe a -> Ptr ValueInfo -> IO ()
     writeType Nothing pValueInfo = do
         (#poke struct ValueInfo, value) pValueInfo voidDatum
-        writeNull pValueInfo
+        writeIsNull True pValueInfo
 
     writeType (Just result) pValueInfo = do
         write result >>= (#poke struct ValueInfo, value) pValueInfo
-        writeNotNull pValueInfo
+        writeIsNull False pValueInfo
 
 -- Get the size of a variable length array
 foreign import capi unsafe "postgres.h VARSIZE_ANY_EXHDR"
