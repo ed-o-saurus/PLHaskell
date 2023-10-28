@@ -18,5 +18,5 @@
 
 # PL/Haskell extension
 comment = 'PL/Haskell procedural language'
-default_version = '3.0'
+default_version = '3.1'
 module_pathname = '$libdir/plhaskell.so'
