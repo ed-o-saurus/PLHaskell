@@ -21,7 +21,7 @@
 cat - << EOF
 name:            pgutils
 version:         3.1
-visibility:      pubic
+visibility:      public
 id:              pgutils-3.1
 key:             pgutils-3.1
 license:         GPL
