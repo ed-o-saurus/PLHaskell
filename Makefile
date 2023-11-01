@@ -20,13 +20,13 @@ SHELL = /bin/sh
 
 GHC_VERSION = $(shell ghc --numeric-version)
 
-RTS_NAME  = $(shell ghc-pkg field rts  hs-libraries | awk '{print $$2}')
-HINT_NAME = $(shell ghc-pkg field hint hs-libraries | awk '{print $$2}')
-TEXT_NAME = $(shell ghc-pkg field text hs-libraries | awk '{print $$2}')
+RTS_NAME  = $(shell ghc-pkg --simple-output field rts  hs-libraries)
+HINT_NAME = $(shell ghc-pkg --simple-output field hint hs-libraries)
+TEXT_NAME = $(shell ghc-pkg --simple-output field text hs-libraries)
 
-RTS_LIB_DIR      = $(shell ghc-pkg field rts  library-dirs         | awk '{print $$2}')
-HINT_DYN_LIB_DIR = $(shell ghc-pkg field hint dynamic-library-dirs | awk '{print $$2}')
-TEXT_DYN_LIB_DIR = $(shell ghc-pkg field text dynamic-library-dirs | awk '{print $$2}')
+RTS_LIB_DIR      = $(shell ghc-pkg --simple-output field rts  library-dirs)
+HINT_DYN_LIB_DIR = $(shell ghc-pkg --simple-output field hint dynamic-library-dirs)
+TEXT_DYN_LIB_DIR = $(shell ghc-pkg --simple-output field text dynamic-library-dirs)
 
 PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 PG_SHARE_DIR   = $(shell pg_config --sharedir)
@@ -68,7 +68,6 @@ src/MemoryUtils.o src/MemoryUtils.hi : src/MemoryUtils.hs
 src/pgutils-3.1.conf :
 	./src/mk_pgutils_conf.sh $(PG_PKG_LIB_DIR) > $@
 
-
 ifeq ($(SELINUX),1)
 %.mod : %.te
 	checkmodule -M -m -o $@ $^
@@ -100,4 +99,3 @@ uninstall :
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGsupport.dyn_hi
 	-rm -fr $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 	-rm -f  $(DESTDIR)/usr/share/selinux/packages/plhaskell.pp
-
