@@ -35,7 +35,7 @@
 
 extern char pkglib_path[];
 
-static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set);
+static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set, bool atomic);
 static void build_value_info(struct ValueInfo *p_value_info, Oid typeoid);
 
 static void destroy_call_info(void *arg);
@@ -79,6 +79,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     Datum proretset;
     bool is_null;
     int spi_code;
+    bool nonatomic;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
@@ -89,6 +90,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         ereport(ERROR, errmsg("pg_proc.proretset is NULL"));
 
     ReleaseSysCache(proctup);
+
+    nonatomic = fcinfo->context &&
+        IsA(fcinfo->context, CallContext) &&
+        !castNode(CallContext, fcinfo->context)->atomic;
 
     // If we're returning a set
     if(DatumGetBool(proretset))
@@ -119,13 +124,13 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             cb->arg = p_call_info;
             MemoryContextRegisterResetCallback(funcctx->multi_call_memory_ctx, cb);
 
-            build_call_info(p_call_info, funcoid, true);
+            build_call_info(p_call_info, funcoid, true, !nonatomic);
 
             // Write the argument to their ValueInfo structs
             for(int16 i=0; i<p_call_info->nargs; i++)
                 write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
-            spi_code = SPI_connect();
+            spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
             if(spi_code < 0)
                 ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
@@ -142,7 +147,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         funcctx = per_MultiFuncCall(fcinfo);
         p_call_info = funcctx->user_fctx;
 
-        spi_code = SPI_connect();
+        spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
@@ -182,7 +187,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             cb->arg = p_call_info;
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
-            build_call_info(p_call_info, funcoid, false);
+            build_call_info(p_call_info, funcoid, false, !nonatomic);
 
             // Make the function
             call_wrapper(mk_function, p_call_info);
@@ -196,7 +201,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         for(int16 i=0; i<p_call_info->nargs; i++)
             write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
-        spi_code = SPI_connect();
+        spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
@@ -249,7 +254,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     cb->arg = p_call_info;
     MemoryContextRegisterResetCallback(CurrentMemoryContext, cb);
 
-    build_call_info(p_call_info, funcoid, DatumGetBool(proretset));
+    build_call_info(p_call_info, funcoid, DatumGetBool(proretset), false);
 
     // Raise error if the function's signature is incorrect
     call_wrapper(check_signature, p_call_info);
@@ -258,7 +263,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 }
 
 // Fill CallInfo struct
-static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set)
+static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set, bool atomic)
 {
     HeapTuple proctup, lantup;
     Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel, prolang, lanpltrusted;
@@ -270,6 +275,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     FILE *modfile;
 
     p_call_info->return_set = return_set;
+    p_call_info->atomic = atomic;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))

@@ -61,6 +61,7 @@ struct CallInfo
     struct ValueInfo *result; // Returned result
     bool return_set; // Does the function return a set of values?
     bool spi_read_only; // Use read-only mode on internal queries
+    bool atomic; // Is this an atomic transaction?
     void (*function)(void); // Pointer to the function to be called to read Args and populate Result
     HsStablePtr list; // Stable pointer to list of results
 
