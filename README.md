@@ -138,17 +138,23 @@ The following are needed to build and install PL/Haskell:
 
 #### Build
 
-Ensure that `pg_config` is available in the path. Run `make` to build all the files needed for the extension.
+Ensure that `pg_config` is available in the search path.
+
+From the repository's root directory, build all the files needed for the extension:
+
+**`$>`** `make`
 
 #### Install
 
-To install, run `sudo make install`.
+Install the extension:
 
-On each database that you wish to have the extension, run the SQL command `CREATE EXTENSION plhaskell;`.
+**`$>`** `sudo make install`
 
 #### Uninstall
 
-To uninstall, run `sudo make uninstall`.
+To uninstall the extension:
+
+**`$>`** `sudo make uninstall`
 
 ### Security Enhanced Linux
 
@@ -312,6 +318,21 @@ $$
 LANGUAGE plhaskell;
 ```
 
+```
+CREATE FUNCTION add(int, int) RETURNS int IMMUTABLE AS
+$$
+    import Data.Int (Int32)
+
+    add :: Maybe Int32 -> Maybe Int32 -> IO (Maybe Int32)
+
+    add Nothing Nothing = return Nothing
+    add (Just a) (Just b) = return (Just (a+b))
+    add a Nothing = return a
+    add Nothing b = return b
+$$
+LANGUAGE plhaskellu;
+```
+
 ### Fibonacci Sequence
 
 ```
@@ -332,17 +353,36 @@ $$
 LANGUAGE plhaskell;
 ```
 
+```
+CREATE FUNCTION fibonacci(int) RETURNS int IMMUTABLE AS
+$$
+    import Data.Int (Int32)
+
+    fibonacci' :: Int32 -> Int32
+    fibonacci' 0 = 0
+    fibonacci' 1 = 1
+    fibonacci' n = fibonacci' (n-2) + fibonacci' (n-1)
+
+    fibonacci :: Maybe Int32 -> IO (Maybe Int32)
+    fibonacci Nothing = return Nothing
+    fibonacci (Just n) = return (Just (fibonacci' n))
+$$
+LANGUAGE plhaskellu;
+```
+
 ### Primes
 
 This section shows how to return a set of results. The functions listed produce lists of prime numbers using the [Sieve of Eratosthenes](https://en.wikipedia.org/wiki/Sieve_of_Eratosthenes).
 
 #### Composite Type
 
-The function in this section returns a set of composite results.
+The functions in this section return a set of composite results.
 
 ```
 CREATE TYPE n_p AS (n int, p int);
+```
 
+```
 CREATE FUNCTION primes(int) RETURNS SETOF n_p IMMUTABLE AS
 $$
     import PGutils (PGm, raiseError)
@@ -357,6 +397,23 @@ $$
     primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
 $$
 LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION primes(int) RETURNS SETOF n_p IMMUTABLE AS
+$$
+    import PGutils (unPGm, raiseError)
+    import Data.Int (Int32)
+
+    sieve :: [Int32] -> [Int32]
+    sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
+    sieve [] = []
+
+    primes :: Maybe Int32 -> IO [Maybe (Maybe Int32, Maybe Int32)]
+    primes Nothing = unPGm $ raiseError "Invalid Null"
+    primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
+$$
+LANGUAGE plhaskellu;
 ```
 
 By running the query
@@ -382,7 +439,7 @@ The following is produced
 
 #### Infinite List
 
-The following function returns a infinite list of prime numbers
+The following functions return a infinite list of prime numbers
 
 ```
 CREATE FUNCTION primes() RETURNS SETOF int IMMUTABLE AS
@@ -397,6 +454,20 @@ $$
     primes = return (map Just (sieve [2..]))
 $$
 LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION primes() RETURNS SETOF int IMMUTABLE AS
+$$
+    import Data.Int (Int32)
+
+    sieve :: [Int32] -> [Int32]
+    sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
+
+    primes :: IO [Maybe Int32]
+    primes = return (map Just (sieve [2..]))
+$$
+LANGUAGE plhaskellu;
 ```
 
 To generate the first twenty-five prime numbers, run:
