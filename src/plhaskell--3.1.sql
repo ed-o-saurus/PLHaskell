@@ -42,14 +42,20 @@ CREATE FUNCTION plhaskell_validator(oid)
   RETURNS void STRICT
   LANGUAGE c AS 'MODULE_PATHNAME';
 
+CREATE FUNCTION plhaskell_inline_handler(internal)
+  RETURNS void
+  LANGUAGE C AS 'MODULE_PATHNAME';
+
 CREATE TRUSTED LANGUAGE plhaskell
   HANDLER   plhaskell_call_handler
+  INLINE    plhaskell_inline_handler
   VALIDATOR plhaskell_validator;
 
 COMMENT ON LANGUAGE plhaskell IS 'PL/Haskell procedural language';
 
 CREATE LANGUAGE plhaskellu
   HANDLER   plhaskell_call_handler
+  INLINE    plhaskell_inline_handler
   VALIDATOR plhaskell_validator;
 
 COMMENT ON LANGUAGE plhaskellu IS 'PL/Haskell procedural language (untrusted)';

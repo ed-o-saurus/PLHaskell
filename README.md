@@ -207,6 +207,10 @@ Trusted functions must return type `PGm (Maybe `*`result`*`)` where *`result`* i
 
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
+### Inline Code
+
+The extension supports anonymous code blocks with the use of the `DO` keyword. Code is written the same way as in functions. The Haskell function to be run must be named `_'` and have signature `_' :: PGm ()` or `_' :: IO ()` depending on the language variant used.
+
 ### Returning Sets
 
 Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]` or `IO [Maybe `*`result`*`]` where *`result`* is the appropriate Haskell type as determined by the return type of function.
@@ -299,6 +303,26 @@ The function `ghc_version` takes no arguments and returns the version of the und
 * etc...
 
 ## Examples
+
+### Hello, world
+
+```
+DO LANGUAGE plhaskell $$
+    import PGutils (PGm, report, notice)
+
+    _' :: PGm ()
+    _' = report notice "Hello, world!"
+$$;
+```
+
+```
+DO LANGUAGE plhaskellu $$
+    import PGutils (unPGm, report, notice)
+
+    _' :: IO ()
+    _' = unPGm $ report notice "Hello, world!"
+$$;
+```
 
 ### Addition
 

@@ -262,6 +262,71 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     PG_RETURN_VOID();
 }
 
+// Called when PL/Haskell DO block is run
+PG_FUNCTION_INFO_V1(plhaskell_inline_handler);
+Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
+{
+    InlineCodeBlock *codeblock = (InlineCodeBlock *)PG_GETARG_POINTER(0);
+    MemoryContextCallback *cb = palloc(sizeof(MemoryContextCallback));
+    struct CallInfo *p_call_info = palloc0(sizeof(struct CallInfo));
+    char tempdirpath[MAXPGPATH];
+    FILE *modfile;
+    int spi_code;
+
+    // Register callback to free List and Iterator and delete temp module file
+    cb->func = destroy_call_info;
+    cb->arg = p_call_info;
+    MemoryContextRegisterResetCallback(CurrentMemoryContext, cb);
+
+    p_call_info->return_set = false;
+    p_call_info->atomic = codeblock->atomic;
+    p_call_info->trusted = codeblock->langIsTrusted;
+    p_call_info->spi_read_only = false;
+    p_call_info->nargs = 0;
+
+    p_call_info->result = palloc(sizeof(struct ValueInfo));
+    build_value_info(p_call_info->result, VOIDOID);
+
+    p_call_info->func_name = palloc(3);
+    strcpy(p_call_info->func_name, "_'");
+
+    TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
+    p_call_info->mod_file_name = palloc0(MAXPGPATH);
+    snprintf(p_call_info->mod_file_name, MAXPGPATH, "%s/ModXXXXXX.hs", tempdirpath);
+    modfile = fdopen(mkstemps(p_call_info->mod_file_name, 3), "w");
+    if(!modfile)
+        ereport(ERROR, errmsg("Unable to create temporary file (%s)", p_call_info->mod_file_name));
+
+    fprintf(modfile, "module PGmodule (_') where\n");
+    fputs(codeblock->source_text, modfile);
+
+    fclose(modfile);
+
+    // Add p_call_info to the list of all active CallInfos
+    if(first_p_call_info)
+    {
+        p_call_info->next = first_p_call_info;
+        first_p_call_info->prev = p_call_info;
+    }
+
+    first_p_call_info = p_call_info;
+
+    spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
+    if(spi_code < 0)
+        ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
+
+    call_wrapper(mk_function, p_call_info);
+
+    // Run the function
+    call_wrapper(call_function, p_call_info);
+
+    spi_code = SPI_finish();
+    if(spi_code < 0)
+        ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
+
+    PG_RETURN_VOID();
+}
+
 // Fill CallInfo struct
 static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set, bool atomic)
 {
