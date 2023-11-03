@@ -513,6 +513,21 @@ INSERT INTO plhaskellu_test.primes(n, p)
 SELECT n, p
 FROM plhaskellu_test.primes(10);
 
+CREATE TABLE plhaskellu_test.inline_test(i int, i_sq int);
+DO LANGUAGE plhaskellu $$
+    import PGutils (unPGm, query, QueryParam(QueryParamInt4))
+
+    _' :: IO ()
+    _' = unPGm $ do
+        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 0), QueryParamInt4 (Just  0)]
+        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 1), QueryParamInt4 (Just  1)]
+        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 2), QueryParamInt4 (Just  4)]
+        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 3), QueryParamInt4 (Just  9)]
+        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 4), QueryParamInt4 (Just 16)]
+        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 5), QueryParamInt4 (Just 25)]
+        return ()
+$$;
+
 DO $$
 DECLARE
     r RECORD;
@@ -750,6 +765,34 @@ BEGIN
 
         IF r.n = 10 AND r.p <> 29 THEN
             raise EXCEPTION 'primes failed';
+        END IF;
+    END LOOP;
+
+    FOR r IN
+        SELECT * FROM plhaskell_test.inline_test
+    LOOP
+        IF r.i = 0 AND r.i_sq <>  0 THEN
+            raise EXCEPTION 'inline failed';
+        END IF;
+
+        IF r.i = 1 AND r.i_sq <>  1 THEN
+            raise EXCEPTION 'inline failed';
+        END IF;
+
+        IF r.i = 2 AND r.i_sq <>  4 THEN
+            raise EXCEPTION 'inline failed';
+        END IF;
+
+        IF r.i = 3 AND r.i_sq <>  9 THEN
+            raise EXCEPTION 'inline failed';
+        END IF;
+
+        IF r.i = 4 AND r.i_sq <> 16 THEN
+            raise EXCEPTION 'inline failed';
+        END IF;
+
+        IF r.i = 5 AND r.i_sq <> 25 THEN
+            raise EXCEPTION 'inline failed';
         END IF;
     END LOOP;
 
