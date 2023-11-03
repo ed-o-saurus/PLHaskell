@@ -515,16 +515,16 @@ FROM plhaskellu_test.primes(10);
 
 CREATE TABLE plhaskellu_test.inline_test(i int, i_sq int);
 DO LANGUAGE plhaskellu $$
-    import PGutils (unPGm, query, QueryParam(QueryParamInt4))
+    import PGutils (unPGm, query, QueryResults(InsertResults), QueryParam(QueryParamInt4))
 
     _' :: IO ()
     _' = unPGm $ do
-        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 0), QueryParamInt4 (Just  0)]
-        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 1), QueryParamInt4 (Just  1)]
-        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 2), QueryParamInt4 (Just  4)]
-        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 3), QueryParamInt4 (Just  9)]
-        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 4), QueryParamInt4 (Just 16)]
-        _ <- query "INSERT INTO plhaskell_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 5), QueryParamInt4 (Just 25)]
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 0), QueryParamInt4 (Just  0)]
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 1), QueryParamInt4 (Just  1)]
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 2), QueryParamInt4 (Just  4)]
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 3), QueryParamInt4 (Just  9)]
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 4), QueryParamInt4 (Just 16)]
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 5), QueryParamInt4 (Just 25)]
         return ()
 $$;
 
@@ -769,7 +769,7 @@ BEGIN
     END LOOP;
 
     FOR r IN
-        SELECT * FROM plhaskell_test.inline_test
+        SELECT * FROM plhaskellu_test.inline_test
     LOOP
         IF r.i = 0 AND r.i_sq <>  0 THEN
             raise EXCEPTION 'inline failed';
