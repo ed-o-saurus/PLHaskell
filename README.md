@@ -288,7 +288,7 @@ The constructors for `QueryResultValue` are the following:
 
 ### Converting `PGm` to `IO`
 
-The function `umPGm :: PGm a -> IO a` from the `PGutils` module can be used to convert a `PGm` action to an `IO` action.
+The function `unPGm :: PGm a -> IO a` from the `PGutils` module can be used to convert a `PGm` action to an `IO` action.
 
 ## Maximum Memory
 
