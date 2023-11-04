@@ -292,7 +292,7 @@ The function `unPGm :: PGm a -> IO a` from the `PGutils` module can be used to c
 
 ## Maximum Memory
 
-By default, the maximum memory that can be used by the Haskell runtime system is 128 MB. This can be changed by setting the `plhaskell.max_memory` variable in the `postgresql.conf` file. 
+By default, the maximum memory that can be used by the Haskell runtime system is 128 MB. This can be changed by setting the `plhaskell.max_memory` variable in the `postgresql.conf` file. Setting the value to zero disables the limit.
 
 ## GHC Version
 
