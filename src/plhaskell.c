@@ -707,7 +707,7 @@ static void enter(void)
                              &plhaskell_max_memory,
                              131072, // 131072 kB = 128 MB
                              0, MAX_KILOBYTES,
-                             PGC_USERSET,
+                             PGC_SUSET,
                              GUC_UNIT_KB,
                              NULL, NULL, NULL);
 
