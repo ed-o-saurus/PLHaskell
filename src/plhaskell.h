@@ -72,7 +72,7 @@ struct CallInfo
 // Report a message or error
 void plhaskell_report(int elevel, char *msg);
 
-struct ValueInfo *new_value_info(Oid typeoid);
+struct ValueInfo *new_value_info(Oid type_oid);
 void delete_value_info(struct ValueInfo *p_value_info);
 
 // Functions for SPI queries

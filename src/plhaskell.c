@@ -35,8 +35,8 @@
 
 extern char pkglib_path[];
 
-static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set, bool atomic);
-static void build_value_info(struct ValueInfo *p_value_info, Oid typeoid);
+static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool return_set, bool atomic);
+static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid);
 
 static void destroy_call_info(void *arg);
 
@@ -74,16 +74,16 @@ PG_FUNCTION_INFO_V1(plhaskell_call_handler);
 Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 {
     struct CallInfo *p_call_info;
-    Oid funcoid = fcinfo->flinfo->fn_oid; // OID of the function being handled
+    Oid func_oid = fcinfo->flinfo->fn_oid; // OID of the function being handled
     HeapTuple proctup;
     Datum proretset;
     bool is_null;
     int spi_code;
     bool nonatomic;
 
-    proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
+    proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("cache lookup failed for function %u", funcoid));
+        ereport(ERROR, errmsg("cache lookup failed for function %u", func_oid));
 
     proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
     if(is_null)
@@ -124,7 +124,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             cb->arg = p_call_info;
             MemoryContextRegisterResetCallback(funcctx->multi_call_memory_ctx, cb);
 
-            build_call_info(p_call_info, funcoid, true, !nonatomic);
+            build_call_info(p_call_info, func_oid, true, !nonatomic);
 
             // Write the argument to their ValueInfo structs
             for(int16 i=0; i<p_call_info->nargs; i++)
@@ -187,7 +187,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             cb->arg = p_call_info;
             MemoryContextRegisterResetCallback(fcinfo->flinfo->fn_mcxt, cb);
 
-            build_call_info(p_call_info, funcoid, false, !nonatomic);
+            build_call_info(p_call_info, func_oid, false, !nonatomic);
 
             // Make the function
             call_wrapper(mk_function, p_call_info);
@@ -221,22 +221,22 @@ PG_FUNCTION_INFO_V1(plhaskell_validator);
 Datum plhaskell_validator(PG_FUNCTION_ARGS)
 {
     struct CallInfo *p_call_info;
-    Oid funcoid = PG_GETARG_OID(0);
+    Oid func_oid = PG_GETARG_OID(0);
     MemoryContextCallback *cb;
 
     HeapTuple proctup;
     Datum proretset;
     bool is_null;
 
-    if (!CheckFunctionValidatorAccess(fcinfo->flinfo->fn_oid, funcoid))
+    if (!CheckFunctionValidatorAccess(fcinfo->flinfo->fn_oid, func_oid))
         PG_RETURN_VOID();
 
     if (!check_function_bodies)
         PG_RETURN_VOID();
 
-    proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
+    proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("cache lookup failed for function %u", funcoid));
+        ereport(ERROR, errmsg("cache lookup failed for function %u", func_oid));
 
     proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
     if(is_null)
@@ -254,7 +254,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     cb->arg = p_call_info;
     MemoryContextRegisterResetCallback(CurrentMemoryContext, cb);
 
-    build_call_info(p_call_info, funcoid, DatumGetBool(proretset), false);
+    build_call_info(p_call_info, func_oid, DatumGetBool(proretset), false);
 
     // Raise error if the function's signature is incorrect
     call_wrapper(check_signature, p_call_info);
@@ -328,7 +328,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
 }
 
 // Fill CallInfo struct
-static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool return_set, bool atomic)
+static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool return_set, bool atomic)
 {
     HeapTuple proctup, lantup;
     Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname, provolatile, proparallel, prolang, lanpltrusted;
@@ -342,9 +342,9 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
     p_call_info->return_set = return_set;
     p_call_info->atomic = atomic;
 
-    proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
+    proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("cache lookup failed for function %u", funcoid));
+        ereport(ERROR, errmsg("cache lookup failed for function %u", func_oid));
 
     prolang = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prolang, &is_null);
     if(is_null)
@@ -472,7 +472,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
     Datum atttypid;
     char *type_name;
     bool is_null;
-    Oid classoid, attroid;
+    Oid class_oid, attr_oid;
 
     if(type_oid == VOIDOID)
     {
@@ -514,11 +514,11 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         if(is_null)
             ereport(ERROR, errmsg("pg_type.typrelid is NULL"));
 
-        classoid = ObjectIdGetDatum(typrelid);
+        class_oid = ObjectIdGetDatum(typrelid);
 
-        reltup = SearchSysCache1(RELOID, ObjectIdGetDatum(classoid));
+        reltup = SearchSysCache1(RELOID, ObjectIdGetDatum(class_oid));
         if(!HeapTupleIsValid(reltup))
-            ereport(ERROR, errmsg("cache lookup failed for class %u", classoid));
+            ereport(ERROR, errmsg("cache lookup failed for class %u", class_oid));
 
         relnatts = SysCacheGetAttr(RELOID, reltup, Anum_pg_class_relnatts, &is_null);
         if(is_null)
@@ -529,16 +529,16 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         // Loop over all composite type attributes
         for(int16 j=0; j<p_value_info->natts; j++)
         {
-            atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(classoid), Int16GetDatum(j+1));
+            atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(class_oid), Int16GetDatum(j+1));
             if(!HeapTupleIsValid(atttup))
-                ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d", classoid, j+1));
+                ereport(ERROR, errmsg("cache lookup failed for attribute %u attnum %d", class_oid, j+1));
 
             atttypid = SysCacheGetAttr(ATTNUM, atttup, Anum_pg_attribute_atttypid, &is_null);
             if(is_null)
                 ereport(ERROR, errmsg("pg_attribute.atttypid is NULL"));
 
             // If the attribute is not dropped
-            if((attroid = DatumGetObjectId(atttypid)))
+            if((attr_oid = DatumGetObjectId(atttypid)))
             {
                 p_value_info->count++;
 
@@ -550,7 +550,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 
                 p_value_info->fields = repalloc(p_value_info->fields, p_value_info->count * sizeof(struct ValueInfo*));
                 p_value_info->fields[p_value_info->count-1] = palloc(sizeof(struct ValueInfo));
-                build_value_info(p_value_info->fields[p_value_info->count-1], attroid);
+                build_value_info(p_value_info->fields[p_value_info->count-1], attr_oid);
             }
 
             ReleaseSysCache(atttup);
@@ -798,11 +798,11 @@ static void rts_fatal_msg_fn(const char *s, va_list ap)
 }
 
 // Functions to handle ValueInfo for SPI querying
-struct ValueInfo *new_value_info(Oid typeoid) __attribute__((visibility ("hidden")));
-struct ValueInfo *new_value_info(Oid typeoid)
+struct ValueInfo *new_value_info(Oid type_oid) __attribute__((visibility ("hidden")));
+struct ValueInfo *new_value_info(Oid type_oid)
 {
     struct ValueInfo *p_value_info = palloc(sizeof(struct ValueInfo));
-    build_value_info(p_value_info, typeoid);
+    build_value_info(p_value_info, type_oid);
     return p_value_info;
 }
 
