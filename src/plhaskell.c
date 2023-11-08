@@ -83,7 +83,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
+        ereport(ERROR, errmsg("cache lookup failed for function %u", funcoid));
 
     proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
     if(is_null)
@@ -236,7 +236,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
+        ereport(ERROR, errmsg("cache lookup failed for function %u", funcoid));
 
     proretset = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
     if(is_null)
@@ -344,7 +344,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid funcoid, bool retu
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcoid));
     if(!HeapTupleIsValid(proctup))
-        ereport(ERROR, errmsg("Cache lookup failed for function %u", funcoid));
+        ereport(ERROR, errmsg("cache lookup failed for function %u", funcoid));
 
     prolang = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prolang, &is_null);
     if(is_null)
