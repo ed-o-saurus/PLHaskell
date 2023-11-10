@@ -34,13 +34,16 @@ struct TypeInfo
 {
     bool is_null;
     uint16 value_type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
-    union {
-        struct { // BASE
+    union
+    {
+        struct // BASE
+        {
             Oid type_oid; // OID of the type
             Datum value; // Value of base type
         };
 
-        struct { // COMPOSITE
+        struct // COMPOSITE
+        {
             int16 count; // Number of fields of the composite
             int16 natts; // Number of attributes
             int16 *attnums; // Attribute numbers of the members
