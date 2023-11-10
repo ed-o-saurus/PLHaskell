@@ -37,7 +37,7 @@ PG_PKG_LIB_DIR = $(shell pg_config --pkglibdir)
 all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/plhaskell.so src/pgutils-3.1.conf selinux/plhaskell.pp
 
 clean :
-	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/*.so src/*.conf selinux/*.mod selinux/*.pp
+	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/*.so src/*.conf src/*_hsc_make.c selinux/*.mod selinux/*.pp
 
 distclean: clean
 

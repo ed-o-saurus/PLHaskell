@@ -24,5 +24,6 @@
 *.so
 .vscode
 *.conf
+*_hsc_make.c
 *.mod
 *.pp
