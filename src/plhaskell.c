@@ -46,8 +46,6 @@ static Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null);
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 
-static void call_function(void *p_call_info);
-
 static int rts_msg_fn(int elevel, const char *s, va_list ap);
 
 #if __GLASGOW_HASKELL__ >= 902
@@ -59,8 +57,6 @@ static void rts_debug_msg_fn(const char *s, va_list ap);
 static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void unlink_all(int code, Datum arg);
-
-void call_wrapper(void (*func)(void*), struct CallInfo *p_call_info);
 
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
@@ -80,6 +76,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     bool is_null;
     int spi_code;
     bool nonatomic;
+    struct CallInfo *prev_p_call_info;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
     if(!HeapTupleIsValid(proctup))
@@ -135,7 +132,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
                 ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
             // Setup the iterator and list
-            call_wrapper(mk_iterator, p_call_info);
+            prev_p_call_info = current_p_call_info;
+            current_p_call_info = p_call_info;
+            mk_iterator(p_call_info);
+            current_p_call_info = prev_p_call_info;
 
             spi_code = SPI_finish();
             if(spi_code < 0)
@@ -152,7 +152,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
         // Run the function
-        call_wrapper(call_function, p_call_info);
+        prev_p_call_info = current_p_call_info;
+        current_p_call_info = p_call_info;
+        (*p_call_info->function)();
+        current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -190,7 +193,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             build_call_info(p_call_info, func_oid, false, !nonatomic);
 
             // Make the function
-            call_wrapper(mk_function, p_call_info);
+            prev_p_call_info = current_p_call_info;
+            current_p_call_info = p_call_info;
+            mk_function(p_call_info);
+            current_p_call_info = prev_p_call_info;
 
             MemoryContextSwitchTo(old_context);
         }
@@ -206,7 +212,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
         // Run the function
-        call_wrapper(call_function, p_call_info);
+        prev_p_call_info = current_p_call_info;
+        current_p_call_info = p_call_info;
+        (*p_call_info->function)();
+        current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
         if(spi_code < 0)
@@ -223,10 +232,10 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     struct CallInfo *p_call_info;
     Oid func_oid = PG_GETARG_OID(0);
     MemoryContextCallback *cb;
-
     HeapTuple proctup;
     Datum proretset;
     bool is_null;
+    struct CallInfo *prev_p_call_info;
 
     if (!CheckFunctionValidatorAccess(fcinfo->flinfo->fn_oid, func_oid))
         PG_RETURN_VOID();
@@ -257,7 +266,10 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS)
     build_call_info(p_call_info, func_oid, DatumGetBool(proretset), false);
 
     // Raise error if the function's signature is incorrect
-    call_wrapper(check_signature, p_call_info);
+    prev_p_call_info = current_p_call_info;
+    current_p_call_info = p_call_info;
+    check_signature(p_call_info);
+    current_p_call_info = prev_p_call_info;
 
     PG_RETURN_VOID();
 }
@@ -272,6 +284,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     char tempdirpath[MAXPGPATH];
     FILE *modfile;
     int spi_code;
+    struct CallInfo *prev_p_call_info;
 
     // Register callback to free List and Iterator and delete temp module file
     cb->func = destroy_call_info;
@@ -315,10 +328,12 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     if(spi_code < 0)
         ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-    call_wrapper(mk_function, p_call_info);
-
-    // Run the function
-    call_wrapper(call_function, p_call_info);
+    // Make and call the function
+    prev_p_call_info = current_p_call_info;
+    current_p_call_info = p_call_info;
+    mk_function(p_call_info);
+    (*p_call_info->function)();
+    current_p_call_info = prev_p_call_info;
 
     spi_code = SPI_finish();
     if(spi_code < 0)
@@ -759,11 +774,6 @@ void plhaskell_report(int elevel, char *msg)
     }
 }
 
-static void call_function(void *p_call_info)
-{
-    (*((struct CallInfo*)p_call_info)->function)();
-}
-
 static int rts_msg_fn(int elevel, const char *s, va_list ap)
 {
     char *buf;
@@ -889,12 +899,4 @@ PG_FUNCTION_INFO_V1(ghc_version);
 Datum ghc_version(PG_FUNCTION_ARGS)
 {
     PG_RETURN_INT32(hint_ghc_version());
-}
-
-void call_wrapper(void (*func)(void*), struct CallInfo *p_call_info)
-{
-    struct CallInfo *prev_p_call_info = current_p_call_info;
-    current_p_call_info = p_call_info;
-    (*func)(p_call_info); // Call the function
-    current_p_call_info = prev_p_call_info;
 }
