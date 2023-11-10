@@ -46,7 +46,7 @@ import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Eq, Float, Functor, IO, Maybe (Nothing, Just), Monad, Num, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-), (>>=))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Datum, ReadWrite (readType, write), ValueInfo, getField, readIsNull, voidDatum)
+import PGsupport             (Datum, ReadWrite (readType, write), TypeInfo, getField, readIsNull, voidDatum)
 import MemoryUtils           (pUseAsCString, pWithArray, pWithArrayLen)
 
 newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
@@ -92,12 +92,12 @@ data QueryParam = QueryParamByteA  (Maybe ByteString)
                 | QueryParamFloat4 (Maybe Float)
                 | QueryParamFloat8 (Maybe Double)
 
--- Extract the value type from ValueInfo struct
-getValueType :: Ptr ValueInfo -> IO Word16
-getValueType = (#peek struct ValueInfo, value_type)
+-- Extract the value type from TypeInfo struct
+getValueType :: Ptr TypeInfo -> IO Word16
+getValueType = (#peek struct TypeInfo, value_type)
 
-getTypeOid :: Ptr ValueInfo -> IO Oid
-getTypeOid = (#peek struct ValueInfo, type_oid)
+getTypeOid :: Ptr TypeInfo -> IO Oid
+getTypeOid = (#peek struct TypeInfo, type_oid)
 
 getNatts :: Ptr TupleTable -> IO Int16
 getNatts pTupleTable = (#peek struct SPITupleTable, tupdesc) pTupleTable >>= (#peek struct TupleDescData, natts)
@@ -207,55 +207,55 @@ getOids pTupleTable = do
         c_getOids pTupleTable oids
         mapM (peekElemOff oids) [0 .. (fromIntegral natts)-1]
 
-foreign import capi safe "plhaskell.h new_value_info"
-    newValueInfo :: Oid -> IO (Ptr ValueInfo)
+foreign import capi safe "plhaskell.h new_type_info"
+    newTypeInfo :: Oid -> IO (Ptr TypeInfo)
 
-foreign import capi unsafe "plhaskell.h delete_value_info"
-    deleteValueInfo :: Ptr ValueInfo -> IO ()
+foreign import capi unsafe "plhaskell.h delete_type_info"
+    deleteTypeInfo :: Ptr TypeInfo -> IO ()
 
-foreign import capi unsafe "plhaskell.h fill_value_info"
-    fillValueInfo :: Ptr TupleTable -> Ptr ValueInfo -> Word64 -> CInt -> IO ()
+foreign import capi unsafe "plhaskell.h fill_type_info"
+    fillTypeInfo :: Ptr TupleTable -> Ptr TypeInfo -> Word64 -> CInt -> IO ()
 
-mkQueryResultValue :: Ptr ValueInfo -> IO QueryResultValue
-mkQueryResultValue pValueInfo = do
-    valueType <- getValueType pValueInfo
+mkQueryResultValue :: Ptr TypeInfo -> IO QueryResultValue
+mkQueryResultValue pTypeInfo = do
+    valueType <- getValueType pTypeInfo
     case valueType of
         (#const BASE_TYPE) -> do
-            typeOid <- getTypeOid pValueInfo
+            typeOid <- getTypeOid pTypeInfo
             case typeOid of
-                (#const BYTEAOID)  -> QueryResultValueByteA  <$> readType pValueInfo
-                (#const TEXTOID)   -> QueryResultValueText   <$> readType pValueInfo
-                (#const CHAROID)   -> QueryResultValueChar   <$> readType pValueInfo
-                (#const BOOLOID)   -> QueryResultValueBool   <$> readType pValueInfo
-                (#const INT2OID)   -> QueryResultValueInt2   <$> readType pValueInfo
-                (#const INT4OID)   -> QueryResultValueInt4   <$> readType pValueInfo
-                (#const INT8OID)   -> QueryResultValueInt8   <$> readType pValueInfo
-                (#const FLOAT4OID) -> QueryResultValueFloat4 <$> readType pValueInfo
-                (#const FLOAT8OID) -> QueryResultValueFloat8 <$> readType pValueInfo
+                (#const BYTEAOID)  -> QueryResultValueByteA  <$> readType pTypeInfo
+                (#const TEXTOID)   -> QueryResultValueText   <$> readType pTypeInfo
+                (#const CHAROID)   -> QueryResultValueChar   <$> readType pTypeInfo
+                (#const BOOLOID)   -> QueryResultValueBool   <$> readType pTypeInfo
+                (#const INT2OID)   -> QueryResultValueInt2   <$> readType pTypeInfo
+                (#const INT4OID)   -> QueryResultValueInt4   <$> readType pTypeInfo
+                (#const INT8OID)   -> QueryResultValueInt8   <$> readType pTypeInfo
+                (#const FLOAT4OID) -> QueryResultValueFloat4 <$> readType pTypeInfo
+                (#const FLOAT8OID) -> QueryResultValueFloat8 <$> readType pTypeInfo
                 _                  -> undefined
         (#const COMPOSITE_TYPE) -> do
-            is_null <- readIsNull pValueInfo
+            is_null <- readIsNull pTypeInfo
             if is_null
             then return (QueryResultValueComposite Nothing)
             else do
-                count <- (#peek struct ValueInfo, count) pValueInfo
-                fields <- mapM (getField pValueInfo) [0 .. count-1]
+                count <- (#peek struct TypeInfo, count) pTypeInfo
+                fields <- mapM (getField pTypeInfo) [0 .. count-1]
                 (QueryResultValueComposite . Just) <$> mapM mkQueryResultValue fields
         _ -> undefined
 
-getRow :: Ptr TupleTable -> [Ptr ValueInfo] -> Word64 -> IO [QueryResultValue]
-getRow pTupleTable pValueInfos rowNumber = do
-    mapM_ (\(pValueInfo, fnumber) -> fillValueInfo pTupleTable pValueInfo rowNumber fnumber) (zip pValueInfos [1 ..])
-    mapM mkQueryResultValue pValueInfos
+getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]
+getRow pTupleTable pTypeInfos rowNumber = do
+    mapM_ (\(pTypeInfo, fnumber) -> fillTypeInfo pTupleTable pTypeInfo rowNumber fnumber) (zip pTypeInfos [1 ..])
+    mapM mkQueryResultValue pTypeInfos
 
 getRows :: Ptr TupleTable -> Word64 -> IO [[QueryResultValue]]
 getRows _pTupleTable 0 = return []
 
 getRows pTupleTable processed = do
     oids <- getOids pTupleTable
-    pValueInfos <- mapM newValueInfo oids
-    rows <- mapM (getRow pTupleTable pValueInfos) [0 .. processed-1]
-    mapM_ deleteValueInfo pValueInfos
+    pTypeInfos <- mapM newTypeInfo oids
+    rows <- mapM (getRow pTupleTable pTypeInfos) [0 .. processed-1]
+    mapM_ deleteTypeInfo pTypeInfos
     return rows
 
 foreign import capi safe "plhaskell.h run_query"

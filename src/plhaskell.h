@@ -30,7 +30,7 @@
 #define COMPOSITE_TYPE 2
 
 // Represents a value passed or returned by a function
-struct ValueInfo
+struct TypeInfo
 {
     bool is_null;
     uint16 value_type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
@@ -45,7 +45,7 @@ struct ValueInfo
             int16 natts; // Number of attributes
             int16 *attnums; // Attribute numbers of the members
             TupleDesc tupdesc; // Tuple Descriptor
-            struct ValueInfo **fields; // Fields of the composite type
+            struct TypeInfo **fields; // Fields of the composite type
         };
     };
 };
@@ -57,8 +57,8 @@ struct CallInfo
     char *mod_file_name; // Temporary file where code is stored
     bool trusted; // Is the language the trusted version?
     int16 nargs; // Number of arguments
-    struct ValueInfo **args; // Arguments
-    struct ValueInfo *result; // Returned result
+    struct TypeInfo **args; // Arguments
+    struct TypeInfo *result; // Returned result
     bool return_set; // Does the function return a set of values?
     bool spi_read_only; // Use read-only mode on internal queries
     bool atomic; // Is this an atomic transaction?
@@ -72,14 +72,14 @@ struct CallInfo
 // Report a message or error
 void plhaskell_report(int elevel, char *msg);
 
-struct ValueInfo *new_value_info(Oid type_oid);
-void delete_value_info(struct ValueInfo *p_value_info);
+struct TypeInfo *new_type_info(Oid type_oid);
+void delete_type_info(struct TypeInfo *p_type_info);
 
 // Functions for SPI queries
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);
 void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber);
 void get_oids(struct SPITupleTable *tuptable, Oid *oids);
-void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber);
+void fill_type_info(struct SPITupleTable *tuptable, struct TypeInfo *p_type_info, uint64 row_number, int fnumber);
 void free_tuptable(struct SPITupleTable *tuptable);
 
 #endif

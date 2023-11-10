@@ -36,12 +36,12 @@
 extern char pkglib_path[];
 
 static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool return_set, bool atomic);
-static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid);
+static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid);
 
 static void destroy_call_info(void *arg);
 
-static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool is_null);
-static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null);
+static void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null);
+static Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null);
 
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
@@ -126,9 +126,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
             build_call_info(p_call_info, func_oid, true, !nonatomic);
 
-            // Write the argument to their ValueInfo structs
+            // Write the argument to their TypeInfo structs
             for(int16 i=0; i<p_call_info->nargs; i++)
-                write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
+                write_type_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
             spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
             if(spi_code < 0)
@@ -161,7 +161,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(p_call_info->list) // Is there another result?
         {
             rsi->isDone = ExprMultipleResult;
-            return read_value_info(p_call_info->result, &fcinfo->isnull); // Get the next result
+            return read_type_info(p_call_info->result, &fcinfo->isnull); // Get the next result
         }
         else
         {
@@ -197,9 +197,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
         p_call_info = fcinfo->flinfo->fn_extra;
 
-        // Write the argument to their ValueInfo structs
+        // Write the argument to their TypeInfo structs
         for(int16 i=0; i<p_call_info->nargs; i++)
-            write_value_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
+            write_type_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
 
         spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
         if(spi_code < 0)
@@ -212,7 +212,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        return read_value_info(p_call_info->result, &fcinfo->isnull);
+        return read_type_info(p_call_info->result, &fcinfo->isnull);
     }
 }
 
@@ -284,8 +284,8 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     p_call_info->spi_read_only = false;
     p_call_info->nargs = 0;
 
-    p_call_info->result = palloc(sizeof(struct ValueInfo));
-    build_value_info(p_call_info->result, VOIDOID);
+    p_call_info->result = palloc(sizeof(struct TypeInfo));
+    build_type_info(p_call_info->result, VOIDOID);
 
     p_call_info->func_name = palloc(3);
     strcpy(p_call_info->func_name, "_'");
@@ -384,7 +384,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
     if(is_null)
         ereport(ERROR, errmsg("pg_proc.pronargs is NULL"));
 
-    p_call_info->args = palloc(p_call_info->nargs * sizeof(struct ValueInfo*));
+    p_call_info->args = palloc(p_call_info->nargs * sizeof(struct TypeInfo*));
 
     SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargmodes, &is_null);
     if(!is_null)
@@ -401,8 +401,8 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
     if(DatumGetChar(proparallel) != PROPARALLEL_UNSAFE)
         ereport(ERROR, errmsg("PL/Haksell : Function must be parallel unsafe"));
 
-    p_call_info->result = palloc(sizeof(struct ValueInfo));
-    build_value_info(p_call_info->result, prorettype);
+    p_call_info->result = palloc(sizeof(struct TypeInfo));
+    build_type_info(p_call_info->result, prorettype);
 
     proargtypes = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargtypes, &is_null);
     if(is_null)
@@ -422,8 +422,8 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
     argtypes = (Oid*)ARR_DATA_PTR(proargtypes_arr);
     for(int16 i=0; i<p_call_info->nargs; i++)
     {
-        p_call_info->args[i] = palloc(sizeof(struct ValueInfo));
-        build_value_info(p_call_info->args[i], argtypes[i]);
+        p_call_info->args[i] = palloc(sizeof(struct TypeInfo));
+        build_type_info(p_call_info->args[i], argtypes[i]);
     }
 
     proname = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proname, &is_null);
@@ -463,8 +463,8 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
     first_p_call_info = p_call_info;
 }
 
-// Fill ValueInfo struct
-static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
+// Fill TypeInfo struct
+static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid)
 {
     HeapTuple typetup, reltup, atttup;
     Datum typtype, typname, typbasetype, typrelid;
@@ -476,7 +476,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 
     if(type_oid == VOIDOID)
     {
-        p_value_info->value_type = VOID_TYPE;
+        p_type_info->value_type = VOID_TYPE;
         return;
     }
 
@@ -500,15 +500,15 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         if(!type_available(type_oid))
             ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
 
-        p_value_info->type_oid = type_oid;
-        p_value_info->value_type = BASE_TYPE;
+        p_type_info->type_oid = type_oid;
+        p_type_info->value_type = BASE_TYPE;
 
         break;
     case TYPTYPE_COMPOSITE :
-        p_value_info->value_type = COMPOSITE_TYPE;
-        p_value_info->count = 0;
-        p_value_info->attnums = palloc(0);
-        p_value_info->fields = palloc(0);
+        p_type_info->value_type = COMPOSITE_TYPE;
+        p_type_info->count = 0;
+        p_type_info->attnums = palloc(0);
+        p_type_info->fields = palloc(0);
 
         typrelid = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typrelid, &is_null);
         if(is_null)
@@ -524,10 +524,10 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         if(is_null)
             ereport(ERROR, errmsg("pg_class.relnatts is NULL"));
 
-        p_value_info->natts = DatumGetInt16(relnatts);
+        p_type_info->natts = DatumGetInt16(relnatts);
 
         // Loop over all composite type attributes
-        for(int16 j=0; j<p_value_info->natts; j++)
+        for(int16 j=0; j<p_type_info->natts; j++)
         {
             atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(class_oid), Int16GetDatum(j+1));
             if(!HeapTupleIsValid(atttup))
@@ -540,17 +540,17 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
             // If the attribute is not dropped
             if((attr_oid = DatumGetObjectId(atttypid)))
             {
-                p_value_info->count++;
+                p_type_info->count++;
 
-                if(p_value_info->count > 63)
+                if(p_type_info->count > 63)
                     ereport(ERROR, errmsg("PL/Haskell : Tuple size too large (%s)", type_name));
 
-                p_value_info->attnums = repalloc(p_value_info->attnums, p_value_info->count * sizeof(int16));
-                p_value_info->attnums[p_value_info->count-1] = j+1;
+                p_type_info->attnums = repalloc(p_type_info->attnums, p_type_info->count * sizeof(int16));
+                p_type_info->attnums[p_type_info->count-1] = j+1;
 
-                p_value_info->fields = repalloc(p_value_info->fields, p_value_info->count * sizeof(struct ValueInfo*));
-                p_value_info->fields[p_value_info->count-1] = palloc(sizeof(struct ValueInfo));
-                build_value_info(p_value_info->fields[p_value_info->count-1], attr_oid);
+                p_type_info->fields = repalloc(p_type_info->fields, p_type_info->count * sizeof(struct TypeInfo*));
+                p_type_info->fields[p_type_info->count-1] = palloc(sizeof(struct TypeInfo));
+                build_type_info(p_type_info->fields[p_type_info->count-1], attr_oid);
             }
 
             ReleaseSysCache(atttup);
@@ -558,8 +558,8 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
 
         ReleaseSysCache(reltup);
 
-        p_value_info->tupdesc = lookup_rowtype_tupdesc_copy(type_oid, -1);
-        BlessTupleDesc(p_value_info->tupdesc);
+        p_type_info->tupdesc = lookup_rowtype_tupdesc_copy(type_oid, -1);
+        BlessTupleDesc(p_type_info->tupdesc);
 
         break;
     case TYPTYPE_DOMAIN :
@@ -567,7 +567,7 @@ static void build_value_info(struct ValueInfo *p_value_info, Oid type_oid)
         if(is_null)
             ereport(ERROR, errmsg("pg_type.typbasetype is NULL"));
 
-        build_value_info(p_value_info, DatumGetObjectId(typbasetype));
+        build_type_info(p_type_info, DatumGetObjectId(typbasetype));
 
         break;
     case TYPTYPE_ENUM :
@@ -613,22 +613,22 @@ static void destroy_call_info(void *arg)
         p_call_info->next->prev = p_call_info->prev;
 }
 
-// Populate the value and is_null fields of p_value_info
-static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool is_null)
+// Populate the value and is_null fields of p_type_info
+static void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null)
 {
     HeapTupleHeader tuple;
     HeapTupleData tmptup;
 
-    if((p_value_info->is_null=is_null))
+    if((p_type_info->is_null=is_null))
         return;
 
-    switch(p_value_info->value_type)
+    switch(p_type_info->value_type)
     {
     case BASE_TYPE :
-        p_value_info->value = value;
+        p_type_info->value = value;
         break;
     case COMPOSITE_TYPE :
-        // If p_value_info is a tuple, populate the fields recursively.
+        // If p_type_info is a tuple, populate the fields recursively.
         tuple = DatumGetHeapTupleHeader(value);
 
         tmptup.t_len = HeapTupleHeaderGetDatumLength(tuple);
@@ -636,47 +636,47 @@ static void write_value_info(struct ValueInfo *p_value_info, Datum value, bool i
         tmptup.t_tableOid = InvalidOid;
         tmptup.t_data = tuple;
 
-        for(int16 j=0; j<p_value_info->count; j++)
+        for(int16 j=0; j<p_type_info->count; j++)
         {
-            Datum value = heap_getattr(&tmptup, p_value_info->attnums[j], p_value_info->tupdesc, &is_null);
-            write_value_info(p_value_info->fields[j], value, is_null);
+            Datum value = heap_getattr(&tmptup, p_type_info->attnums[j], p_type_info->tupdesc, &is_null);
+            write_type_info(p_type_info->fields[j], value, is_null);
         }
 
         break;
     default :
-        ereport(ERROR, errmsg("Bad value_type : %d", p_value_info->value_type));
+        ereport(ERROR, errmsg("Bad value_type : %d", p_type_info->value_type));
     }
 }
 
-// Get the value from p_value_info
-static Datum read_value_info(struct ValueInfo *p_value_info, bool *is_null)
+// Get the value from p_type_info
+static Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null)
 {
     Datum *values;
     bool *is_nulls;
 
-    if((*is_null=p_value_info->is_null))
+    if((*is_null=p_type_info->is_null))
         return (Datum)0;
 
-    switch(p_value_info->value_type)
+    switch(p_type_info->value_type)
     {
     case VOID_TYPE :
         return (Datum)0;
     case BASE_TYPE :
-        return p_value_info->value;
+        return p_type_info->value;
     case COMPOSITE_TYPE :
-        // If p_value_info is a tuple, get the fields' values recursively.
-        values  = palloc(p_value_info->natts * sizeof(Datum));
-        is_nulls = palloc(p_value_info->natts * sizeof(bool));
+        // If p_type_info is a tuple, get the fields' values recursively.
+        values  = palloc(p_type_info->natts * sizeof(Datum));
+        is_nulls = palloc(p_type_info->natts * sizeof(bool));
 
-        for(int16 j=0; j<p_value_info->count; j++)
+        for(int16 j=0; j<p_type_info->count; j++)
         {
-            int16 attnum = p_value_info->attnums[j];
-            values[attnum-1] = read_value_info(p_value_info->fields[j], is_nulls+(attnum-1));
+            int16 attnum = p_type_info->attnums[j];
+            values[attnum-1] = read_type_info(p_type_info->fields[j], is_nulls+(attnum-1));
         }
 
-        return HeapTupleGetDatum(heap_form_tuple(p_value_info->tupdesc, values, is_nulls));
+        return HeapTupleGetDatum(heap_form_tuple(p_type_info->tupdesc, values, is_nulls));
     default :
-        ereport(ERROR, errmsg("Bad value_type : %d", p_value_info->value_type));
+        ereport(ERROR, errmsg("Bad value_type : %d", p_type_info->value_type));
     }
 }
 
@@ -797,31 +797,31 @@ static void rts_fatal_msg_fn(const char *s, va_list ap)
     rts_msg_fn(FATAL, s, ap);
 }
 
-// Functions to handle ValueInfo for SPI querying
-struct ValueInfo *new_value_info(Oid type_oid) __attribute__((visibility ("hidden")));
-struct ValueInfo *new_value_info(Oid type_oid)
+// Functions to handle TypeInfo for SPI querying
+struct TypeInfo *new_type_info(Oid type_oid) __attribute__((visibility ("hidden")));
+struct TypeInfo *new_type_info(Oid type_oid)
 {
-    struct ValueInfo *p_value_info = palloc(sizeof(struct ValueInfo));
-    build_value_info(p_value_info, type_oid);
-    return p_value_info;
+    struct TypeInfo *p_type_info = palloc(sizeof(struct TypeInfo));
+    build_type_info(p_type_info, type_oid);
+    return p_type_info;
 }
 
-// Recusively free ValueInfo
-void delete_value_info(struct ValueInfo *p_value_info) __attribute__((visibility ("hidden")));
-void delete_value_info(struct ValueInfo *p_value_info)
+// Recusively free TypeInfo
+void delete_type_info(struct TypeInfo *p_type_info) __attribute__((visibility ("hidden")));
+void delete_type_info(struct TypeInfo *p_type_info)
 {
-    if(p_value_info->value_type == COMPOSITE_TYPE)
+    if(p_type_info->value_type == COMPOSITE_TYPE)
     {
-        pfree(p_value_info->attnums);
-        pfree(p_value_info->tupdesc);
+        pfree(p_type_info->attnums);
+        pfree(p_type_info->tupdesc);
 
-        for(int16 i=0; i<p_value_info->count; i++)
-            delete_value_info(p_value_info->fields[i]);
+        for(int16 i=0; i<p_type_info->count; i++)
+            delete_type_info(p_type_info->fields[i]);
 
-        pfree(p_value_info->fields);
+        pfree(p_type_info->fields);
     }
 
-    pfree(p_value_info);
+    pfree(p_type_info);
 }
 
 // Execute an SPI query
@@ -860,15 +860,15 @@ void get_oids(struct SPITupleTable *tuptable, Oid *oids)
         oids[i] = SPI_gettypeid(tuptable->tupdesc, i+1);
 }
 
-// Get datum/is_null from SPI result and use it to populate ValueInfo struct
-void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber) __attribute__((visibility ("hidden")));
-void fill_value_info(struct SPITupleTable *tuptable, struct ValueInfo *p_value_info, uint64 row_number, int fnumber)
+// Get datum/is_null from SPI result and use it to populate TypeInfo struct
+void fill_type_info(struct SPITupleTable *tuptable, struct TypeInfo *p_type_info, uint64 row_number, int fnumber) __attribute__((visibility ("hidden")));
+void fill_type_info(struct SPITupleTable *tuptable, struct TypeInfo *p_type_info, uint64 row_number, int fnumber)
 {
     Datum value;
     bool is_null;
 
     value = SPI_getbinval(tuptable->vals[row_number], tuptable->tupdesc, fnumber, &is_null);
-    write_value_info(p_value_info, value, is_null);
+    write_type_info(p_type_info, value, is_null);
 }
 
 void free_tuptable(struct SPITupleTable *tuptable) __attribute__((visibility ("hidden")));

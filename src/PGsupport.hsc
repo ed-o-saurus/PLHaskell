@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (ValueInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeIsNull, writeVoid) where
+module PGsupport (TypeInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeIsNull, writeVoid) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
@@ -41,53 +41,53 @@ import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe
 
 import MemoryUtils           (palloc)
 
-data ValueInfo
+data TypeInfo
 newtype Datum = Datum WordPtr deriving newtype (Storable)
 
 voidDatum :: Datum
 voidDatum = Datum $ ptrToWordPtr nullPtr
 
--- Get field of ValueInfo struct
-getField :: Ptr ValueInfo -> Int16 -> IO (Ptr ValueInfo)
-getField pValueInfo i = do
-    fields <- (#peek struct ValueInfo, fields) pValueInfo
+-- Get field of TypeInfo struct
+getField :: Ptr TypeInfo -> Int16 -> IO (Ptr TypeInfo)
+getField pTypeInfo i = do
+    fields <- (#peek struct TypeInfo, fields) pTypeInfo
     peekElemOff fields $ fromIntegral i
 
--- Determine the value of the isNull field of a ValueInfo struct
-readIsNull :: Ptr ValueInfo -> IO Bool
-readIsNull pValueInfo = do
-    CBool isNull <- (#peek struct ValueInfo, is_null) pValueInfo
+-- Determine the value of the isNull field of a TypeInfo struct
+readIsNull :: Ptr TypeInfo -> IO Bool
+readIsNull pTypeInfo = do
+    CBool isNull <- (#peek struct TypeInfo, is_null) pTypeInfo
     return $ toBool isNull
 
 -- Set isNull
-writeIsNull :: Bool-> Ptr ValueInfo -> IO ()
-writeIsNull isNull pValueInfo = (#poke struct ValueInfo, is_null) pValueInfo (CBool $ fromBool isNull)
+writeIsNull :: Bool-> Ptr TypeInfo -> IO ()
+writeIsNull isNull pTypeInfo = (#poke struct TypeInfo, is_null) pTypeInfo (CBool $ fromBool isNull)
 
 -- Do nothing when returning void
-writeVoid :: () -> Ptr ValueInfo -> IO ()
-writeVoid () _pValueInfo = return ()
+writeVoid :: () -> Ptr TypeInfo -> IO ()
+writeVoid () _pTypeInfo = return ()
 
 class ReadWrite a where
     read :: Datum -> IO a
     write :: a -> IO Datum
 
-    readType :: Ptr ValueInfo -> IO (Maybe a)
-    readType pValueInfo = do
-        isNull <- readIsNull pValueInfo
+    readType :: Ptr TypeInfo -> IO (Maybe a)
+    readType pTypeInfo = do
+        isNull <- readIsNull pTypeInfo
         if isNull
         then return Nothing
         else do
-            value <- (#peek struct ValueInfo, value) pValueInfo
+            value <- (#peek struct TypeInfo, value) pTypeInfo
             Just <$> read value
 
-    writeType :: Maybe a -> Ptr ValueInfo -> IO ()
-    writeType Nothing pValueInfo = do
-        (#poke struct ValueInfo, value) pValueInfo voidDatum
-        writeIsNull True pValueInfo
+    writeType :: Maybe a -> Ptr TypeInfo -> IO ()
+    writeType Nothing pTypeInfo = do
+        (#poke struct TypeInfo, value) pTypeInfo voidDatum
+        writeIsNull True pTypeInfo
 
-    writeType (Just result) pValueInfo = do
-        write result >>= (#poke struct ValueInfo, value) pValueInfo
-        writeIsNull False pValueInfo
+    writeType (Just result) pTypeInfo = do
+        write result >>= (#poke struct TypeInfo, value) pTypeInfo
+        writeIsNull False pTypeInfo
 
 -- Get the size of a variable length array
 foreign import capi unsafe "postgres.h VARSIZE_ANY_EXHDR"
@@ -187,8 +187,8 @@ instance ReadWrite Double where
     write = float8GetDatum
 
 -- Convert a list of values to a list of actions with that execute writeResult on the elements of the list
-mkResultList :: (Maybe a -> Ptr ValueInfo -> IO ())-> [Maybe a] -> Ptr ValueInfo -> [IO ()]
-mkResultList writeResult results pResultValueInfo = map ((flip writeResult) pResultValueInfo) results
+mkResultList :: (Maybe a -> Ptr TypeInfo -> IO ())-> [Maybe a] -> Ptr TypeInfo -> [IO ()]
+mkResultList writeResult results pResultTypeInfo = map ((flip writeResult) pResultTypeInfo) results
 
 iterate :: Ptr (StablePtr [IO ()]) -> IO ()
 iterate pList = do
