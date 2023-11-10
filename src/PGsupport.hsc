@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (TypeInfo, Datum, ReadWrite (readType, writeType, write), getField, iterate, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeIsNull, writeVoid) where
+module PGsupport (TypeInfo, Datum, ReadWrite (readType, writeType, write), getField, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeIsNull, writeVoid) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
@@ -35,9 +35,8 @@ import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
 import Foreign.C.Types       (CBool (CBool), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
-import Foreign.StablePtr     (StablePtr, castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
-import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff, poke, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>), (>>=))
+import Foreign.Storable      (Storable, peekByteOff, peekElemOff, pokeByteOff)
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>=))
 
 import MemoryUtils           (palloc)
 
@@ -189,15 +188,6 @@ instance ReadWrite Double where
 -- Convert a list of values to a list of actions with that execute writeResult on the elements of the list
 mkResultList :: (Maybe a -> Ptr TypeInfo -> IO ())-> [Maybe a] -> Ptr TypeInfo -> [IO ()]
 mkResultList writeResult results pResultTypeInfo = map ((flip writeResult) pResultTypeInfo) results
-
-iterate :: Ptr (StablePtr [IO ()]) -> IO ()
-iterate pList = do
-    spList <- peek pList
-    writeResultList <- deRefStablePtr spList
-    freeStablePtr spList
-    case writeResultList of
-        [] -> poke pList (castPtrToStablePtr nullPtr)
-        (writeResult:tail) -> (newStablePtr tail) >>= (poke pList) >> writeResult
 
 foreign import ccall "wrapper"
     wrapVoidFunc :: IO () -> IO (FunPtr (IO ()))

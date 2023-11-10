@@ -35,10 +35,11 @@ import Data.Word                    (Word16)
 import Foreign.C.String             (CString, peekCString)
 import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Utils        (fromBool, toBool)
-import Foreign.Ptr                  (Ptr, plusPtr, ptrToWordPtr)
-import Foreign.Storable             (Storable, peekByteOff, peekElemOff)
+import Foreign.Ptr                  (Ptr, nullPtr, plusPtr, ptrToWordPtr)
+import Foreign.StablePtr            (castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
+import Foreign.Storable             (Storable, peek, peekByteOff, peekElemOff, poke)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>=))
+import Prelude                      (Bool (False), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>), (>>=))
 
 import MemoryUtils                  (pWithCString)
 
@@ -232,7 +233,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "TypeInfo", "getField", "readIsNull", "wrapVoidFunc", "writeIsNull", "writeVoid", "iterate", "mkResultList"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "TypeInfo", "getField", "readIsNull", "wrapVoidFunc", "writeIsNull", "writeVoid", "mkResultList"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo
@@ -317,13 +318,9 @@ mkFunction pCallInfo = execute $ do
     runStmt "poke pFunction function"
 
 -- Set the List field of the CallInfo struct to the list returns by the function
--- Set the Function field of the CallInfo struct to a function that will iterate through the list
--- Each call of Function :
---     Writes the head of the list to the Result TypeInfo struct
---     Advances the List pointer
-foreign export capi "mk_iterator" mkIterator :: Ptr CallInfo -> IO ()
-mkIterator :: Ptr CallInfo -> IO ()
-mkIterator pCallInfo = execute $ do
+foreign export capi "mk_list" mkList :: Ptr CallInfo -> IO ()
+mkList :: Ptr CallInfo -> IO ()
+mkList pCallInfo = execute $ do
     (nargs, funcName, trusted) <- setUpEvalInt pCallInfo
 
     -- Get the arguments
@@ -342,10 +339,16 @@ mkIterator pCallInfo = execute $ do
     setPtr "pList" ((#ptr struct CallInfo, list) pCallInfo)
     runStmt "poke pList spList"
 
-    -- poke the iterator into the Function field of the CallInfo struct
-    runStmt "function <- wrapVoidFunc (iterate pList)"
-    setPtr "pFunction" ((#ptr struct CallInfo, function) pCallInfo)
-    runStmt "poke pFunction function"
+foreign export capi "iterate" iterate :: Ptr CallInfo -> IO ()
+iterate :: Ptr CallInfo -> IO ()
+iterate pCallInfo = do
+    let pList = (#ptr struct CallInfo, list) pCallInfo
+    spList <- peek pList
+    writeResultList <- deRefStablePtr spList
+    freeStablePtr spList
+    case writeResultList of
+        [] -> poke pList (castPtrToStablePtr nullPtr)
+        (writeResult:tail) -> (newStablePtr tail) >>= (poke pList) >> writeResult
 
 -- Version of the underlying GHC API.
 foreign export capi "hint_ghc_version" hintGhcVersion :: Int32

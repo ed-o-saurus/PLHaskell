@@ -134,7 +134,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             // Setup the iterator and list
             prev_p_call_info = current_p_call_info;
             current_p_call_info = p_call_info;
-            mk_iterator(p_call_info);
+            mk_list(p_call_info);
             current_p_call_info = prev_p_call_info;
 
             spi_code = SPI_finish();
@@ -151,10 +151,10 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        // Run the function
+        // Iterate the list
         prev_p_call_info = current_p_call_info;
         current_p_call_info = p_call_info;
-        (*p_call_info->function)();
+        iterate(p_call_info);
         current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
@@ -612,11 +612,16 @@ static void destroy_call_info(void *arg)
     if(p_call_info->mod_file_name)
         unlink(p_call_info->mod_file_name);
 
-    if(p_call_info->list)
-        hs_free_stable_ptr(p_call_info->list);
-
-    if(p_call_info->function)
-        hs_free_fun_ptr(p_call_info->function);
+    if(p_call_info->return_set)
+    {
+        if(p_call_info->list)
+            hs_free_stable_ptr(p_call_info->list);
+    }
+    else
+    {
+        if(p_call_info->function)
+            hs_free_fun_ptr(p_call_info->function);
+    }
 
     if(first_p_call_info == p_call_info)
         first_p_call_info = p_call_info->next;
