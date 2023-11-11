@@ -48,16 +48,16 @@ src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c src/plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs   -o src/PLHaskell.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs -o src/PLHaskell.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
 src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs     -o src/PGutils.o     -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs   -o src/PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs   -o src/PGsupport.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs -o src/PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs
-	ghc -Wall -O1 -Werror -optc -Wall -Wno-trustworthy-safe -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGcommon.hs -o src/PGcommon.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGcommon.hs  -o src/PGcommon.o  -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
 %.hs : %.hsc src/plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR)
