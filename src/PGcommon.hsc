@@ -1,6 +1,7 @@
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DerivingStrategies #-}
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
 
@@ -25,16 +26,26 @@
 -- This module implements functions to allocate memory useing postgres' memory allocation.
 -- This prevents memory leaks in case of an ERROR event.
 
-module MemoryUtils (palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString) where
+module PGcommon (CallInfo, Datum (Datum), Oid (Oid), TypeInfo, palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Foreign.C.String      (CString, CStringLen, withCStringLen)
-import Foreign.C.Types       (CSize (CSize))
+import Foreign.C.Types       (CSize (CSize), CUInt (CUInt))
 import Foreign.Marshal.Array (pokeArray)
 import Foreign.Marshal.Utils (copyBytes)
-import Foreign.Ptr           (Ptr)
+import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.Storable      (sizeOf, Storable)
-import Prelude               (Int, IO, String, const, fromIntegral, length, return, undefined, ($), (.), (*), (+))
+import Prelude               (Eq, Int, IO, Num, String, const, fromIntegral, length, return, undefined, ($), (.), (*), (+))
+
+-- Dummy types to make pointers
+data CallInfo
+data TypeInfo
+
+newtype Datum = Datum WordPtr deriving newtype (Storable)
+newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
+
+voidDatum :: Datum
+voidDatum = Datum $ ptrToWordPtr nullPtr
 
 -- Allocate memory using postgres' mechanism
 foreign import capi unsafe "postgres.h palloc"

@@ -1,7 +1,6 @@
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DerivingStrategies #-}
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
 
@@ -34,17 +33,11 @@ import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
 import Foreign.C.Types       (CBool (CBool), CSize (CSize))
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
-import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
-import Foreign.Storable      (Storable, peekByteOff, peekElemOff, pokeByteOff)
+import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
+import Foreign.Storable      (peekByteOff, peekElemOff, pokeByteOff)
 import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>=))
 
-import MemoryUtils           (palloc)
-
-data TypeInfo
-newtype Datum = Datum WordPtr deriving newtype (Storable)
-
-voidDatum :: Datum
-voidDatum = Datum $ ptrToWordPtr nullPtr
+import PGcommon              (Datum (Datum), TypeInfo, palloc, voidDatum)
 
 -- Get field of TypeInfo struct
 getField :: Ptr TypeInfo -> Int16 -> IO (Ptr TypeInfo)

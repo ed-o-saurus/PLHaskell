@@ -41,23 +41,23 @@ clean :
 
 distclean: clean
 
-src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/MemoryUtils.o
+src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGcommon.o
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR)
 
 src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c src/plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
-src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/MemoryUtils.hi src/plhaskell.h
+src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs   -o src/PLHaskell.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
-src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/MemoryUtils.hi src/plhaskell.h
+src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs     -o src/PGutils.o     -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
-src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/MemoryUtils.hi src/plhaskell.h
+src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs   -o src/PGsupport.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
-src/MemoryUtils.o src/MemoryUtils.hi : src/MemoryUtils.hs
-	ghc -Wall -O1 -Werror -optc -Wall -Wno-trustworthy-safe -fforce-recomp -optc -fvisibility=hidden -isrc -c src/MemoryUtils.hs -o src/MemoryUtils.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
+src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs
+	ghc -Wall -O1 -Werror -optc -Wall -Wno-trustworthy-safe -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGcommon.hs -o src/PGcommon.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
 %.hs : %.hsc src/plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR)
@@ -81,12 +81,13 @@ endif
 
 install : export GHC_PACKAGE_PATH = $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 
-install : src/plhaskell.control src/plhaskell--3.1.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/plhaskell.so src/pgutils-3.1.conf selinux/plhaskell.pp
+install : src/plhaskell.control src/plhaskell--3.1.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils-3.1.conf selinux/plhaskell.pp
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell.control
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell--3.1.sql
 	install -m 0755 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/plhaskell.so
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGutils.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGsupport.dyn_hi
+	install -m 0644 -C -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGcommon.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db src/pgutils-3.1.conf
 	ghc-pkg recache
 	if [ -s selinux/plhaskell.pp ]; then install -m 0644 -D -t $(DESTDIR)/usr/share/selinux/packages selinux/plhaskell.pp; fi
@@ -97,5 +98,6 @@ uninstall :
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell.so
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGutils.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGsupport.dyn_hi
+	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGcommon.dyn_hi
 	-rm -fr $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 	-rm -f  $(DESTDIR)/usr/share/selinux/packages/plhaskell.pp

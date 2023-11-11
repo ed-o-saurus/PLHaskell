@@ -37,16 +37,11 @@ import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Utils        (fromBool, toBool)
 import Foreign.Ptr                  (Ptr, nullPtr, plusPtr, ptrToWordPtr)
 import Foreign.StablePtr            (castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
-import Foreign.Storable             (Storable, peek, peekByteOff, peekElemOff, poke)
+import Foreign.Storable             (peek, peekByteOff, peekElemOff, poke)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False), Either (Left, Right), Eq, IO, Maybe (Just, Nothing), Num, String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>), (>>=))
+import Prelude                      (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>), (>>=))
 
-import MemoryUtils                  (pWithCString)
-
--- Dummy types to make pointers
-data CallInfo
-data TypeInfo
-newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
+import PGcommon                     (CallInfo, Oid (Oid), TypeInfo, pWithCString)
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String

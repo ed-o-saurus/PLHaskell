@@ -27,7 +27,7 @@ key:             pgutils-3.1
 license:         GPL
 synopsis:        PL/Haskell Utilities
 exposed:         True
-exposed-modules: PGutils PGsupport
+exposed-modules: PGutils PGsupport PGcommon
 EOF
 
 echo import-dirs:\ \ \ \ \ $1

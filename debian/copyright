@@ -11,7 +11,7 @@ Files:     .gitignore
            tests.sql
            selinux/plhaskell.te
            spec/plhaskell.spec
-           src/MemoryUtils.hsc
+           src/PGcommon.hsc
            src/mk_pgutils_conf.sh
            src/PGsupport.hsc
            src/PGutils.hsc

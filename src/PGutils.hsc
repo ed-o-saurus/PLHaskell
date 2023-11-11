@@ -42,14 +42,13 @@ import Foreign.C.Types       (CBool, CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool)
 import Foreign.Ptr           (Ptr)
-import Foreign.Storable      (Storable, peek, peekByteOff, peekElemOff)
-import Prelude               (Applicative, Bool (False, True), Char, Double, Eq, Float, Functor, IO, Maybe (Nothing, Just), Monad, Num, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-), (>>=))
+import Foreign.Storable      (peek, peekByteOff, peekElemOff)
+import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-), (>>=))
 import System.IO.Unsafe      (unsafePerformIO)
 
 import PGsupport             (Datum, ReadWrite (readType, write), TypeInfo, getField, readIsNull, voidDatum)
-import MemoryUtils           (pUseAsCString, pWithArray, pWithArrayLen)
+import PGcommon              (Oid (Oid), pUseAsCString, pWithArray, pWithArrayLen)
 
-newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 data TupleTable
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
 
