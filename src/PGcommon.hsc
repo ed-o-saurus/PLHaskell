@@ -26,16 +26,19 @@
 -- This module implements functions to allocate memory useing postgres' memory allocation.
 -- This prevents memory leaks in case of an ERROR event.
 
-module PGcommon (CallInfo, Datum (Datum), Oid (Oid), TypeInfo, palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, voidDatum) where
+#include "plhaskell.h"
+
+module PGcommon (CallInfo, Datum (Datum), NullableDatum (NullableDatum), Oid (Oid), TypeInfo, getField, palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
+import Data.Int              (Int16)
 import Foreign.C.String      (CString, CStringLen, withCStringLen)
-import Foreign.C.Types       (CSize (CSize), CUInt (CUInt))
+import Foreign.C.Types       (CBool (CBool), CSize (CSize), CUInt (CUInt))
 import Foreign.Marshal.Array (pokeArray)
-import Foreign.Marshal.Utils (copyBytes)
+import Foreign.Marshal.Utils (copyBytes, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
-import Foreign.Storable      (sizeOf, Storable)
-import Prelude               (Eq, Int, IO, Num, String, const, fromIntegral, length, return, undefined, ($), (.), (*), (+))
+import Foreign.Storable      (alignment, peek, peekByteOff, peekElemOff, poke, sizeOf, Storable)
+import Prelude               (Eq, Int, IO, Maybe (Nothing, Just), Num, String, const, fromIntegral, length, return, undefined, ($), (.), (*), (+))
 
 -- Dummy types to make pointers
 data CallInfo
@@ -46,6 +49,27 @@ newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 
 voidDatum :: Datum
 voidDatum = Datum $ ptrToWordPtr nullPtr
+
+newtype NullableDatum = NullableDatum (Maybe Datum)
+instance Storable NullableDatum where
+    sizeOf _ = (#size NullableDatum)
+    alignment _ = (#alignment NullableDatum)
+
+    peek pNullableDatum = do
+        CBool isNull <- (#peek NullableDatum, isnull) pNullableDatum
+        if (toBool isNull)
+        then return $ NullableDatum Nothing
+        else do
+            datum <- (#peek NullableDatum, value) pNullableDatum
+            return $ NullableDatum $ Just datum
+
+    poke = undefined -- Never used
+
+-- Get field of TypeInfo struct
+getField :: Ptr TypeInfo -> Int16 -> IO (Ptr TypeInfo)
+getField pTypeInfo j = do
+    fields <- (#peek struct TypeInfo, fields) pTypeInfo
+    peekElemOff fields $ fromIntegral j
 
 -- Allocate memory using postgres' mechanism
 foreign import capi unsafe "postgres.h palloc"

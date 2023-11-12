@@ -68,7 +68,7 @@ struct CallInfo
 
     union
     {
-        void (*function)(void); // Pointer to the function to be called to read Args and populate Result
+        Datum (*function)(NullableDatum *args, bool *isnull); // Pointer to the function to be called to read Args and populate Result
         HsStablePtr list; // Stable pointer to list of results
     };
 
@@ -81,6 +81,9 @@ void plhaskell_report(int elevel, char *msg);
 
 struct TypeInfo *new_type_info(Oid type_oid);
 void delete_type_info(struct TypeInfo *p_type_info);
+
+void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null);
+Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null);
 
 // Functions for SPI queries
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);

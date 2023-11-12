@@ -40,9 +40,6 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid);
 
 static void destroy_call_info(void *arg);
 
-static void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null);
-static Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null);
-
 static void enter(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 
@@ -77,6 +74,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
     int spi_code;
     bool nonatomic;
     struct CallInfo *prev_p_call_info;
+    Datum ret_val;
 
     proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
     if(!HeapTupleIsValid(proctup))
@@ -123,10 +121,6 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
             build_call_info(p_call_info, func_oid, true, !nonatomic);
 
-            // Write the argument to their TypeInfo structs
-            for(int16 i=0; i<p_call_info->nargs; i++)
-                write_type_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
-
             spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
             if(spi_code < 0)
                 ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
@@ -134,7 +128,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             // Setup the iterator and list
             prev_p_call_info = current_p_call_info;
             current_p_call_info = p_call_info;
-            mk_list(p_call_info);
+            mk_list(p_call_info, fcinfo->args);
             current_p_call_info = prev_p_call_info;
 
             spi_code = SPI_finish();
@@ -154,7 +148,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         // Iterate the list
         prev_p_call_info = current_p_call_info;
         current_p_call_info = p_call_info;
-        iterate(p_call_info);
+        ret_val = iterate(p_call_info, &fcinfo->isnull);
         current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
@@ -162,18 +156,14 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
         if(p_call_info->list) // Is there another result?
-        {
             rsi->isDone = ExprMultipleResult;
-            return read_type_info(p_call_info->result, &fcinfo->isnull); // Get the next result
-        }
         else
         {
             end_MultiFuncCall(fcinfo, funcctx);
             rsi->isDone = ExprEndResult;
-
-            fcinfo->isnull = true;
-            return (Datum)0;
         }
+
+        return ret_val;
     }
     else
     {
@@ -203,10 +193,6 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
 
         p_call_info = fcinfo->flinfo->fn_extra;
 
-        // Write the argument to their TypeInfo structs
-        for(int16 i=0; i<p_call_info->nargs; i++)
-            write_type_info(p_call_info->args[i], fcinfo->args[i].value, fcinfo->args[i].isnull);
-
         spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
@@ -214,14 +200,14 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS)
         // Run the function
         prev_p_call_info = current_p_call_info;
         current_p_call_info = p_call_info;
-        (*p_call_info->function)();
+        ret_val = (*p_call_info->function)(fcinfo->args, &fcinfo->isnull);
         current_p_call_info = prev_p_call_info;
 
         spi_code = SPI_finish();
         if(spi_code < 0)
             ereport(ERROR, errmsg("%s", SPI_result_code_string(spi_code)));
 
-        return read_type_info(p_call_info->result, &fcinfo->isnull);
+        return ret_val;
     }
 }
 
@@ -332,7 +318,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     prev_p_call_info = current_p_call_info;
     current_p_call_info = p_call_info;
     mk_function(p_call_info);
-    (*p_call_info->function)();
+    (*p_call_info->function)(NULL, NULL);
     current_p_call_info = prev_p_call_info;
 
     spi_code = SPI_finish();
@@ -620,7 +606,7 @@ static void destroy_call_info(void *arg)
     else
     {
         if(p_call_info->function)
-            hs_free_fun_ptr(p_call_info->function);
+            hs_free_fun_ptr((HsFunPtr)(p_call_info->function));
     }
 
     if(first_p_call_info == p_call_info)
@@ -634,7 +620,8 @@ static void destroy_call_info(void *arg)
 }
 
 // Populate the value and is_null fields of p_type_info
-static void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null)
+void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null) __attribute__((visibility ("hidden")));
+void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null)
 {
     HeapTupleHeader tuple;
     HeapTupleData tmptup;
@@ -669,18 +656,20 @@ static void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_n
 }
 
 // Get the value from p_type_info
-static Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null)
+Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null) __attribute__((visibility ("hidden")));
+Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null)
 {
     Datum *values;
     bool *is_nulls;
+
+    if(p_type_info->value_type == VOID_TYPE)
+        return (Datum)0;
 
     if((*is_null=p_type_info->is_null))
         return (Datum)0;
 
     switch(p_type_info->value_type)
     {
-    case VOID_TYPE :
-        return (Datum)0;
     case BASE_TYPE :
         return p_type_info->value;
     case COMPOSITE_TYPE :

@@ -24,26 +24,22 @@
 
 #include "plhaskell.h"
 
-module PGsupport (TypeInfo, Datum, ReadWrite (readType, writeType, write), getField, voidDatum, mkResultList, readIsNull, wrapVoidFunc, writeIsNull, writeVoid) where
+module PGsupport (TypeInfo, Datum, ReadWrite (readType, writeType, write), getField, populateArgs, voidDatum, mkResultList, readIsNull, readTypeInfo, wrapFunction, writeIsNull, writeVoid) where
 
+import Control.Monad         (forM_)
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
 import Data.Int              (Int16, Int32, Int64)
 import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
 import Foreign.C.Types       (CBool (CBool), CSize (CSize))
+import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
 import Foreign.Storable      (peekByteOff, peekElemOff, pokeByteOff)
-import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, ($), (+), (.), (>>=))
+import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, zip, ($), (+), (-), (.), (>>), (>>=))
 
-import PGcommon              (Datum (Datum), TypeInfo, palloc, voidDatum)
-
--- Get field of TypeInfo struct
-getField :: Ptr TypeInfo -> Int16 -> IO (Ptr TypeInfo)
-getField pTypeInfo i = do
-    fields <- (#peek struct TypeInfo, fields) pTypeInfo
-    peekElemOff fields $ fromIntegral i
+import PGcommon              (CallInfo, Datum (Datum), NullableDatum (NullableDatum), TypeInfo, getField, palloc, voidDatum)
 
 -- Determine the value of the isNull field of a TypeInfo struct
 readIsNull :: Ptr TypeInfo -> IO Bool
@@ -179,8 +175,27 @@ instance ReadWrite Double where
     write = float8GetDatum
 
 -- Convert a list of values to a list of actions with that execute writeResult on the elements of the list
-mkResultList :: (Maybe a -> Ptr TypeInfo -> IO ())-> [Maybe a] -> Ptr TypeInfo -> [IO ()]
-mkResultList writeResult results pResultTypeInfo = map ((flip writeResult) pResultTypeInfo) results
+mkResultList :: (Maybe a -> Ptr TypeInfo -> IO ()) -> [Maybe a] -> Ptr TypeInfo -> [Ptr CBool -> IO Datum]
+mkResultList writeResult results pResultTypeInfo = map (\result pIsNull -> (writeResult result pResultTypeInfo) >> (readTypeInfo pResultTypeInfo pIsNull)) results
 
 foreign import ccall "wrapper"
-    wrapVoidFunc :: IO () -> IO (FunPtr (IO ()))
+    wrapFunction :: (Ptr NullableDatum -> Ptr CBool -> IO Datum) -> IO (FunPtr (Ptr NullableDatum -> Ptr CBool -> IO Datum))
+
+populateArg :: Ptr CallInfo -> (Int16, NullableDatum) -> IO ()
+populateArg pCallInfo (i, NullableDatum arg) = do
+    pArgTypeInfo <- (#peek struct CallInfo, args) pCallInfo >>= ((flip peekElemOff) (fromIntegral i)) :: IO (Ptr TypeInfo)
+    case arg of
+        Nothing -> writeTypeInfo pArgTypeInfo voidDatum (CBool (fromBool True))
+        Just value -> writeTypeInfo pArgTypeInfo value (CBool (fromBool False))
+
+populateArgs :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
+populateArgs pCallInfo pArgs = do
+    nargs <- (#peek struct CallInfo, nargs) pCallInfo :: IO Int16
+    args <- peekArray (fromIntegral nargs) pArgs
+    forM_ (zip [0 .. nargs-1] args) (populateArg pCallInfo)
+
+foreign import capi "plhaskell.h write_type_info"
+    writeTypeInfo :: Ptr TypeInfo -> Datum -> CBool -> IO ()
+
+foreign import capi unsafe "plhaskell.h read_type_info"
+    readTypeInfo :: Ptr TypeInfo -> Ptr CBool -> IO Datum

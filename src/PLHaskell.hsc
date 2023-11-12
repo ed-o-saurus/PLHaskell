@@ -35,13 +35,13 @@ import Data.Word                    (Word16)
 import Foreign.C.String             (CString, peekCString)
 import Foreign.C.Types              (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Utils        (fromBool, toBool)
-import Foreign.Ptr                  (Ptr, nullPtr, plusPtr, ptrToWordPtr)
+import Foreign.Ptr                  (Ptr, nullPtr, plusPtr, ptrToWordPtr, WordPtr (WordPtr))
 import Foreign.StablePtr            (castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable             (peek, peekByteOff, peekElemOff, poke)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
-import Prelude                      (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>), (>>=))
+import Prelude                      (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (-), (.), (>>=))
 
-import PGcommon                     (CallInfo, Oid (Oid), TypeInfo, pWithCString)
+import PGcommon                     (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getField, pWithCString, voidDatum)
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
@@ -103,12 +103,6 @@ getTypeOid = (#peek struct TypeInfo, type_oid)
 -- Extract count of sub-fields from TypeInfo sruct
 getCount :: Ptr TypeInfo -> IO Int16
 getCount = (#peek struct TypeInfo, count)
-
--- Get field of TypeInfo struct
-getField :: Ptr TypeInfo -> Int16 -> IO (Ptr TypeInfo)
-getField pTypeInfo j = do
-    fields <- (#peek struct TypeInfo, fields) pTypeInfo
-    peekElemOff fields (fromIntegral j)
 
 setPtr :: String -> Ptr a -> Interpreter ()
 setPtr name ptr = runStmt $ "let " ++ name ++ " = wordPtrToPtr " ++ show (ptrToWordPtr ptr)
@@ -228,7 +222,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "TypeInfo", "getField", "readIsNull", "wrapVoidFunc", "writeIsNull", "writeVoid", "mkResultList"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["ReadWrite (readType, writeType)", "TypeInfo", "getField", "readIsNull", "readTypeInfo", "wrapFunction", "writeIsNull", "writeVoid", "mkResultList", "populateArgs"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo
@@ -299,51 +293,62 @@ mkFunction :: Ptr CallInfo -> IO ()
 mkFunction pCallInfo = execute $ do
     (nargs, funcName, trusted) <- setUpEvalInt pCallInfo
 
+    setPtr "pCallInfo" pCallInfo
+
     -- Build the Function
+    let prog_populate_args = "populateArgs pCallInfo pArgs;"
     let prog_read_args = concatMap (interpolate "arg? <- readArg? pArgTypeInfo?;") [0 .. nargs-1]
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     let prog_call = if trusted
         then "result <- unPGm $ PGmodule." ++ funcName ++ argsNames ++ ";"
         else "result <-         PGmodule." ++ funcName ++ argsNames ++ ";"
-    let prog_write_result = "writeResult result pResultTypeInfo"
-    runStmt $ "function <- wrapVoidFunc $ do {" ++ prog_read_args ++ prog_call ++ prog_write_result ++ "}"
+    let prog_write_result = "writeResult result pResultTypeInfo; readTypeInfo pResultTypeInfo pResultIsNull"
+    runStmt $ "function <- wrapFunction $ (\\pArgs pResultIsNull -> do {" ++ prog_populate_args ++ prog_read_args ++ prog_call ++ prog_write_result ++ "})"
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
     setPtr "pFunction" ((#ptr struct CallInfo, function) pCallInfo)
     runStmt "poke pFunction function"
 
 -- Set the List field of the CallInfo struct to the list returns by the function
-foreign export capi "mk_list" mkList :: Ptr CallInfo -> IO ()
-mkList :: Ptr CallInfo -> IO ()
-mkList pCallInfo = execute $ do
+foreign export capi "mk_list" mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
+mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
+mkList pCallInfo pArgs = execute $ do
     (nargs, funcName, trusted) <- setUpEvalInt pCallInfo
+
+    setPtr "pArgs" pArgs
+    setPtr "pCallInfo" pCallInfo
+    runStmt "populateArgs pCallInfo pArgs"
 
     -- Get the arguments
     forM_ [0 .. nargs-1] (runStmt . (interpolate "arg? <- readArg? pArgTypeInfo?"))
 
-    -- Set writeResultList to be a list of actions each of which loads a result into the result TypeInfo struct
+    -- Set returnResultList to be a list of actions each of which loads a result into the result TypeInfo struct
     let argsNames = concatMap (interpolate " arg?") [0 .. nargs-1]
     if trusted
         then runStmt $ "results <- unPGm $ PGmodule." ++ funcName ++ argsNames
         else runStmt $ "results <-         PGmodule." ++ funcName ++ argsNames
 
-    runStmt "let writeResultList = mkResultList writeResult results pResultTypeInfo"
+    runStmt "let returnResultList = mkResultList writeResult results pResultTypeInfo"
 
     -- poke the stable pointer value into the List field of the CallInfo struct
-    runStmt "spList <- newStablePtr writeResultList"
+    runStmt "spList <- newStablePtr returnResultList"
     setPtr "pList" ((#ptr struct CallInfo, list) pCallInfo)
     runStmt "poke pList spList"
 
-foreign export capi "iterate" iterate :: Ptr CallInfo -> IO ()
-iterate :: Ptr CallInfo -> IO ()
-iterate pCallInfo = do
+foreign export capi "iterate" iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
+iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
+iterate pCallInfo pResultIsNull = do
     let pList = (#ptr struct CallInfo, list) pCallInfo
     spList <- peek pList
-    writeResultList <- deRefStablePtr spList
+    returnResultList <- deRefStablePtr spList
     freeStablePtr spList
-    case writeResultList of
-        [] -> poke pList (castPtrToStablePtr nullPtr)
-        (writeResult:tail) -> (newStablePtr tail) >>= (poke pList) >> writeResult
+    case returnResultList of
+        [] -> do
+            poke pList (castPtrToStablePtr nullPtr)
+            return voidDatum
+        (returnResult:tail) -> do
+            (newStablePtr tail) >>= (poke pList)
+            returnResult pResultIsNull
 
 -- Version of the underlying GHC API.
 foreign export capi "hint_ghc_version" hintGhcVersion :: Int32
