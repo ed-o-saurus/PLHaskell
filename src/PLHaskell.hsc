@@ -1,6 +1,5 @@
 {-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE Unsafe #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingStrategies #-}
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
