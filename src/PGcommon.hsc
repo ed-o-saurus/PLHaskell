@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (CallInfo, Datum (Datum), NullableDatum (NullableDatum), Oid (Oid), TypeInfo, getField, palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, voidDatum) where
+module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getField, palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -50,7 +50,7 @@ newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 voidDatum :: Datum
 voidDatum = Datum $ ptrToWordPtr nullPtr
 
-newtype NullableDatum = NullableDatum (Maybe Datum)
+newtype NullableDatum = NullableDatum {unNullableDatum :: Maybe Datum}
 instance Storable NullableDatum where
     sizeOf _ = (#size NullableDatum)
     alignment _ = (#alignment NullableDatum)

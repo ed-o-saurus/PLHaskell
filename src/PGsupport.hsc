@@ -39,7 +39,7 @@ import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
 import Foreign.Storable      (peekByteOff, peekElemOff, pokeByteOff)
 import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), flip, fromIntegral, map, return, zip, ($), (+), (-), (.), (>>), (>>=))
 
-import PGcommon              (CallInfo, Datum (Datum), NullableDatum (NullableDatum), TypeInfo, getField, palloc, voidDatum)
+import PGcommon              (CallInfo, Datum (Datum), NullableDatum, TypeInfo, getField, palloc, unNullableDatum, voidDatum)
 
 -- Determine the value of the isNull field of a TypeInfo struct
 readIsNull :: Ptr TypeInfo -> IO Bool
@@ -182,11 +182,11 @@ foreign import ccall "wrapper"
     wrapFunction :: (Ptr NullableDatum -> Ptr CBool -> IO Datum) -> IO (FunPtr (Ptr NullableDatum -> Ptr CBool -> IO Datum))
 
 populateArg :: Ptr CallInfo -> (Int16, NullableDatum) -> IO ()
-populateArg pCallInfo (i, NullableDatum arg) = do
-    pArgTypeInfo <- (#peek struct CallInfo, args) pCallInfo >>= ((flip peekElemOff) (fromIntegral i)) :: IO (Ptr TypeInfo)
-    case arg of
-        Nothing -> writeTypeInfo pArgTypeInfo voidDatum (CBool (fromBool True))
-        Just value -> writeTypeInfo pArgTypeInfo value (CBool (fromBool False))
+populateArg pCallInfo (i, arg) = do
+    pArgTypeInfo <- (#peek struct CallInfo, args) pCallInfo >>= ((flip peekElemOff) (fromIntegral i))
+    case (unNullableDatum arg) of
+        Nothing    -> writeTypeInfo pArgTypeInfo voidDatum (CBool (fromBool True))
+        Just value -> writeTypeInfo pArgTypeInfo value     (CBool (fromBool False))
 
 populateArgs :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
 populateArgs pCallInfo pArgs = do
