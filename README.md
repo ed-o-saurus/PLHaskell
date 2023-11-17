@@ -205,6 +205,8 @@ PostgreSQL Type |   Module          | Haskell Type
 
 Trusted functions must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function while untrusted functions must return type `IO (Maybe `*`result`*`)`. The `PGm`  monad type can be imported from the `PGutils` module.
 
+If a function returns a void (no value), the Haskell function should return type `PGm ()` or `IO ()`. 
+
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
 ### Inline Code
@@ -214,6 +216,8 @@ The extension supports anonymous code blocks with the use of the `DO` keyword. C
 ### Returning Sets
 
 Functions can return sets of values by returning type `PGm [Maybe `*`result`*`]` or `IO [Maybe `*`result`*`]` where *`result`* is the appropriate Haskell type as determined by the return type of function.
+
+Set returning functions can return sets of voids by the Haskell code returing type `PGm [()]` or `IO [()]`.
 
 ### Reporting Messages and Raising Error
 
