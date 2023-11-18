@@ -32,15 +32,10 @@
 // Represents a value passed or returned by a function
 struct TypeInfo
 {
-    bool is_null;
     uint16 value_type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
     union
     {
-        struct // BASE
-        {
-            Oid type_oid; // OID of the type
-            Datum value; // Value of base type
-        };
+        Oid type_oid; // OID of the type // BASE
 
         struct // COMPOSITE
         {
@@ -82,14 +77,14 @@ void plhaskell_report(int elevel, char *msg);
 struct TypeInfo *new_type_info(Oid type_oid);
 void delete_type_info(struct TypeInfo *p_type_info);
 
-void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null);
-Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null);
+void decode_composite_datum(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls);
+Datum encode_composite_datum(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls);
 
 // Functions for SPI queries
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);
 void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber);
 void get_oids(struct SPITupleTable *tuptable, Oid *oids);
-void fill_type_info(struct SPITupleTable *tuptable, struct TypeInfo *p_type_info, uint64 row_number, int fnumber);
+Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number, int fnumber, bool *is_null);
 void free_tuptable(struct SPITupleTable *tuptable);
 
 #endif

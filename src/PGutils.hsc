@@ -30,6 +30,7 @@
 
 module PGutils (PGm, ErrorLevel, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, unPGm, QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
+import Control.Monad         (zipWithM)
 import Control.Monad.Fail    (MonadFail (fail))
 import Data.ByteString       (ByteString)
 import Data.Int              (Int16, Int32, Int64)
@@ -40,14 +41,14 @@ import Data.Word             (Word16, Word64)
 import Foreign.C.String      (peekCString, CString)
 import Foreign.C.Types       (CBool, CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Array (allocaArray)
-import Foreign.Marshal.Utils (fromBool)
-import Foreign.Ptr           (Ptr)
+import Foreign.Marshal.Utils (fromBool, toBool)
+import Foreign.Ptr           (Ptr, WordPtr (WordPtr))
 import Foreign.Storable      (peek, peekByteOff, peekElemOff)
-import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, fromIntegral, map, mapM, mapM_, return, undefined, unzip, zip, ($), (.), (-), (>>=))
+import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (-), (>>=))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Datum, ReadWrite (readType, write), TypeInfo, getField, readIsNull, voidDatum)
-import PGcommon              (Oid (Oid), pUseAsCString, pWithArray, pWithArrayLen)
+import PGsupport             (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum)
+import PGcommon              (Oid (Oid), getFields, pUseAsCString, pWithArray, pWithArrayLen, voidDatum)
 
 data TupleTable
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
@@ -102,51 +103,16 @@ getNatts :: Ptr TupleTable -> IO Int16
 getNatts pTupleTable = (#peek struct SPITupleTable, tupdesc) pTupleTable >>= (#peek struct TupleDescData, natts)
 
 -- Transform QueryParam to is_null and datum
-encode :: QueryParam -> IO (CBool, Datum)
-encode (QueryParamByteA Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamByteA (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamText Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamText (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamChar Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamChar (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamBool Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamBool (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamInt2 Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamInt2 (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamInt4 Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamInt4 (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamInt8 Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamInt8 (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamFloat4 Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamFloat4 (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
-
-encode (QueryParamFloat8 Nothing) = return (fromBool True, voidDatum)
-encode (QueryParamFloat8 (Just val)) = do
-    datum <- write val
-    return (fromBool False, datum)
+encode' :: QueryParam -> IO (Maybe Datum)
+encode' (QueryParamByteA  value) = encode value
+encode' (QueryParamText   value) = encode value
+encode' (QueryParamChar   value) = encode value
+encode' (QueryParamBool   value) = encode value
+encode' (QueryParamInt2   value) = encode value
+encode' (QueryParamInt4   value) = encode value
+encode' (QueryParamInt8   value) = encode value
+encode' (QueryParamFloat4 value) = encode value
+encode' (QueryParamFloat8 value) = encode value
 
 getOid :: QueryParam -> Oid
 getOid (QueryParamByteA  _) = (#const BYTEAOID)
@@ -212,40 +178,46 @@ foreign import capi safe "plhaskell.h new_type_info"
 foreign import capi unsafe "plhaskell.h delete_type_info"
     deleteTypeInfo :: Ptr TypeInfo -> IO ()
 
-foreign import capi unsafe "plhaskell.h fill_type_info"
-    fillTypeInfo :: Ptr TupleTable -> Ptr TypeInfo -> Word64 -> CInt -> IO ()
+foreign import capi unsafe "plhaskell.h get_tuple_datum"
+    c_getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> Ptr CBool -> IO Datum
 
-mkQueryResultValue :: Ptr TypeInfo -> IO QueryResultValue
-mkQueryResultValue pTypeInfo = do
+getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> IO (Maybe Datum)
+getTupleDatum pTupleTable rowNumber fnumber = pWithArray [0] $ \pIsNull -> do
+        datum <- c_getTupleDatum pTupleTable rowNumber fnumber pIsNull
+        isNull <- peek pIsNull
+        if (toBool isNull)
+        then return Nothing
+        else return $ Just datum
+
+mkQueryResultValue :: Ptr TypeInfo -> Maybe Datum -> IO QueryResultValue
+mkQueryResultValue pTypeInfo mDatum = do
     valueType <- getValueType pTypeInfo
     case valueType of
         (#const BASE_TYPE) -> do
             typeOid <- getTypeOid pTypeInfo
             case typeOid of
-                (#const BYTEAOID)  -> QueryResultValueByteA  <$> readType pTypeInfo
-                (#const TEXTOID)   -> QueryResultValueText   <$> readType pTypeInfo
-                (#const CHAROID)   -> QueryResultValueChar   <$> readType pTypeInfo
-                (#const BOOLOID)   -> QueryResultValueBool   <$> readType pTypeInfo
-                (#const INT2OID)   -> QueryResultValueInt2   <$> readType pTypeInfo
-                (#const INT4OID)   -> QueryResultValueInt4   <$> readType pTypeInfo
-                (#const INT8OID)   -> QueryResultValueInt8   <$> readType pTypeInfo
-                (#const FLOAT4OID) -> QueryResultValueFloat4 <$> readType pTypeInfo
-                (#const FLOAT8OID) -> QueryResultValueFloat8 <$> readType pTypeInfo
+                (#const BYTEAOID)  -> QueryResultValueByteA  <$> decode mDatum
+                (#const TEXTOID)   -> QueryResultValueText   <$> decode mDatum
+                (#const CHAROID)   -> QueryResultValueChar   <$> decode mDatum
+                (#const BOOLOID)   -> QueryResultValueBool   <$> decode mDatum
+                (#const INT2OID)   -> QueryResultValueInt2   <$> decode mDatum
+                (#const INT4OID)   -> QueryResultValueInt4   <$> decode mDatum
+                (#const INT8OID)   -> QueryResultValueInt8   <$> decode mDatum
+                (#const FLOAT4OID) -> QueryResultValueFloat4 <$> decode mDatum
+                (#const FLOAT8OID) -> QueryResultValueFloat8 <$> decode mDatum
                 _                  -> undefined
-        (#const COMPOSITE_TYPE) -> do
-            is_null <- readIsNull pTypeInfo
-            if is_null
-            then return (QueryResultValueComposite Nothing)
-            else do
-                count <- (#peek struct TypeInfo, count) pTypeInfo
-                fields <- mapM (getField pTypeInfo) [0 .. count-1]
-                (QueryResultValueComposite . Just) <$> mapM mkQueryResultValue fields
+        (#const COMPOSITE_TYPE) -> case mDatum of
+            Nothing -> return (QueryResultValueComposite Nothing)
+            Just datum -> do
+                fieldPTypeInfos <- getFields pTypeInfo
+                fieldMDatums <- decodeCompositeDatum pTypeInfo datum
+                QueryResultValueComposite . Just <$> zipWithM mkQueryResultValue fieldPTypeInfos fieldMDatums
         _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]
 getRow pTupleTable pTypeInfos rowNumber = do
-    mapM_ (\(pTypeInfo, fnumber) -> fillTypeInfo pTupleTable pTypeInfo rowNumber fnumber) (zip pTypeInfos [1 ..])
-    mapM mkQueryResultValue pTypeInfos
+    mDatums <- mapM (getTupleDatum pTupleTable rowNumber) [1 .. fromIntegral (length pTypeInfos)]
+    zipWithM mkQueryResultValue pTypeInfos mDatums
 
 getRows :: Ptr TupleTable -> Word64 -> IO [[QueryResultValue]]
 getRows _pTupleTable 0 = return []
@@ -269,11 +241,20 @@ foreign import ccall safe "executor/spi.h &SPI_tuptable"
 foreign import capi unsafe "plhaskell.h free_tuptable"
     freeTupTable :: Ptr TupleTable -> IO ()
 
+getIsNull :: Maybe Datum -> CBool
+getIsNull Nothing  = fromBool True
+getIsNull (Just _) = fromBool False
+
+getValue :: Maybe Datum -> Datum
+getValue Nothing  = voidDatum
+getValue (Just datum) = datum
+
 query :: Text -> [QueryParam] -> PGm QueryResults
 query q params = PGm $ do
     let argtypes = map getOid params
-    isNullsValues <- mapM encode params
-    let (isNulls, values) = unzip isNullsValues
+    mDatums <- mapM encode' params
+    let isNulls = map getIsNull mDatums
+    let values  = map getValue  mDatums
     pUseAsCString (encodeUtf8 q) $ \ptrQuery -> do
         pWithArrayLen argtypes $ \nargs ptrArgtypes -> do
             pWithArray values $ \ptrValues -> do

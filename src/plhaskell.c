@@ -271,6 +271,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     FILE *modfile;
     int spi_code;
     struct CallInfo *prev_p_call_info;
+    bool is_null; // dummy variable
 
     // Register callback to free List and Iterator and delete temp module file
     cb->func = destroy_call_info;
@@ -318,7 +319,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     prev_p_call_info = current_p_call_info;
     current_p_call_info = p_call_info;
     mk_function(p_call_info);
-    (*p_call_info->function)(NULL, NULL);
+    (*p_call_info->function)(NULL, &is_null);
     current_p_call_info = prev_p_call_info;
 
     spi_code = SPI_finish();
@@ -619,74 +620,37 @@ static void destroy_call_info(void *arg)
         p_call_info->next->prev = p_call_info->prev;
 }
 
-// Populate the value and is_null fields of p_type_info
-void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null) __attribute__((visibility ("hidden")));
-void write_type_info(struct TypeInfo *p_type_info, Datum value, bool is_null)
+// Get the datums that represent a composie values
+void decode_composite_datum(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls) __attribute__((visibility ("hidden")));
+void decode_composite_datum(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls)
 {
-    HeapTupleHeader tuple;
+    HeapTupleHeader tuple = DatumGetHeapTupleHeader(composite_datum);
     HeapTupleData tmptup;
 
-    if((p_type_info->is_null=is_null))
-        return;
+    tmptup.t_len = HeapTupleHeaderGetDatumLength(tuple);
+    ItemPointerSetInvalid(&(tmptup.t_self));
+    tmptup.t_tableOid = InvalidOid;
+    tmptup.t_data = tuple;
 
-    switch(p_type_info->value_type)
-    {
-    case BASE_TYPE :
-        p_type_info->value = value;
-        break;
-    case COMPOSITE_TYPE :
-        // If p_type_info is a tuple, populate the fields recursively.
-        tuple = DatumGetHeapTupleHeader(value);
-
-        tmptup.t_len = HeapTupleHeaderGetDatumLength(tuple);
-        ItemPointerSetInvalid(&(tmptup.t_self));
-        tmptup.t_tableOid = InvalidOid;
-        tmptup.t_data = tuple;
-
-        for(int16 j=0; j<p_type_info->count; j++)
-        {
-            Datum value = heap_getattr(&tmptup, p_type_info->attnums[j], p_type_info->tupdesc, &is_null);
-            write_type_info(p_type_info->fields[j], value, is_null);
-        }
-
-        break;
-    default :
-        ereport(ERROR, errmsg("Bad value_type : %d", p_type_info->value_type));
-    }
+    for(int16 j=0; j<p_type_info->count; j++)
+        field_values[j] = heap_getattr(&tmptup, p_type_info->attnums[j], p_type_info->tupdesc, field_is_nulls+j);
 }
 
-// Get the value from p_type_info
-Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null) __attribute__((visibility ("hidden")));
-Datum read_type_info(struct TypeInfo *p_type_info, bool *is_null)
+// Get the datum that represents a composite value
+Datum encode_composite_datum(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls) __attribute__((visibility ("hidden")));
+Datum encode_composite_datum(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls)
 {
-    Datum *values;
-    bool *is_nulls;
+    Datum *values  = palloc(p_type_info->natts * sizeof(Datum));
+    bool *is_nulls = palloc(p_type_info->natts * sizeof(bool));
 
-    if(p_type_info->value_type == VOID_TYPE)
-        return (Datum)0;
-
-    if((*is_null=p_type_info->is_null))
-        return (Datum)0;
-
-    switch(p_type_info->value_type)
+    for(int16 j=0; j<p_type_info->count; j++)
     {
-    case BASE_TYPE :
-        return p_type_info->value;
-    case COMPOSITE_TYPE :
-        // If p_type_info is a tuple, get the fields' values recursively.
-        values  = palloc(p_type_info->natts * sizeof(Datum));
-        is_nulls = palloc(p_type_info->natts * sizeof(bool));
-
-        for(int16 j=0; j<p_type_info->count; j++)
-        {
-            int16 attnum = p_type_info->attnums[j];
-            values[attnum-1] = read_type_info(p_type_info->fields[j], is_nulls+(attnum-1));
-        }
-
-        return HeapTupleGetDatum(heap_form_tuple(p_type_info->tupdesc, values, is_nulls));
-    default :
-        ereport(ERROR, errmsg("Bad value_type : %d", p_type_info->value_type));
+        int16 attnum = p_type_info->attnums[j];
+        values[attnum-1] = field_values[j];
+        is_nulls[attnum-1] = field_is_nulls[j];
     }
+
+    return HeapTupleGetDatum(heap_form_tuple(p_type_info->tupdesc, values, is_nulls));
 }
 
 // Called when the module is loaded
@@ -864,15 +828,10 @@ void get_oids(struct SPITupleTable *tuptable, Oid *oids)
         oids[i] = SPI_gettypeid(tuptable->tupdesc, i+1);
 }
 
-// Get datum/is_null from SPI result and use it to populate TypeInfo struct
-void fill_type_info(struct SPITupleTable *tuptable, struct TypeInfo *p_type_info, uint64 row_number, int fnumber) __attribute__((visibility ("hidden")));
-void fill_type_info(struct SPITupleTable *tuptable, struct TypeInfo *p_type_info, uint64 row_number, int fnumber)
+Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number, int fnumber, bool *is_null) __attribute__((visibility ("hidden")));
+Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number, int fnumber, bool *is_null)
 {
-    Datum value;
-    bool is_null;
-
-    value = SPI_getbinval(tuptable->vals[row_number], tuptable->tupdesc, fnumber, &is_null);
-    write_type_info(p_type_info, value, is_null);
+    return SPI_getbinval(tuptable->vals[row_number], tuptable->tupdesc, fnumber, is_null);
 }
 
 void free_tuptable(struct SPITupleTable *tuptable) __attribute__((visibility ("hidden")));

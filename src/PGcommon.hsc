@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getField, palloc, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, unNullableDatum, voidDatum) where
+module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -38,7 +38,7 @@ import Foreign.Marshal.Array (pokeArray)
 import Foreign.Marshal.Utils (copyBytes, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.Storable      (alignment, peek, peekByteOff, peekElemOff, poke, sizeOf, Storable)
-import Prelude               (Eq, Int, IO, Maybe (Nothing, Just), Num, String, const, fromIntegral, length, return, undefined, ($), (.), (*), (+))
+import Prelude               (Eq, Int, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
 
 -- Dummy types to make pointers
 data CallInfo
@@ -49,6 +49,10 @@ newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 
 voidDatum :: Datum
 voidDatum = Datum $ ptrToWordPtr nullPtr
+
+-- Extract count of sub-fields from TypeInfo sruct
+getCount :: Ptr TypeInfo -> IO Int16
+getCount = (#peek struct TypeInfo, count)
 
 newtype NullableDatum = NullableDatum {unNullableDatum :: Maybe Datum}
 instance Storable NullableDatum where
@@ -65,11 +69,11 @@ instance Storable NullableDatum where
 
     poke = undefined -- Never used
 
--- Get field of TypeInfo struct
-getField :: Ptr TypeInfo -> Int16 -> IO (Ptr TypeInfo)
-getField pTypeInfo j = do
-    fields <- (#peek struct TypeInfo, fields) pTypeInfo
-    peekElemOff fields $ fromIntegral j
+-- Get fields of TypeInfo struct
+getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
+getFields pTypeInfo = do
+    count <- getCount pTypeInfo
+    mapM (\j -> (#peek struct TypeInfo, fields) pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) [0 .. count-1]
 
 -- Allocate memory using postgres' mechanism
 foreign import capi unsafe "postgres.h palloc"
