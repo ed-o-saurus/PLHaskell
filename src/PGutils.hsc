@@ -189,8 +189,8 @@ getTupleDatum pTupleTable rowNumber fnumber = pWithArray [0] $ \pIsNull -> do
         then return Nothing
         else return $ Just datum
 
-mkQueryResultValue :: Ptr TypeInfo -> Maybe Datum -> IO QueryResultValue
-mkQueryResultValue pTypeInfo mDatum = do
+decode' :: Ptr TypeInfo -> Maybe Datum -> IO QueryResultValue
+decode' pTypeInfo mDatum = do
     valueType <- getValueType pTypeInfo
     case valueType of
         (#const BASE_TYPE) -> do
@@ -211,13 +211,13 @@ mkQueryResultValue pTypeInfo mDatum = do
             Just datum -> do
                 fieldPTypeInfos <- getFields pTypeInfo
                 fieldMDatums <- decodeCompositeDatum pTypeInfo datum
-                QueryResultValueComposite . Just <$> zipWithM mkQueryResultValue fieldPTypeInfos fieldMDatums
+                QueryResultValueComposite . Just <$> zipWithM decode' fieldPTypeInfos fieldMDatums
         _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]
 getRow pTupleTable pTypeInfos rowNumber = do
     mDatums <- mapM (getTupleDatum pTupleTable rowNumber) [1 .. fromIntegral (length pTypeInfos)]
-    zipWithM mkQueryResultValue pTypeInfos mDatums
+    zipWithM decode' pTypeInfos mDatums
 
 getRows :: Ptr TupleTable -> Word64 -> IO [[QueryResultValue]]
 getRows pTupleTable processed = do
