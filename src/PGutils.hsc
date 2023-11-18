@@ -44,11 +44,11 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr))
 import Foreign.Storable      (peek, peekByteOff, peekElemOff)
-import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (-), (>>=))
+import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (>>=))
 import System.IO.Unsafe      (unsafePerformIO)
 
 import PGsupport             (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum)
-import PGcommon              (Oid (Oid), getFields, pUseAsCString, pWithArray, pWithArrayLen, voidDatum)
+import PGcommon              (Oid (Oid), getFields, pUseAsCString, pWithArray, pWithArrayLen, range, voidDatum)
 
 data TupleTable
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
@@ -170,7 +170,7 @@ getOids pTupleTable = do
     natts <- getNatts pTupleTable
     allocaArray (fromIntegral natts) $ \oids -> do
         c_getOids pTupleTable oids
-        mapM (peekElemOff oids) [0 .. (fromIntegral natts)-1]
+        mapM (peekElemOff oids) (range $ fromIntegral natts)
 
 foreign import capi safe "plhaskell.h new_type_info"
     newTypeInfo :: Oid -> IO (Ptr TypeInfo)
@@ -220,12 +220,10 @@ getRow pTupleTable pTypeInfos rowNumber = do
     zipWithM mkQueryResultValue pTypeInfos mDatums
 
 getRows :: Ptr TupleTable -> Word64 -> IO [[QueryResultValue]]
-getRows _pTupleTable 0 = return []
-
 getRows pTupleTable processed = do
     oids <- getOids pTupleTable
     pTypeInfos <- mapM newTypeInfo oids
-    rows <- mapM (getRow pTupleTable pTypeInfos) [0 .. processed-1]
+    rows <- mapM (getRow pTupleTable pTypeInfos) $ range processed
     mapM_ deleteTypeInfo pTypeInfos
     return rows
 

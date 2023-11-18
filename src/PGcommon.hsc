@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, unNullableDatum, voidDatum) where
+module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, range, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -38,7 +38,7 @@ import Foreign.Marshal.Array (pokeArray)
 import Foreign.Marshal.Utils (copyBytes, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.Storable      (alignment, peek, peekByteOff, peekElemOff, poke, sizeOf, Storable)
-import Prelude               (Eq, Int, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
+import Prelude               (Eq, Int, Integral, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
 
 -- Dummy types to make pointers
 data CallInfo
@@ -73,7 +73,7 @@ instance Storable NullableDatum where
 getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
 getFields pTypeInfo = do
     count <- getCount pTypeInfo
-    mapM (\j -> (#peek struct TypeInfo, fields) pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) [0 .. count-1]
+    mapM (\j -> (#peek struct TypeInfo, fields) pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
 
 -- Allocate memory using postgres' mechanism
 foreign import capi unsafe "postgres.h palloc"
@@ -123,3 +123,7 @@ pWithArrayLen vals action = do
     pallocArray len $ \ptr -> do
         pokeArray ptr vals
         action len ptr
+
+range :: (Integral a) => a -> [a]
+range 0 = []
+range n = [0 .. n-1]
