@@ -29,7 +29,7 @@ I wrote the project mostly for my own amusement and as a challenge. If you have 
 
 ## Bugs and Features
 
-Bug reports and feature requests should be submitted in the Github issues page. 
+Bug reports and feature requests should be submitted in the Github issues page.
 
 ## Prerequisites
 
@@ -205,7 +205,7 @@ PostgreSQL Type |   Module          | Haskell Type
 
 Trusted functions must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function while untrusted functions must return type `IO (Maybe `*`result`*`)`. The `PGm`  monad type can be imported from the `PGutils` module.
 
-If a function returns a void (no value), the Haskell function should return type `PGm ()` or `IO ()`. 
+If a function returns a void (no value), the Haskell function should return type `PGm ()` or `IO ()`.
 
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
