@@ -39,7 +39,7 @@ import Data.Text             (Text, pack)
 import Data.Text.Encoding    (encodeUtf8)
 import Data.Word             (Word16, Word64)
 import Foreign.C.String      (peekCString, CString)
-import Foreign.C.Types       (CBool, CInt (CInt), CUInt (CUInt))
+import Foreign.C.Types       (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr))
@@ -47,7 +47,7 @@ import Foreign.Storable      (peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (>>=))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum)
+import PGsupport             (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, getSchemaType)
 import PGcommon              (Oid (Oid), getFields, pUseAsCString, pWithArray, pWithArrayLen, range, voidDatum)
 
 data TupleTable
@@ -126,16 +126,16 @@ getOid (QueryParamFloat4 _) = (#const FLOAT4OID)
 getOid (QueryParamFloat8 _) = (#const FLOAT8OID)
 
 -- Value returned by query
-data QueryResultValue = QueryResultValueByteA     (Maybe ByteString)
-                      | QueryResultValueText      (Maybe Text)
-                      | QueryResultValueChar      (Maybe Char)
-                      | QueryResultValueBool      (Maybe Bool)
-                      | QueryResultValueInt2      (Maybe Int16)
-                      | QueryResultValueInt4      (Maybe Int32)
-                      | QueryResultValueInt8      (Maybe Int64)
-                      | QueryResultValueFloat4    (Maybe Float)
-                      | QueryResultValueFloat8    (Maybe Double)
-                      | QueryResultValueComposite (Maybe [QueryResultValue]) deriving stock Show
+data QueryResultValue = QueryResultValueByteA                  (Maybe ByteString)
+                      | QueryResultValueText                   (Maybe Text)
+                      | QueryResultValueChar                   (Maybe Char)
+                      | QueryResultValueBool                   (Maybe Bool)
+                      | QueryResultValueInt2                   (Maybe Int16)
+                      | QueryResultValueInt4                   (Maybe Int32)
+                      | QueryResultValueInt8                   (Maybe Int64)
+                      | QueryResultValueFloat4                 (Maybe Float)
+                      | QueryResultValueFloat8                 (Maybe Double)
+                      | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue]) deriving stock Show
 
 -- Various query results
 data QueryResults = SelectResults          Word64 [Text] [[QueryResultValue]]
@@ -173,7 +173,7 @@ getOids pTupleTable = do
         mapM (peekElemOff oids) (range $ fromIntegral natts)
 
 foreign import capi safe "plhaskell.h new_type_info"
-    newTypeInfo :: Oid -> IO (Ptr TypeInfo)
+    newTypeInfo :: CBool -> Oid -> IO (Ptr TypeInfo)
 
 foreign import capi unsafe "plhaskell.h delete_type_info"
     deleteTypeInfo :: Ptr TypeInfo -> IO ()
@@ -206,12 +206,14 @@ decode' pTypeInfo mDatum = do
                 (#const FLOAT4OID) -> QueryResultValueFloat4 <$> decode mDatum
                 (#const FLOAT8OID) -> QueryResultValueFloat8 <$> decode mDatum
                 _                  -> undefined
-        (#const COMPOSITE_TYPE) -> case mDatum of
-            Nothing -> return (QueryResultValueComposite Nothing)
-            Just datum -> do
-                fieldPTypeInfos <- getFields pTypeInfo
-                fieldMDatums <- decodeCompositeDatum pTypeInfo datum
-                QueryResultValueComposite . Just <$> zipWithM decode' fieldPTypeInfos fieldMDatums
+        (#const COMPOSITE_TYPE) -> do
+            schemaType <- getSchemaType pTypeInfo
+            case mDatum of
+                Nothing -> return $ QueryResultValueComposite schemaType Nothing
+                Just datum -> do
+                    fieldPTypeInfos <- getFields pTypeInfo
+                    fieldMDatums <- decodeCompositeDatum pTypeInfo datum
+                    (QueryResultValueComposite schemaType) . Just <$> zipWithM decode' fieldPTypeInfos fieldMDatums
         _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]
@@ -222,7 +224,7 @@ getRow pTupleTable pTypeInfos rowNumber = do
 getRows :: Ptr TupleTable -> Word64 -> IO [[QueryResultValue]]
 getRows pTupleTable processed = do
     oids <- getOids pTupleTable
-    pTypeInfos <- mapM newTypeInfo oids
+    pTypeInfos <- mapM (newTypeInfo $ fromBool True) oids
     rows <- mapM (getRow pTupleTable pTypeInfos) $ range processed
     mapM_ deleteTypeInfo pTypeInfos
     return rows

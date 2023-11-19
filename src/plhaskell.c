@@ -25,6 +25,7 @@
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_class_d.h"
 #include "catalog/pg_language_d.h"
+#include "catalog/pg_namespace.h"
 #include "catalog/pg_proc_d.h"
 #include "catalog/pg_tablespace_d.h"
 #include "catalog/pg_type_d.h"
@@ -36,7 +37,7 @@
 extern char pkglib_path[];
 
 static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool return_set, bool atomic);
-static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid);
+static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set_schema_name);
 
 static void destroy_call_info(void *arg);
 
@@ -284,8 +285,8 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS)
     p_call_info->spi_read_only = false;
     p_call_info->nargs = 0;
 
-    p_call_info->result = palloc(sizeof(struct TypeInfo));
-    build_type_info(p_call_info->result, VOIDOID);
+    p_call_info->result = palloc0(sizeof(struct TypeInfo));
+    build_type_info(p_call_info->result, VOIDOID, false);
 
     p_call_info->func_name = palloc(3);
     strcpy(p_call_info->func_name, "_'");
@@ -403,8 +404,8 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
     if(DatumGetChar(proparallel) != PROPARALLEL_UNSAFE)
         ereport(ERROR, errmsg("PL/Haksell : Function must be parallel unsafe"));
 
-    p_call_info->result = palloc(sizeof(struct TypeInfo));
-    build_type_info(p_call_info->result, prorettype);
+    p_call_info->result = palloc0(sizeof(struct TypeInfo));
+    build_type_info(p_call_info->result, prorettype, false);
 
     proargtypes = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargtypes, &is_null);
     if(is_null)
@@ -424,8 +425,8 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
     argtypes = (Oid*)ARR_DATA_PTR(proargtypes_arr);
     for(int16 i=0; i<p_call_info->nargs; i++)
     {
-        p_call_info->args[i] = palloc(sizeof(struct TypeInfo));
-        build_type_info(p_call_info->args[i], argtypes[i]);
+        p_call_info->args[i] = palloc0(sizeof(struct TypeInfo));
+        build_type_info(p_call_info->args[i], argtypes[i], false);
     }
 
     proname = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proname, &is_null);
@@ -466,12 +467,13 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
 }
 
 // Fill TypeInfo struct
-static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid)
+static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set_schema_name)
 {
-    HeapTuple typetup, reltup, atttup;
-    Datum typtype, typname, typbasetype, typrelid;
+    HeapTuple typetup, reltup, atttup, nsptup;
+    Datum typtype, typname, typbasetype, typrelid, typnamespace;
     Datum relnatts;
     Datum atttypid;
+    Datum nspname;
     char *type_name;
     bool is_null;
     Oid class_oid, attr_oid;
@@ -551,8 +553,8 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid)
                 p_type_info->attnums[p_type_info->count-1] = j+1;
 
                 p_type_info->fields = repalloc(p_type_info->fields, p_type_info->count * sizeof(struct TypeInfo*));
-                p_type_info->fields[p_type_info->count-1] = palloc(sizeof(struct TypeInfo));
-                build_type_info(p_type_info->fields[p_type_info->count-1], attr_oid);
+                p_type_info->fields[p_type_info->count-1] = palloc0(sizeof(struct TypeInfo));
+                build_type_info(p_type_info->fields[p_type_info->count-1], attr_oid, set_schema_name);
             }
 
             ReleaseSysCache(atttup);
@@ -569,7 +571,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid)
         if(is_null)
             ereport(ERROR, errmsg("pg_type.typbasetype is NULL"));
 
-        build_type_info(p_type_info, DatumGetObjectId(typbasetype));
+        build_type_info(p_type_info, DatumGetObjectId(typbasetype), set_schema_name);
 
         break;
     case TYPTYPE_ENUM :
@@ -586,6 +588,25 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid)
         break;
     default :
         ereport(ERROR, errmsg("pg_type.typtype is invalid : %c", DatumGetChar(typtype)));
+    }
+
+    if(set_schema_name && p_type_info->value_type == COMPOSITE_TYPE)
+    {
+        typnamespace = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typnamespace, &is_null);
+
+        nsptup = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(typnamespace));
+
+        nspname = SysCacheGetAttr(NAMESPACEOID, nsptup, Anum_pg_namespace_nspname, &is_null);
+        if(is_null)
+            ereport(ERROR, errmsg("pg_namespace.nspname is NULL"));
+
+        p_type_info->nspname = palloc(NAMEDATALEN);
+        strcpy(p_type_info->nspname, DatumGetCString(nspname));
+
+        ReleaseSysCache(nsptup);
+
+        p_type_info->typname = palloc(NAMEDATALEN);
+        strcpy(p_type_info->typname, type_name);
     }
 
     ReleaseSysCache(typetup);
@@ -766,11 +787,11 @@ static void rts_fatal_msg_fn(const char *s, va_list ap)
 }
 
 // Functions to handle TypeInfo for SPI querying
-struct TypeInfo *new_type_info(Oid type_oid) __attribute__((visibility ("hidden")));
-struct TypeInfo *new_type_info(Oid type_oid)
+struct TypeInfo *new_type_info(bool set_schema_name, Oid type_oid) __attribute__((visibility ("hidden")));
+struct TypeInfo *new_type_info(bool set_schema_name, Oid type_oid)
 {
-    struct TypeInfo *p_type_info = palloc(sizeof(struct TypeInfo));
-    build_type_info(p_type_info, type_oid);
+    struct TypeInfo *p_type_info = palloc0(sizeof(struct TypeInfo));
+    build_type_info(p_type_info, type_oid, set_schema_name);
     return p_type_info;
 }
 
@@ -788,6 +809,12 @@ void delete_type_info(struct TypeInfo *p_type_info)
 
         pfree(p_type_info->fields);
     }
+
+    if(p_type_info->nspname)
+        pfree(p_type_info->nspname);
+
+    if(p_type_info->typname)
+        pfree(p_type_info->typname);
 
     pfree(p_type_info);
 }

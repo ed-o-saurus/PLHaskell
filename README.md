@@ -277,18 +277,20 @@ The constructor indicates the type of query run. The `Word64` field is the numbe
 
 The constructors for `QueryResultValue` are the following:
 
-`QueryResultValue`                                     |
------------------------------------------------------- |
-`QueryResultValueByteA     (Maybe ByteString)`         |
-`QueryResultValueText      (Maybe Text)`               |
-`QueryResultValueChar      (Maybe Char)`               |
-`QueryResultValueBool      (Maybe Bool)`               |
-`QueryResultValueInt2      (Maybe Int16)`              |
-`QueryResultValueInt4      (Maybe Int32)`              |
-`QueryResultValueInt8      (Maybe Int64)`              |
-`QueryResultValueFloat4    (Maybe Float)`              |
-`QueryResultValueFloat8    (Maybe Double)`             |
-`QueryResultValueComposite (Maybe [QueryResultValue])` |
+`QueryResultValue`                                                  |
+------------------------------------------------------------------- |
+`QueryResultValueByteA                  (Maybe ByteString)`         |
+`QueryResultValueText                   (Maybe Text)`               |
+`QueryResultValueChar                   (Maybe Char)`               |
+`QueryResultValueBool                   (Maybe Bool)`               |
+`QueryResultValueInt2                   (Maybe Int16)`              |
+`QueryResultValueInt4                   (Maybe Int32)`              |
+`QueryResultValueInt8                   (Maybe Int64)`              |
+`QueryResultValueFloat4                 (Maybe Float)`              |
+`QueryResultValueFloat8                 (Maybe Double)`             |
+`QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])` |
+
+The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name. 
 
 ### Converting `PGm` to `IO`
 

@@ -46,6 +46,9 @@ struct TypeInfo
             struct TypeInfo **fields; // Fields of the composite type
         };
     };
+
+    char *nspname; // Schema and type name for composite types
+    char *typname;
 };
 
 // Represents the information about a function call
@@ -74,7 +77,7 @@ struct CallInfo
 // Report a message or error
 void plhaskell_report(int elevel, char *msg);
 
-struct TypeInfo *new_type_info(Oid type_oid);
+struct TypeInfo *new_type_info(bool set_schema_name, Oid type_oid);
 void delete_type_info(struct TypeInfo *p_type_info);
 
 void decode_composite_datum(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls);

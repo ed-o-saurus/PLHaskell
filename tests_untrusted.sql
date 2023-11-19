@@ -456,7 +456,39 @@ $$
         then return ()
         else unPGm $ raiseError "Bad header"
 
-        let [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (Just [])])] = row0
+        let [QueryResultValueComposite (delta_schema0, delta_type0) (Just [QueryResultValueComposite (bravo_schema0, bravo_type0) (Just [QueryResultValueComposite (alpha_schema0, alpha_type0) (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (charlie_schema0, charlie_type0) (Just [])])] = row0
+
+        if delta_schema0 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad delta_schema0"
+
+        if delta_type0 == "delta"
+        then return ()
+        else raiseError "Bad delta_type0"
+
+        if bravo_schema0 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad bravo_schema0"
+
+        if bravo_type0 == "bravo"
+        then return ()
+        else raiseError "Bad bravo_type0"
+
+        if alpha_schema0 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad alpha_schema0"
+
+        if alpha_type0 == "alpha"
+        then return ()
+        else raiseError "Bad alpha_type0"
+
+        if charlie_schema0 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad charlie_schema0"
+
+        if charlie_type0 == "charlie"
+        then return ()
+        else raiseError "Bad charlie_type0"
 
         if x0 == "Hello"
         then return ()
@@ -474,7 +506,39 @@ $$
         then return ()
         else unPGm $ raiseError "Bad x3"
 
-        let [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueComposite (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite Nothing])] = row1
+        let [QueryResultValueComposite (delta_schema1, delta_type1) (Just [QueryResultValueComposite (bravo_schema1, bravo_type1) (Just [QueryResultValueComposite (alpha_schema1, alpha_type1) (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite (charlie_schema1, charlie_type1) Nothing])] = row1
+
+        if delta_schema1 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad delta_schema1"
+
+        if delta_type1 == "delta"
+        then return ()
+        else raiseError "Bad delta_type1"
+
+        if bravo_schema1 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad bravo_schema1"
+
+        if bravo_type1 == "bravo"
+        then return ()
+        else raiseError "Bad bravo_type1"
+
+        if alpha_schema1 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad alpha_schema1"
+
+        if alpha_type1 == "alpha"
+        then return ()
+        else raiseError "Bad alpha_type1"
+
+        if charlie_schema1 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad charlie_schema1"
+
+        if charlie_type1 == "charlie"
+        then return ()
+        else raiseError "Bad charlie_type1"
 
         if x4 == "world"
         then return ()
@@ -492,8 +556,41 @@ $$
         then return ()
         else unPGm $ raiseError "Bad x7"
 
-        let [QueryResultValueComposite (Just [QueryResultValueComposite Nothing, QueryResultValueComposite (Just [])])] = row2
-        let [QueryResultValueComposite Nothing] = row3
+        let [QueryResultValueComposite (delta_schema2, delta_type2) (Just [QueryResultValueComposite (bravo_schema2, bravo_type2) Nothing, QueryResultValueComposite (charlie_schema2, charlie_type2) (Just [])])] = row2
+
+        if delta_schema2 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad delta_schema2"
+
+        if delta_type2 == "delta"
+        then return ()
+        else raiseError "Bad delta_type2"
+
+        if bravo_schema2 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad bravo_schema2"
+
+        if bravo_type2 == "bravo"
+        then return ()
+        else raiseError "Bad bravo_type2"
+
+        if charlie_schema2 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad charlie_schema2"
+
+        if charlie_type2 == "charlie"
+        then return ()
+        else raiseError "Bad charlie_type2"
+
+        let [QueryResultValueComposite (delta_schema3, delta_type3) Nothing] = row3
+
+        if delta_schema3 == "plhaskellu_test"
+        then return ()
+        else raiseError "Bad delta_schema3"
+
+        if delta_type3 == "delta"
+        then return ()
+        else raiseError "Bad delta_type3"
 
         return ()
 $$
