@@ -48,7 +48,7 @@ writeVoid () _pTypeInfo = return ()
 encodeVoid :: () -> IO (Maybe Datum)
 encodeVoid () =  return Nothing
 
-maybeWrap:: (a -> IO b) -> Maybe a -> IO (Maybe b)
+maybeWrap :: (a -> IO b) -> Maybe a -> IO (Maybe b)
 maybeWrap _ Nothing = return Nothing
 maybeWrap func (Just value) = Just <$> func value
 
