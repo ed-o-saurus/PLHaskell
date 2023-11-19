@@ -594,7 +594,9 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
     {
         typnamespace = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typnamespace, &is_null);
 
-        nsptup = SearchSysCache1(NAMESPACEOID, ObjectIdGetDatum(typnamespace));
+        nsptup = SearchSysCache1(NAMESPACEOID, DatumGetObjectId(typnamespace));
+        if(!HeapTupleIsValid(nsptup))
+            ereport(ERROR, errmsg("cache lookup failed for namespace %u", DatumGetObjectId(typnamespace)));
 
         nspname = SysCacheGetAttr(NAMESPACEOID, nsptup, Anum_pg_namespace_nspname, &is_null);
         if(is_null)
