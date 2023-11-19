@@ -186,7 +186,7 @@ $$
     import Data.Int (Int32)
     import Data.Text (Text)
 
-    import PGutils (unPGm, raiseError)
+    import PGutils (raiseError)
 
     p :: Double
     p = 12.3
@@ -200,7 +200,7 @@ $$
     alpha_test (Just 3) = return (Just (Nothing, Just 42, Just r))
     alpha_test (Just 4) = return Nothing
 
-    alpha_test _ = unPGm $ raiseError "Invalid"
+    alpha_test _ = raiseError "Invalid"
 $$
 LANGUAGE plhaskellu;
 
@@ -228,7 +228,7 @@ CREATE TYPE plhaskellu_test.n_p AS (n int, p int);
 
 CREATE FUNCTION plhaskellu_test.primes(int) RETURNS SETOF plhaskellu_test.n_p IMMUTABLE AS
 $$
-    import PGutils (unPGm, raiseError)
+    import PGutils (raiseError)
     import Data.Int (Int32)
 
     sieve :: [Int32] -> [Int32]
@@ -236,7 +236,7 @@ $$
     sieve [] = []
 
     primes :: Maybe Int32 -> IO [Maybe (Maybe Int32, Maybe Int32)]
-    primes Nothing = unPGm $ raiseError "Invalid Null"
+    primes Nothing = raiseError "Invalid Null"
     primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
 $$
 LANGUAGE plhaskellu;
@@ -275,39 +275,39 @@ $$
 
         if processed == 3
         then return ()
-        else unPGm $ raiseError "Bad processed"
+        else raiseError "Bad processed"
 
         if header1 == "i"
         then return ()
-        else unPGm $ raiseError "Bad header1"
+        else raiseError "Bad header1"
 
         if header2 == "l"
         then return ()
-        else unPGm $ raiseError "Bad header2"
+        else raiseError "Bad header2"
 
         if i0 == Just 4
         then return ()
-        else unPGm $ raiseError "Bad i0"
+        else raiseError "Bad i0"
 
         if l0 == Just "A"
         then return ()
-        else unPGm $ raiseError "Bad l0"
+        else raiseError "Bad l0"
 
         if i1 == Just 5
         then return ()
-        else unPGm $ raiseError "Bad i1"
+        else raiseError "Bad i1"
 
         if l1 == Just "B"
         then return ()
-        else unPGm $ raiseError "Bad l1"
+        else raiseError "Bad l1"
 
         if i2 == Just 6
         then return ()
-        else unPGm $ raiseError "Bad i2"
+        else raiseError "Bad i2"
 
         if l2 == Just "C"
         then return ()
-        else unPGm $ raiseError "Bad l2"
+        else raiseError "Bad l2"
 
         return ()
 $$
@@ -323,71 +323,71 @@ $$
 
         if processed == 7
         then return ()
-        else unPGm $ raiseError "Bad processed"
+        else raiseError "Bad processed"
 
         if header1 == "i"
         then return ()
-        else unPGm $ raiseError "Bad header1"
+        else raiseError "Bad header1"
 
         if header2 == "l"
         then return ()
-        else unPGm $ raiseError "Bad header2"
+        else raiseError "Bad header2"
 
         if i0 == Just 1
         then return ()
-        else unPGm $ raiseError "Bad i0"
+        else raiseError "Bad i0"
 
         if l0 == Just "A"
         then return ()
-        else unPGm $ raiseError "Bad l0"
+        else raiseError "Bad l0"
 
         if i1 == Just 2
         then return ()
-        else unPGm $ raiseError "Bad i1"
+        else raiseError "Bad i1"
 
         if l1 == Just "B"
         then return ()
-        else unPGm $ raiseError "Bad l1"
+        else raiseError "Bad l1"
 
         if i2 == Just 3
         then return ()
-        else unPGm $ raiseError "Bad i2"
+        else raiseError "Bad i2"
 
         if l2 == Just "C"
         then return ()
-        else unPGm $ raiseError "Bad l2"
+        else raiseError "Bad l2"
 
         if i3 == Just 4
         then return ()
-        else unPGm $ raiseError "Bad i3"
+        else raiseError "Bad i3"
 
         if l3 == Just "A"
         then return ()
-        else unPGm $ raiseError "Bad l3"
+        else raiseError "Bad l3"
 
         if i4 == Just 5
         then return ()
-        else unPGm $ raiseError "Bad i4"
+        else raiseError "Bad i4"
 
         if l4 == Just "B"
         then return ()
-        else unPGm $ raiseError "Bad l4"
+        else raiseError "Bad l4"
 
         if i5 == Just 6
         then return ()
-        else unPGm $ raiseError "Bad i5"
+        else raiseError "Bad i5"
 
         if l5 == Just "C"
         then return ()
-        else unPGm $ raiseError "Bad l5"
+        else raiseError "Bad l5"
 
         if i6 == Nothing
         then return ()
-        else unPGm $ raiseError "Bad i6"
+        else raiseError "Bad i6"
 
         if l6 == Nothing
         then return ()
-        else unPGm $ raiseError "Bad l6"
+        else raiseError "Bad l6"
 
         return ()
 $$
@@ -404,11 +404,11 @@ $$
 
         if processed1 == 7
         then return ()
-        else unPGm $ raiseError "Bad processed1"
+        else raiseError "Bad processed1"
 
         if processed2 == 0
         then return ()
-        else unPGm $ raiseError "Bad processed2"
+        else raiseError "Bad processed2"
 
         return ()
 $$
@@ -450,11 +450,11 @@ $$
 
         if processed == 4
         then return ()
-        else unPGm $ raiseError "Bad processed"
+        else raiseError "Bad processed"
 
         if header == "d"
         then return ()
-        else unPGm $ raiseError "Bad header"
+        else raiseError "Bad header"
 
         let [QueryResultValueComposite (delta_schema0, delta_type0) (Just [QueryResultValueComposite (bravo_schema0, bravo_type0) (Just [QueryResultValueComposite (alpha_schema0, alpha_type0) (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (charlie_schema0, charlie_type0) (Just [])])] = row0
 
@@ -492,19 +492,19 @@ $$
 
         if x0 == "Hello"
         then return ()
-        else unPGm $ raiseError "Bad x0"
+        else raiseError "Bad x0"
 
         if x1 == 12
         then return ()
-        else unPGm $ raiseError "Bad x1"
+        else raiseError "Bad x1"
 
         if x2 == 3.4
         then return ()
-        else unPGm $ raiseError "Bad x2"
+        else raiseError "Bad x2"
 
         if x3 == 76
         then return ()
-        else unPGm $ raiseError "Bad x3"
+        else raiseError "Bad x3"
 
         let [QueryResultValueComposite (delta_schema1, delta_type1) (Just [QueryResultValueComposite (bravo_schema1, bravo_type1) (Just [QueryResultValueComposite (alpha_schema1, alpha_type1) (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite (charlie_schema1, charlie_type1) Nothing])] = row1
 
@@ -542,19 +542,19 @@ $$
 
         if x4 == "world"
         then return ()
-        else unPGm $ raiseError "Bad x4"
+        else raiseError "Bad x4"
 
         if x5 == 42
         then return ()
-        else unPGm $ raiseError "Bad x5"
+        else raiseError "Bad x5"
 
         if x6 == 1.0
         then return ()
-        else unPGm $ raiseError "Bad x6"
+        else raiseError "Bad x6"
 
         if x7 == -12
         then return ()
-        else unPGm $ raiseError "Bad x7"
+        else raiseError "Bad x7"
 
         let [QueryResultValueComposite (delta_schema2, delta_type2) (Just [QueryResultValueComposite (bravo_schema2, bravo_type2) Nothing, QueryResultValueComposite (charlie_schema2, charlie_type2) (Just [])])] = row2
 
