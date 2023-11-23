@@ -244,19 +244,22 @@ Queries can be performed from inside PL/Haskell with the function `query :: Text
 
 Queries in stable and immutable functions are executed in read-only mode, while volatile functions execute queries in read-write mode.
 
-Any base type that can be passed to PL/Haskell functions can be used as a parameter by using the appropriate constructor for the type `QueryParam`. The constructors are the following:
+Any type that can be passed to PL/Haskell functions can be used as a parameter by using the appropriate constructor for the type `QueryParam`. The constructors are the following:
 
-`QueryParam`                          |
-------------------------------------- |
-`QueryParamByteA  (Maybe ByteString)` |
-`QueryParamText   (Maybe Text)`       |
-`QueryParamChar   (Maybe Char)`       |
-`QueryParamBool   (Maybe Bool)`       |
-`QueryParamInt2   (Maybe Int16)`      |
-`QueryParamInt4   (Maybe Int32)`      |
-`QueryParamInt8   (Maybe Int64)`      |
-`QueryParamFloat4 (Maybe Float)`      |
-`QueryParamFloat8 (Maybe Double)`     |
+`QueryParam`                                                  |
+------------------------------------------------------------- |
+`QueryParamByteA                        (Maybe ByteString)`   |
+`QueryParamText                         (Maybe Text)`         |
+`QueryParamChar                         (Maybe Char)`         |
+`QueryParamBool                         (Maybe Bool)`         |
+`QueryParamInt2                         (Maybe Int16)`        |
+`QueryParamInt4                         (Maybe Int32)`        |
+`QueryParamInt8                         (Maybe Int64)`        |
+`QueryParamFloat4                       (Maybe Float)`        |
+`QueryParamFloat8                       (Maybe Double)`       |
+`QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])` |
+
+The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and type name. If `Nothing` is used as the schema name, the first matching type in the search path is used. 
 
 The constructors for `QueryResults` are the following:
 
