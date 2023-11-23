@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, range, unNullableDatum, voidDatum) where
+module PGcommon (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -105,6 +105,15 @@ pWithCString s action = do
     ptr <- withCStringLen s pallocCopy
     retVal <- action ptr
     pfree ptr
+    return retVal
+
+pWithCString2 :: String -> String -> (CString -> CString -> IO b) -> IO b
+pWithCString2 s1 s2 action = do
+    ptr1 <- withCStringLen s1 pallocCopy
+    ptr2 <- withCStringLen s2 pallocCopy
+    retVal <- action ptr1 ptr2
+    pfree ptr1
+    pfree ptr2
     return retVal
 
 pUseAsCString :: ByteString -> (CString -> IO b) -> IO b

@@ -23,20 +23,19 @@
 
 #include "plhaskell.h"
 
-module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, encodeCompositeDatum, encodeVoid, getSchemaType, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult, writeVoid) where
+module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, encodeCompositeDatum, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult, writeVoid) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
 import Data.Int              (Int16, Int32, Int64)
 import Data.Maybe            (fromMaybe, isNothing)
-import Data.Text             (head, pack, singleton, Text)
+import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
-import Foreign.C.String      (peekCString)
 import Foreign.C.Types       (CBool (CBool), CSize (CSize))
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
-import Foreign.Storable      (peekByteOff, poke)
+import Foreign.Storable      (poke)
 import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, map, return, zipWith, ($), (+), (.), (>>=))
 
 import PGcommon              (Datum (Datum), NullableDatum, TypeInfo, getCount, palloc, pallocArray, pWithArray, unNullableDatum, voidDatum)
@@ -195,9 +194,3 @@ mkResultList encodeResult = map (\result pIsNull -> encodeResult result >>= writ
 
 foreign import ccall "wrapper"
     wrapFunction :: (Ptr NullableDatum -> Ptr CBool -> IO Datum) -> IO (FunPtr (Ptr NullableDatum -> Ptr CBool -> IO Datum))
-
-getSchemaType :: Ptr TypeInfo -> IO (Text, Text)
-getSchemaType pTypeInfo = do
-    nspname <- (#peek struct TypeInfo, nspname) pTypeInfo >>= peekCString
-    typname <- (#peek struct TypeInfo, typname) pTypeInfo >>= peekCString
-    return (pack nspname, pack typname)

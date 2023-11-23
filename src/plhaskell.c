@@ -22,6 +22,7 @@
 #include "Rts.h"
 
 #include "postgres.h"
+#include "catalog/namespace.h"
 #include "catalog/pg_attribute_d.h"
 #include "catalog/pg_class_d.h"
 #include "catalog/pg_language_d.h"
@@ -481,6 +482,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
     if(type_oid == VOIDOID)
     {
         p_type_info->value_type = VOID_TYPE;
+        p_type_info->type_oid = VOIDOID;
         return;
     }
 
@@ -504,12 +506,13 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
         if(!type_available(type_oid))
             ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
 
-        p_type_info->type_oid = type_oid;
         p_type_info->value_type = BASE_TYPE;
+        p_type_info->type_oid = type_oid;
 
         break;
     case TYPTYPE_COMPOSITE :
         p_type_info->value_type = COMPOSITE_TYPE;
+        p_type_info->type_oid = type_oid;
         p_type_info->count = 0;
         p_type_info->attnums = palloc(0);
         p_type_info->fields = palloc(0);
@@ -789,11 +792,11 @@ static void rts_fatal_msg_fn(const char *s, va_list ap)
 }
 
 // Functions to handle TypeInfo for SPI querying
-struct TypeInfo *new_type_info(bool set_schema_name, Oid type_oid) __attribute__((visibility ("hidden")));
-struct TypeInfo *new_type_info(bool set_schema_name, Oid type_oid)
+struct TypeInfo *new_type_info(Oid type_oid) __attribute__((visibility ("hidden")));
+struct TypeInfo *new_type_info(Oid type_oid)
 {
     struct TypeInfo *p_type_info = palloc0(sizeof(struct TypeInfo));
-    build_type_info(p_type_info, type_oid, set_schema_name);
+    build_type_info(p_type_info, type_oid, true);
     return p_type_info;
 }
 
@@ -881,4 +884,62 @@ PG_FUNCTION_INFO_V1(ghc_version);
 Datum ghc_version(PG_FUNCTION_ARGS)
 {
     PG_RETURN_INT32(hint_ghc_version());
+}
+
+Oid get_composite_oid(char *nspname, char *typname) __attribute__((visibility ("hidden")));
+Oid get_composite_oid(char *nspname, char *typname)
+{
+    bool is_null;
+    HeapTuple nsptup, typtup;
+    Datum nspoid, typoid;
+
+    nsptup = SearchSysCache1(NAMESPACENAME, CStringGetDatum(nspname));
+    if(!HeapTupleIsValid(nsptup))
+        ereport(ERROR, errmsg("cannot find schema %s", nspname));
+
+    nspoid = SysCacheGetAttr(NAMESPACENAME, nsptup, Anum_pg_namespace_oid, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_namespace.oid is NULL"));
+
+    typtup = SearchSysCache2(TYPENAMENSP, CStringGetDatum(typname), nspoid);
+    if(!HeapTupleIsValid(typtup))
+        ereport(ERROR, errmsg("cannot find type %s.%s", nspname, typname));
+
+    typoid = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_type.oid is NULL"));
+
+    ReleaseSysCache(typtup);
+    ReleaseSysCache(nsptup);
+
+    return DatumGetObjectId(typoid);
+}
+
+Oid find_composite_oid(char *typname) __attribute__((visibility ("hidden")));
+Oid find_composite_oid(char *typname)
+{
+    bool is_null;
+    HeapTuple typtup;
+    Datum typoid;
+    ListCell *nslc;
+
+    List *namespacelist = fetch_search_path(true);
+    foreach(nslc, namespacelist)
+    {
+        typtup = SearchSysCache2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(nslc->oid_value));
+        if(HeapTupleIsValid(typtup))
+        {
+            typoid = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
+            if(is_null)
+                ereport(ERROR, errmsg("pg_type.oid is NULL"));
+
+            ReleaseSysCache(typtup);
+
+            return DatumGetObjectId(typoid);
+        }
+    }
+
+    ereport(ERROR, errmsg("cannot find type %s in search_path", typname));
+
+    return INVALID_OBJECT;
 }

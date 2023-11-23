@@ -33,19 +33,14 @@
 struct TypeInfo
 {
     uint16 value_type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
-    union
-    {
-        Oid type_oid; // OID of the type // BASE
+    Oid type_oid; // OID of the type // BASE
 
-        struct // COMPOSITE
-        {
-            int16 count; // Number of fields of the composite
-            int16 natts; // Number of attributes
-            int16 *attnums; // Attribute numbers of the members
-            TupleDesc tupdesc; // Tuple Descriptor
-            struct TypeInfo **fields; // Fields of the composite type
-        };
-    };
+    // COMPOSITE
+    int16 count; // Number of fields of the composite
+    int16 natts; // Number of attributes
+    int16 *attnums; // Attribute numbers of the members
+    TupleDesc tupdesc; // Tuple Descriptor
+    struct TypeInfo **fields; // Fields of the composite type
 
     char *nspname; // Schema and type name for composite types
     char *typname;
@@ -77,7 +72,7 @@ struct CallInfo
 // Report a message or error
 void plhaskell_report(int elevel, char *msg);
 
-struct TypeInfo *new_type_info(bool set_schema_name, Oid type_oid);
+struct TypeInfo *new_type_info(Oid type_oid);
 void delete_type_info(struct TypeInfo *p_type_info);
 
 void decode_composite_datum(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls);
@@ -89,5 +84,7 @@ void get_header_field(struct SPITupleTable *tuptable, char *header, int fnumber)
 void get_oids(struct SPITupleTable *tuptable, Oid *oids);
 Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number, int fnumber, bool *is_null);
 void free_tuptable(struct SPITupleTable *tuptable);
+Oid get_composite_oid(char *nspname, char *typname);
+Oid find_composite_oid(char *typname);
 
 #endif

@@ -638,6 +638,159 @@ INSERT INTO plhaskell_test.deltas(i, d) VALUES (4, NULL::plhaskell_test.delta);
 
 SELECT plhaskell_test.query_composite();
 
+CREATE FUNCTION plhaskell_test.query_pass_composite() RETURNS void IMMUTABLE AS
+$$
+    import PGutils (PGm, raiseError, query, QueryResults (SelectResults), QueryParam (QueryParamComposite, QueryParamText, QueryParamInt4, QueryParamFloat8), QueryResultValue (QueryResultValueComposite, QueryResultValueText, QueryResultValueInt4, QueryResultValueFloat8))
+    import Data.Text (Text, pack)
+
+    query_pass_composite ::  PGm ()
+    query_pass_composite = do
+        SelectResults _processed _header [row0] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") (Just [QueryParamComposite (Just "plhaskell_test", "bravo") (Just [QueryParamComposite (Just "plhaskell_test", "alpha") (Just [QueryParamText (Just "Hello"), QueryParamInt4 (Just 12), QueryParamFloat8 (Just 3.4)]), QueryParamInt4 (Just 76)]), QueryParamComposite (Just "plhaskell_test", "charlie") (Just [])])]
+        let [QueryResultValueComposite (delta_schema0, delta_type0) (Just [QueryResultValueComposite (bravo_schema0, bravo_type0) (Just [QueryResultValueComposite (alpha_schema0, alpha_type0) (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (charlie_schema0, charlie_type0) (Just [])])] = row0
+
+        if delta_schema0 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad delta_schema0"
+
+        if delta_type0 == "delta"
+        then return ()
+        else raiseError "Bad delta_type0"
+
+        if bravo_schema0 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad bravo_schema0"
+
+        if bravo_type0 == "bravo"
+        then return ()
+        else raiseError "Bad bravo_type0"
+
+        if alpha_schema0 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad alpha_schema0"
+
+        if alpha_type0 == "alpha"
+        then return ()
+        else raiseError "Bad alpha_type0"
+
+        if charlie_schema0 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad charlie_schema0"
+
+        if charlie_type0 == "charlie"
+        then return ()
+        else raiseError "Bad charlie_type0"
+
+        if x0 == "Hello"
+        then return ()
+        else raiseError "Bad x0"
+
+        if x1 == 12
+        then return ()
+        else raiseError "Bad x1"
+
+        if x2 == 3.4
+        then return ()
+        else raiseError "Bad x2"
+
+        if x3 == 76
+        then return ()
+        else raiseError "Bad x3"
+
+        SelectResults _processed _header [row1] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") (Just [QueryParamComposite (Just "plhaskell_test", "bravo") (Just [QueryParamComposite (Just "plhaskell_test", "alpha") (Just [QueryParamText (Just "world"), QueryParamInt4 (Just 42), QueryParamFloat8 (Just 1.0)]), QueryParamInt4 (Just (-12))]), QueryParamComposite (Just "plhaskell_test", "charlie") Nothing])]
+        let [QueryResultValueComposite (delta_schema1, delta_type1) (Just [QueryResultValueComposite (bravo_schema1, bravo_type1) (Just [QueryResultValueComposite (alpha_schema1, alpha_type1) (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite (charlie_schema1, charlie_type1) Nothing])] = row1
+
+        if delta_schema1 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad delta_schema1"
+
+        if delta_type1 == "delta"
+        then return ()
+        else raiseError "Bad delta_type1"
+
+        if bravo_schema1 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad bravo_schema1"
+
+        if bravo_type1 == "bravo"
+        then return ()
+        else raiseError "Bad bravo_type1"
+
+        if alpha_schema1 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad alpha_schema1"
+
+        if alpha_type1 == "alpha"
+        then return ()
+        else raiseError "Bad alpha_type1"
+
+        if charlie_schema1 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad charlie_schema1"
+
+        if charlie_type1 == "charlie"
+        then return ()
+        else raiseError "Bad charlie_type1"
+
+        if x4 == "world"
+        then return ()
+        else raiseError "Bad x4"
+
+        if x5 == 42
+        then return ()
+        else raiseError "Bad x5"
+
+        if x6 == 1.0
+        then return ()
+        else raiseError "Bad x6"
+
+        if x7 == -12
+        then return ()
+        else raiseError "Bad x7"
+
+        SelectResults _processed _header [row2] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") (Just [QueryParamComposite (Just "plhaskell_test", "bravo") Nothing, QueryParamComposite (Just "plhaskell_test", "charlie") (Just [])])]
+        let [QueryResultValueComposite (delta_schema2, delta_type2) (Just [QueryResultValueComposite (bravo_schema2, bravo_type2) Nothing, QueryResultValueComposite (charlie_schema2, charlie_type2) (Just [])])] = row2
+
+        if delta_schema2 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad delta_schema2"
+
+        if delta_type2 == "delta"
+        then return ()
+        else raiseError "Bad delta_type2"
+
+        if bravo_schema2 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad bravo_schema2"
+
+        if bravo_type2 == "bravo"
+        then return ()
+        else raiseError "Bad bravo_type2"
+
+        if charlie_schema2 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad charlie_schema2"
+
+        if charlie_type2 == "charlie"
+        then return ()
+        else raiseError "Bad charlie_type2"
+
+        SelectResults _processed _header [row3] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") Nothing]
+        let [QueryResultValueComposite (delta_schema3, delta_type3) Nothing] = row3
+
+        if delta_schema3 == "plhaskell_test"
+        then return ()
+        else raiseError "Bad delta_schema3"
+
+        if delta_type3 == "delta"
+        then return ()
+        else raiseError "Bad delta_type3"
+
+        return ()
+$$
+LANGUAGE plhaskell;
+
+SELECT plhaskell_test.query_pass_composite();
+
 CREATE TABLE plhaskell_test.primes(n int, p int);
 
 INSERT INTO plhaskell_test.primes(n, p)
