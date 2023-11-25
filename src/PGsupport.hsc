@@ -23,7 +23,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, encodeCompositeDatum, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult) where
+module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeComposite, encodeComposite, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
@@ -69,8 +69,8 @@ writeResult pIsNull (Just result) = do
 foreign import capi unsafe "plhaskell.h decode_composite_datum"
     c_decodeCompositeDatum :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
 
-decodeCompositeDatum :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
-decodeCompositeDatum pTypeInfo datum = do
+decodeComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
+decodeComposite pTypeInfo datum = do
     count <- getCount pTypeInfo
     let count' = fromIntegral count
     pallocArray count' $ \pDatums -> pallocArray count' $ \pIsNulls -> do
@@ -82,8 +82,8 @@ decodeCompositeDatum pTypeInfo datum = do
 foreign import capi unsafe "plhaskell.h encode_composite_datum"
     c_encodeCompositeDatum :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
 
-encodeCompositeDatum :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
-encodeCompositeDatum pTypeInfo fields = do
+encodeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
+encodeComposite pTypeInfo fields = do
     let datums  = map (fromMaybe voidDatum)          fields
     let isNulls = map (CBool . fromBool . isNothing) fields
     pWithArray datums $ pWithArray isNulls . c_encodeCompositeDatum pTypeInfo

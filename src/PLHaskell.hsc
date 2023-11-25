@@ -161,7 +161,7 @@ writeDecodeArgDef pTypeInfo = let
                 let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIdxes)) ++ "]"
                 let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIdxes)) ++ ")"
                 return $ "(maybeWrap $ \\datum -> do {" ++
-                        fieldDatumsList ++ " <- decodeCompositeDatum " ++ pTypeInfoAddr ++ " datum;" ++
+                        fieldDatumsList ++ " <- decodeComposite " ++ pTypeInfoAddr ++ " datum;" ++
                         concat decodeFieldDefs ++
                        "return " ++ fieldsTuple ++ ";})"
             _ -> undefined
@@ -190,7 +190,7 @@ writeEncodeResultDef pTypeInfo = let
                 let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIdxes)) ++ ")"
                 return $ "(maybeWrap $ \\" ++ fieldsTuple ++ " -> do {" ++
                     concat encodeFieldDefs ++
-                   "encodeCompositeDatum " ++ pTypeInfoAddr ++ fieldDatumsList ++ "})"
+                   "encodeComposite " ++ pTypeInfoAddr ++ fieldDatumsList ++ "})"
             _ -> undefined
 
 defineDecodeArg :: Ptr CallInfo -> Int16 -> Interpreter ()
@@ -215,7 +215,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["peekElemOff", "poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "ReadWrite (encode, decode)", "TypeInfo", "decodeCompositeDatum", "encodeCompositeDatum", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "ReadWrite (encode, decode)", "TypeInfo", "decodeComposite", "encodeComposite", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo

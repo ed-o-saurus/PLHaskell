@@ -47,7 +47,7 @@ import Foreign.Storable      (peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, mconcat, return, undefined, ($), (.), (>>=), (==))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, encodeCompositeDatum, maybeWrap)
+import PGsupport             (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeComposite, encodeComposite, maybeWrap)
 import PGcommon              (Oid (Oid), getCount, getFields, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
 
 data TupleTable
@@ -187,7 +187,7 @@ encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
             name <- getSchemaTypeName pTypeInfo
             unPGm $ report exception (mconcat ["Type ", name, " incorrect length"])
         typeInfoFields <- getFields pTypeInfo
-        zipWithM encode' typeInfoFields queryParamFields >>= encodeCompositeDatum pTypeInfo
+        zipWithM encode' typeInfoFields queryParamFields >>= encodeComposite pTypeInfo
 
 -- Value returned by query
 data QueryResultValue = QueryResultValueByteA                  (Maybe ByteString)
@@ -276,7 +276,7 @@ decode' pTypeInfo mDatum = do
                 Nothing -> return $ QueryResultValueComposite schemaType Nothing
                 Just datum -> do
                     fieldPTypeInfos <- getFields pTypeInfo
-                    fieldMDatums <- decodeCompositeDatum pTypeInfo datum
+                    fieldMDatums <- decodeComposite pTypeInfo datum
                     (QueryResultValueComposite schemaType) . Just <$> zipWithM decode' fieldPTypeInfos fieldMDatums
         _ -> undefined
 
