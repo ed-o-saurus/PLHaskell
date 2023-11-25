@@ -215,7 +215,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["peekElemOff", "poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "ReadWrite (encode, decode)", "TypeInfo", "decodeCompositeDatum", "encodeCompositeDatum", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "writeVoid", "mkResultList", "unNullableDatum"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "ReadWrite (encode, decode)", "TypeInfo", "decodeCompositeDatum", "encodeCompositeDatum", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo

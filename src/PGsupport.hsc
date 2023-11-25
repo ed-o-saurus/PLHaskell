@@ -23,7 +23,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, encodeCompositeDatum, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult, writeVoid) where
+module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeCompositeDatum, encodeCompositeDatum, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
@@ -39,10 +39,6 @@ import Foreign.Storable      (poke)
 import Prelude               (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, map, return, zipWith, ($), (+), (.), (>>=))
 
 import PGcommon              (Datum (Datum), NullableDatum, TypeInfo, getCount, palloc, pallocArray, pWithArray, unNullableDatum, voidDatum)
-
--- Do nothing when returning void
-writeVoid :: () -> Ptr TypeInfo -> IO ()
-writeVoid () _pTypeInfo = return ()
 
 encodeVoid :: () -> IO (Maybe Datum)
 encodeVoid () =  return Nothing
