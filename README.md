@@ -261,7 +261,7 @@ Any type that can be passed to PL/Haskell functions can be used as a parameter b
 `QueryParamFloat8                       (Maybe Double)`       |
 `QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])` |
 
-The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and type name. If `Nothing` is used as the schema name, the first matching type in the search path is used. 
+The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and type name. If `Nothing` is used as the schema name, the first matching type in the search path is used.
 
 The constructors for `QueryResults` are the following:
 
@@ -295,7 +295,7 @@ The constructors for `QueryResultValue` are the following:
 `QueryResultValueFloat8                 (Maybe Double)`             |
 `QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])` |
 
-The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name. 
+The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name.
 
 ### Converting `PGm` to `IO`
 
