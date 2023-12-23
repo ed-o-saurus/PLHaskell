@@ -66,27 +66,27 @@ writeResult pIsNull (Just result) = do
     poke pIsNull (fromBool False)
     return result
 
-foreign import capi unsafe "plhaskell.h decode_composite_datum"
-    c_decodeCompositeDatum :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
+foreign import capi unsafe "plhaskell.h decode_composite"
+    c_decodeComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
 
 decodeComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
 decodeComposite pTypeInfo datum = do
     count <- getCount pTypeInfo
     let count' = fromIntegral count
     pallocArray count' $ \pDatums -> pallocArray count' $ \pIsNulls -> do
-        c_decodeCompositeDatum pTypeInfo datum pDatums pIsNulls
+        c_decodeComposite pTypeInfo datum pDatums pIsNulls
         datums  <- peekArray count' pDatums
         isNulls <- peekArray count' pIsNulls
         return $ zipWith (\fieldDatum isNull -> (if (toBool isNull) then Nothing else Just fieldDatum)) datums isNulls
 
-foreign import capi unsafe "plhaskell.h encode_composite_datum"
-    c_encodeCompositeDatum :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
+foreign import capi unsafe "plhaskell.h encode_composite"
+    c_encodeComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
 
 encodeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
 encodeComposite pTypeInfo fields = do
     let datums  = map (fromMaybe voidDatum)          fields
     let isNulls = map (CBool . fromBool . isNothing) fields
-    pWithArray datums $ pWithArray isNulls . c_encodeCompositeDatum pTypeInfo
+    pWithArray datums $ pWithArray isNulls . c_encodeComposite pTypeInfo
 
 -- Get the size of a variable length array
 foreign import capi unsafe "postgres.h VARSIZE_ANY_EXHDR"

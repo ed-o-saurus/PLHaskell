@@ -75,8 +75,8 @@ void plhaskell_report(int elevel, char *msg);
 struct TypeInfo *new_type_info(Oid type_oid);
 void delete_type_info(struct TypeInfo *p_type_info);
 
-void decode_composite_datum(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls);
-Datum encode_composite_datum(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls);
+void decode_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls);
+Datum encode_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls);
 
 // Functions for SPI queries
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);
