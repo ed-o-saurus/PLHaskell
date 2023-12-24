@@ -23,7 +23,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (Datum (Datum), ReadWrite (decode, encode), TypeInfo, decodeComposite, encodeComposite, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult) where
+module PGsupport (Datum (Datum), BaseType (decode, encode), TypeInfo, readComposite, writeComposite, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult) where
 
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
@@ -47,7 +47,7 @@ maybeWrap :: (a -> IO b) -> Maybe a -> IO (Maybe b)
 maybeWrap _ Nothing = return Nothing
 maybeWrap func (Just value) = Just <$> func value
 
-class ReadWrite a where
+class BaseType a where
     read :: Datum -> IO a
     write :: a -> IO Datum
 
@@ -66,27 +66,27 @@ writeResult pIsNull (Just result) = do
     poke pIsNull (fromBool False)
     return result
 
-foreign import capi unsafe "plhaskell.h decode_composite"
-    c_decodeComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
+foreign import capi unsafe "plhaskell.h read_composite"
+    c_readComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
 
-decodeComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
-decodeComposite pTypeInfo datum = do
+readComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
+readComposite pTypeInfo datum = do
     count <- getCount pTypeInfo
     let count' = fromIntegral count
     pallocArray count' $ \pDatums -> pallocArray count' $ \pIsNulls -> do
-        c_decodeComposite pTypeInfo datum pDatums pIsNulls
+        c_readComposite pTypeInfo datum pDatums pIsNulls
         datums  <- peekArray count' pDatums
         isNulls <- peekArray count' pIsNulls
         return $ zipWith (\fieldDatum isNull -> (if (toBool isNull) then Nothing else Just fieldDatum)) datums isNulls
 
-foreign import capi unsafe "plhaskell.h encode_composite"
-    c_encodeComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
+foreign import capi unsafe "plhaskell.h write_composite"
+    c_writeComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
 
-encodeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
-encodeComposite pTypeInfo fields = do
+writeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
+writeComposite pTypeInfo fields = do
     let datums  = map (fromMaybe voidDatum)          fields
     let isNulls = map (CBool . fromBool . isNothing) fields
-    pWithArray datums $ pWithArray isNulls . c_encodeComposite pTypeInfo
+    pWithArray datums $ pWithArray isNulls . c_writeComposite pTypeInfo
 
 -- Get the size of a variable length array
 foreign import capi unsafe "postgres.h VARSIZE_ANY_EXHDR"
@@ -103,7 +103,7 @@ setVarSize datum len = c_setVarSize datum ((#const VARHDRSZ) + len)
 foreign import capi unsafe "postgres.h VARDATA_ANY"
     getVarData :: Datum -> IO (Ptr b)
 
-instance ReadWrite ByteString where
+instance BaseType ByteString where
     read datum = do
         len <- getVarSize datum
         pData <- getVarData datum
@@ -117,11 +117,11 @@ instance ReadWrite ByteString where
         copyBytes pData src len
         return value)
 
-instance ReadWrite Text where
+instance BaseType Text where
     read value = decodeUtf8 <$> read value
     write = write . encodeUtf8
 
-instance ReadWrite Char where
+instance BaseType Char where
     read value = head <$> read value
     write = write . singleton
 
@@ -131,7 +131,7 @@ foreign import capi unsafe "postgres.h DatumGetBool"
 foreign import capi unsafe "postgres.h BoolGetDatum"
     boolGetDatum :: CBool -> IO Datum
 
-instance ReadWrite Bool where
+instance BaseType Bool where
     read value = toBool <$> datumGetBool value
     write = boolGetDatum . CBool . fromBool
 
@@ -141,7 +141,7 @@ foreign import capi unsafe "postgres.h DatumGetInt16"
 foreign import capi unsafe "postgres.h Int16GetDatum"
     int16GetDatum :: Int16 -> IO Datum
 
-instance ReadWrite Int16 where
+instance BaseType Int16 where
     read = datumGetInt16
     write = int16GetDatum
 
@@ -151,7 +151,7 @@ foreign import capi unsafe "postgres.h DatumGetInt32"
 foreign import capi unsafe "postgres.h Int32GetDatum"
     int32GetDatum :: Int32 -> IO Datum
 
-instance ReadWrite Int32 where
+instance BaseType Int32 where
     read = datumGetInt32
     write = int32GetDatum
 
@@ -161,7 +161,7 @@ foreign import capi unsafe "postgres.h DatumGetInt64"
 foreign import capi unsafe "postgres.h Int64GetDatum"
     int64GetDatum :: Int64 -> IO Datum
 
-instance ReadWrite Int64 where
+instance BaseType Int64 where
     read = datumGetInt64
     write = int64GetDatum
 
@@ -171,7 +171,7 @@ foreign import capi unsafe "postgres.h DatumGetFloat4"
 foreign import capi unsafe "postgres.h Float4GetDatum"
     float4GetDatum :: Float -> IO Datum
 
-instance ReadWrite Float where
+instance BaseType Float where
     read = datumGetFloat4
     write = float4GetDatum
 
@@ -181,7 +181,7 @@ foreign import capi unsafe "postgres.h DatumGetFloat8"
 foreign import capi unsafe "postgres.h Float8GetDatum"
     float8GetDatum :: Double -> IO Datum
 
-instance ReadWrite Double where
+instance BaseType Double where
     read = datumGetFloat8
     write = float8GetDatum
 

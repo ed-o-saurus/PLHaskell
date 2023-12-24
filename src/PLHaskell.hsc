@@ -140,12 +140,12 @@ getSignature pCallInfo = liftIO $ do
             else return $ intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"])
 
 -- Return a string representing a function to take an argument from a Maybe Datum and return the Haskell value
--- returned code :: Maybe Datum -> IO a
+-- returned code :: Maybe Datum -> IO (Maybe a)
 -- where a is the type represented by TypeInfo
-writeDecodeArgDef :: Ptr TypeInfo -> IO String
-writeDecodeArgDef pTypeInfo = let
+makeDecodeArgDef :: Ptr TypeInfo -> IO String
+makeDecodeArgDef pTypeInfo = let
     decodeFieldDef j fieldPTypeInfo = do
-        def <- writeDecodeArgDef fieldPTypeInfo
+        def <- makeDecodeArgDef fieldPTypeInfo
         return $ interpolate ("field? <- " ++ def ++ " fieldMDatum?;") j
     in do
         let pTypeInfoAddr = "(wordPtrToPtr " ++ show (ptrToWordPtr pTypeInfo) ++ ")"
@@ -161,18 +161,18 @@ writeDecodeArgDef pTypeInfo = let
                 let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIdxes)) ++ "]"
                 let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIdxes)) ++ ")"
                 return $ "(maybeWrap $ \\datum -> do {" ++
-                        fieldDatumsList ++ " <- decodeComposite " ++ pTypeInfoAddr ++ " datum;" ++
+                        fieldDatumsList ++ " <- readComposite " ++ pTypeInfoAddr ++ " datum;" ++
                         concat decodeFieldDefs ++
                        "return " ++ fieldsTuple ++ ";})"
             _ -> undefined
 
 -- Return a string representing a function to take the result from a Haskell value and return Maybe Datum
--- returned code :: a -> IO (Maybe Datum)
+-- returned code :: Maybe a -> IO (Maybe Datum)
 -- where a is the type represented by TypeInfo
-writeEncodeResultDef :: Ptr TypeInfo -> IO String
-writeEncodeResultDef pTypeInfo = let
+makeEncodeResultDef :: Ptr TypeInfo -> IO String
+makeEncodeResultDef pTypeInfo = let
     encodeFieldDef j fieldPTypeInfo = do
-        def <- writeEncodeResultDef fieldPTypeInfo
+        def <- makeEncodeResultDef fieldPTypeInfo
         return $ interpolate ("fieldMDatum? <- " ++ def ++ " field?;") j
     in do
         let pTypeInfoAddr = "(wordPtrToPtr " ++ show (ptrToWordPtr pTypeInfo) ++ ")"
@@ -190,12 +190,12 @@ writeEncodeResultDef pTypeInfo = let
                 let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIdxes)) ++ ")"
                 return $ "(maybeWrap $ \\" ++ fieldsTuple ++ " -> do {" ++
                     concat encodeFieldDefs ++
-                   "encodeComposite " ++ pTypeInfoAddr ++ fieldDatumsList ++ "})"
+                   "writeComposite " ++ pTypeInfoAddr ++ fieldDatumsList ++ "})"
             _ -> undefined
 
 defineDecodeArg :: Ptr CallInfo -> Int16 -> Interpreter ()
 defineDecodeArg pCallInfo i = do
-    decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= writeDecodeArgDef
+    decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
     runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
 -- Set up interpreter to evaluate a function
@@ -215,7 +215,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["peekElemOff", "poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "ReadWrite (encode, decode)", "TypeInfo", "decodeComposite", "encodeComposite", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "BaseType (decode, encode)", "TypeInfo", "readComposite", "writeComposite", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo
@@ -231,12 +231,12 @@ setUpEvalInt pCallInfo = do
     nargs <- liftIO $ (#peek struct CallInfo, nargs) pCallInfo
     let argIdxes = range nargs
 
-    -- Fill all readArg? values with functions to decode arguments
+    -- Fill all decodeArg? values with functions to decode arguments
     mapM_ (defineDecodeArg pCallInfo) argIdxes
 
     -- Fill encodeResult value with function to return Maybe Datum
     pResultTypeInfo <- liftIO $ (#peek struct CallInfo, result) pCallInfo
-    encodeResultDef <- liftIO $ writeEncodeResultDef pResultTypeInfo
+    encodeResultDef <- liftIO $ makeEncodeResultDef pResultTypeInfo
     runStmt $ "let encodeResult = " ++ encodeResultDef
 
     return (argIdxes, funcName, toBool trusted)

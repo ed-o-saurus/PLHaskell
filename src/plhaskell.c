@@ -647,8 +647,8 @@ static void destroy_call_info(void *arg)
 }
 
 // Get the datums that represent a composie values
-void decode_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls) __attribute__((visibility ("hidden")));
-void decode_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls)
+void read_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls) __attribute__((visibility ("hidden")));
+void read_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls)
 {
     HeapTupleHeader tuple = DatumGetHeapTupleHeader(composite_datum);
     HeapTupleData tmptup;
@@ -663,8 +663,8 @@ void decode_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum
 }
 
 // Get the datum that represents a composite value
-Datum encode_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls) __attribute__((visibility ("hidden")));
-Datum encode_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls)
+Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls) __attribute__((visibility ("hidden")));
+Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls)
 {
     Datum *values  = palloc(p_type_info->natts * sizeof(Datum));
     bool *is_nulls = palloc(p_type_info->natts * sizeof(bool));
