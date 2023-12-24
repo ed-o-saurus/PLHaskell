@@ -87,4 +87,6 @@ void free_tuptable(struct SPITupleTable *tuptable);
 Oid get_composite_oid(char *nspname, char *typname);
 Oid find_composite_oid(char *typname);
 
+Datum detoast_datum(Datum datum);
+
 #endif

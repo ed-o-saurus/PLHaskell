@@ -103,10 +103,14 @@ setVarSize datum len = c_setVarSize datum ((#const VARHDRSZ) + len)
 foreign import capi unsafe "postgres.h VARDATA_ANY"
     getVarData :: Datum -> IO (Ptr b)
 
+foreign import capi unsafe "plhaskell.h detoast_datum"
+    detoastDatum :: Datum -> IO Datum
+
 instance BaseType ByteString where
     read datum = do
-        len <- getVarSize datum
-        pData <- getVarData datum
+        datum' <- detoastDatum datum
+        len <- getVarSize datum'
+        pData <- getVarData datum'
         packCStringLen (pData, fromIntegral len)
 
     write result = useAsCStringLen result (\(src, len) -> do

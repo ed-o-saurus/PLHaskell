@@ -943,3 +943,9 @@ Oid find_composite_oid(char *typname)
 
     return INVALID_OBJECT;
 }
+
+Datum detoast_datum(Datum datum) __attribute__((visibility ("hidden")));
+Datum detoast_datum(Datum datum)
+{
+    return (Datum)pg_detoast_datum((struct varlena*)((Pointer)datum));
+}
