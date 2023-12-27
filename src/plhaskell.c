@@ -470,7 +470,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
 // Fill TypeInfo struct
 static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set_schema_name)
 {
-    HeapTuple typetup, reltup, atttup, nsptup;
+    HeapTuple typtup, reltup, atttup, nsptup;
     Datum typtype, typname, typbasetype, typrelid, typnamespace;
     Datum relnatts;
     Datum atttypid;
@@ -486,17 +486,17 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
         return;
     }
 
-    typetup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
-    if(!HeapTupleIsValid(typetup))
+    typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
+    if(!HeapTupleIsValid(typtup))
         ereport(ERROR, errmsg("cache lookup failed for type %u", type_oid));
 
-    typname = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typname, &is_null);
+    typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
     if(is_null)
         ereport(ERROR, errmsg("pg_type.typname is NULL"));
 
     type_name = DatumGetCString(typname);
 
-    typtype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typtype, &is_null);
+    typtype = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typtype, &is_null);
     if(is_null)
         ereport(ERROR, errmsg("pg_type.typtype is NULL"));
 
@@ -517,7 +517,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
         p_type_info->attnums = palloc(0);
         p_type_info->fields = palloc(0);
 
-        typrelid = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typrelid, &is_null);
+        typrelid = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typrelid, &is_null);
         if(is_null)
             ereport(ERROR, errmsg("pg_type.typrelid is NULL"));
 
@@ -570,7 +570,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
 
         break;
     case TYPTYPE_DOMAIN :
-        typbasetype = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typbasetype, &is_null);
+        typbasetype = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typbasetype, &is_null);
         if(is_null)
             ereport(ERROR, errmsg("pg_type.typbasetype is NULL"));
 
@@ -595,7 +595,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
 
     if(set_schema_name && p_type_info->value_type == COMPOSITE_TYPE)
     {
-        typnamespace = SysCacheGetAttr(TYPEOID, typetup, Anum_pg_type_typnamespace, &is_null);
+        typnamespace = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typnamespace, &is_null);
 
         nsptup = SearchSysCache1(NAMESPACEOID, DatumGetObjectId(typnamespace));
         if(!HeapTupleIsValid(nsptup))
@@ -614,7 +614,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
         strcpy(p_type_info->typname, type_name);
     }
 
-    ReleaseSysCache(typetup);
+    ReleaseSysCache(typtup);
 }
 
 // Delete temp module file and free function and List if necessary
