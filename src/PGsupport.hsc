@@ -25,6 +25,7 @@
 
 module PGsupport (Datum (Datum), BaseType (decode, encode), TypeInfo, readComposite, writeComposite, encodeVoid, maybeWrap, mkResultList, unNullableDatum, wrapFunction, writeResult) where
 
+import Control.Monad         ((>=>))
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
 import Data.Int              (Int16, Int32, Int64)
@@ -47,6 +48,9 @@ maybeWrap :: (a -> IO b) -> Maybe a -> IO (Maybe b)
 maybeWrap _ Nothing = return Nothing
 maybeWrap func (Just value) = Just <$> func value
 
+foreign import capi unsafe "plhaskell.h datum_SPI_copy"
+    datumSPICopy :: Ptr TypeInfo -> Datum -> IO Datum
+
 class BaseType a where
     read :: Datum -> IO a
     write :: a -> IO Datum
@@ -54,8 +58,8 @@ class BaseType a where
     decode :: Maybe Datum -> IO (Maybe a)
     decode = maybeWrap read
 
-    encode :: Maybe a -> IO (Maybe Datum)
-    encode = maybeWrap write
+    encode :: Ptr TypeInfo -> Maybe a -> IO (Maybe Datum)
+    encode pTypeInfo = maybeWrap $ write >=> datumSPICopy pTypeInfo
 
 writeResult :: Ptr CBool -> Maybe Datum -> IO Datum
 writeResult pIsNull Nothing = do

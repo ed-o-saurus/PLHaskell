@@ -181,7 +181,7 @@ makeEncodeResultDef pTypeInfo = let
             (#const VOID_TYPE) -> return "encodeVoid"
             (#const BASE_TYPE) -> do
                 typeOid <- getTypeOid pTypeInfo
-                return $ "(encode :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
+                return $ "((encode " ++ pTypeInfoAddr ++ ") :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
             (#const COMPOSITE_TYPE) -> do
                 count <- getCount pTypeInfo
                 encodeFieldDefs <- getFields pTypeInfo >>= zipWithM encodeFieldDef [0 ..]

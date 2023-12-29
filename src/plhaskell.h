@@ -33,7 +33,9 @@
 struct TypeInfo
 {
     uint16 value_type; // VOID_TYPE, BASE_TYPE, or COMPOSITE_TYPE
-    Oid type_oid; // OID of the type // BASE
+    Oid type_oid; // OID of the type
+    int16 type_len;
+    bool type_byval;
 
     // COMPOSITE
     int16 count; // Number of fields of the composite
@@ -88,5 +90,6 @@ Oid get_composite_oid(char *nspname, char *typname);
 Oid find_composite_oid(char *typname);
 
 Datum detoast_datum(Datum datum);
+Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
 
 #endif

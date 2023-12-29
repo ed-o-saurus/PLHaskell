@@ -127,47 +127,47 @@ encode' :: Ptr TypeInfo -> QueryParam -> IO (Maybe Datum)
 encode' pTypeInfo (QueryParamByteA  value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const BYTEAOID))  "Expected type bytea in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamText   value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const TEXTOID))   "Expected type text in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamChar   value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const CHAROID))   "Expected type char in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamBool   value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const BOOLOID))   "Expected type bool in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt2   value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const INT2OID))   "Expected type int2 in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt4   value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const INT4OID))   "Expected type int4 in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt8   value) =  do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const INT8OID))   "Expected type int8 in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamFloat4 value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const FLOAT4OID)) "Expected type float4 in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamFloat8 value) = do
     oid <- getTypeOid pTypeInfo
     unPGm $ assert (oid == (#const FLOAT8OID)) "Expected type float8 in query"
-    encode value
+    encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
     valueType <- getValueType pTypeInfo

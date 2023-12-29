@@ -471,7 +471,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
 static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set_schema_name)
 {
     HeapTuple typtup, reltup, atttup, nsptup;
-    Datum typtype, typname, typbasetype, typrelid, typnamespace;
+    Datum typtype, typname, typlen, typbyval, typbasetype, typrelid, typnamespace;
     Datum relnatts;
     Datum atttypid;
     Datum nspname;
@@ -479,16 +479,28 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
     bool is_null;
     Oid class_oid, attr_oid;
 
+    p_type_info->type_oid = type_oid;
+
     if(type_oid == VOIDOID)
     {
         p_type_info->value_type = VOID_TYPE;
-        p_type_info->type_oid = VOIDOID;
         return;
     }
 
     typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
     if(!HeapTupleIsValid(typtup))
         ereport(ERROR, errmsg("cache lookup failed for type %u", type_oid));
+
+    typlen = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typlen, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_type.typlen is NULL"));
+
+    typbyval = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typbyval, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_type.typbyval is NULL"));
+
+    p_type_info->type_len   = DatumGetInt16(typlen);
+    p_type_info->type_byval = DatumGetBool(typbyval);
 
     typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
     if(is_null)
@@ -507,12 +519,10 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
             ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
 
         p_type_info->value_type = BASE_TYPE;
-        p_type_info->type_oid = type_oid;
 
         break;
     case TYPTYPE_COMPOSITE :
         p_type_info->value_type = COMPOSITE_TYPE;
-        p_type_info->type_oid = type_oid;
         p_type_info->count = 0;
         p_type_info->attnums = palloc(0);
         p_type_info->fields = palloc(0);
@@ -668,6 +678,7 @@ Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *f
 {
     Datum *values  = palloc(p_type_info->natts * sizeof(Datum));
     bool *is_nulls = palloc(p_type_info->natts * sizeof(bool));
+    HeapTupleHeader ret_val;
 
     for(int16 j=0; j<p_type_info->count; j++)
     {
@@ -676,7 +687,11 @@ Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *f
         is_nulls[attnum-1] = field_is_nulls[j];
     }
 
-    return HeapTupleGetDatum(heap_form_tuple(p_type_info->tupdesc, values, is_nulls));
+    ret_val = SPI_returntuple(heap_form_tuple(p_type_info->tupdesc, values, is_nulls), p_type_info->tupdesc);
+    if(ret_val == NULL)
+        ereport(ERROR, errmsg("%s", SPI_result_code_string(SPI_result)));
+
+    return PointerGetDatum(ret_val);
 }
 
 // Called when the module is loaded
@@ -948,4 +963,29 @@ Datum detoast_datum(Datum datum) __attribute__((visibility ("hidden")));
 Datum detoast_datum(Datum datum)
 {
     return (Datum)pg_detoast_datum((struct varlena*)((Pointer)datum));
+}
+
+Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum) __attribute__((visibility ("hidden")));
+Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum)
+{
+    if(p_type_info->type_byval)
+        return datum;
+
+    Pointer dest, src = DatumGetPointer(datum);
+
+    if(p_type_info->type_len < 0)
+    {
+        // varlena
+        int16 len = VARSIZE_ANY_EXHDR(datum) + VARHDRSZ;
+        dest = SPI_palloc(len);
+        memcpy(dest, src, len);
+    }
+    else
+    {
+        dest = SPI_palloc(p_type_info->type_len);
+        memcpy(dest, src, p_type_info->type_len);
+    }
+    pfree(src);
+
+    return PointerGetDatum(dest);
 }
