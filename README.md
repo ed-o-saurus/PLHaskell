@@ -297,6 +297,14 @@ The constructors for `QueryResultValue` are the following:
 
 The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name.
 
+### Commit and Rollback
+
+The functions `commit :: Bool -> PGm ()` and `rollback :: Bool -> PGm ()` can be used to commit or rollback transactions in a non-atomic connection.
+
+An argument of `True` causes a new transaction to be started with the same characteristics as the one just completed. This is the equivalent of `COMMIT AND CHAIN` or `ROLLBACK AND CHAIN`.
+
+An argument of `False` causes a new transaction to be started with default characteristics. This is the equivalent of `COMMIT` or `ROLLBACK`.
+
 ### Converting `PGm` to `IO`
 
 The function `unPGm :: PGm a -> IO a` from the `PGutils` module can be used to convert a `PGm` action to an `IO` action.

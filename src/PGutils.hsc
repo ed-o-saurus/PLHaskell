@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGutils (PGm, ErrorLevel, assert, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, unPGm, QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, assert, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad         (zipWithM)
 import Control.Monad.Fail    (MonadFail (fail))
@@ -39,7 +39,7 @@ import Data.Text             (Text, pack, unpack)
 import Data.Text.Encoding    (encodeUtf8)
 import Data.Word             (Word16, Word64)
 import Foreign.C.String      (peekCString, CString)
-import Foreign.C.Types       (CBool, CInt (CInt), CUInt (CUInt))
+import Foreign.C.Types       (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr))
@@ -375,3 +375,12 @@ foreign import capi unsafe "plhaskell.h find_composite_oid"
 getCompositeOid :: (Maybe Text, Text) -> IO Oid
 getCompositeOid (Nothing,      typname) = pWithCString                   (unpack typname) c_findCompositeOid
 getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) c_getCompositeOid
+
+foreign import capi unsafe "plhaskell.h commit_rollback"
+    commitRollback:: CBool -> CBool -> PGm ()
+
+commit :: Bool -> PGm ()
+commit = commitRollback (fromBool True) . fromBool
+
+rollback :: Bool -> PGm ()
+rollback = commitRollback (fromBool False) . fromBool

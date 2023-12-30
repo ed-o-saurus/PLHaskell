@@ -92,4 +92,6 @@ Oid find_composite_oid(char *typname);
 Datum detoast_datum(Datum datum);
 Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
 
+void commit_rollback(bool commit, bool chain);
+
 #endif

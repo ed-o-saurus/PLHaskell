@@ -989,3 +989,22 @@ Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum)
 
     return PointerGetDatum(dest);
 }
+
+void commit_rollback(bool commit, bool chain) __attribute__((visibility ("hidden")));
+void commit_rollback(bool commit, bool chain)
+{
+    if(commit)
+    {
+        if(chain)
+            SPI_commit_and_chain();
+        else
+            SPI_commit();
+    }
+    else
+    {
+        if(chain)
+            SPI_rollback_and_chain();
+        else
+            SPI_rollback();
+    }
+}
