@@ -297,7 +297,7 @@ The constructors for `QueryResultValue` are the following:
 
 The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name.
 
-### Commit and Rollback
+#### Commit and Rollback
 
 The functions `commit :: Bool -> PGm ()` and `rollback :: Bool -> PGm ()` can be used to commit or rollback transactions in a non-atomic connection.
 
