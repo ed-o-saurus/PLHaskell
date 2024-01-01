@@ -1,7 +1,7 @@
 ## This is a "procedural language" extension of PostgreSQL
 ## allowing the execution of code in Haskell within SQL code.
 ##
-## Copyright (C) 2023 Edward F. Behn, Jr.
+## Copyright (C) 2024 Edward F. Behn, Jr.
 ##
 ## This program is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by

@@ -20,7 +20,7 @@ Files:     .gitignore
            src/plhaskell.control
            src/plhaskell.h
            src/PLHaskell.hsc
-Copyright: 2023 Edward F. Behn, Jr.
+Copyright: 2024 Edward F. Behn, Jr.
 License:   GPL-3.0+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
