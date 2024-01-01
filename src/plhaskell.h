@@ -28,6 +28,7 @@
 #define VOID_TYPE      0
 #define BASE_TYPE      1
 #define COMPOSITE_TYPE 2
+#define ARRAY_TYPE     3
 
 // Represents a value passed or returned by a function
 struct TypeInfo
@@ -36,15 +37,24 @@ struct TypeInfo
     Oid type_oid; // OID of the type
     int16 type_len;
     bool type_byval;
+    char type_align;
 
-    // COMPOSITE
-    int16 count; // Number of fields of the composite
-    int16 natts; // Number of attributes
-    int16 *attnums; // Attribute numbers of the members
-    TupleDesc tupdesc; // Tuple Descriptor
-    struct TypeInfo **fields; // Fields of the composite type
+    union
+    {
+        struct // COMPOSITE
+        {
+            int16 count; // Number of fields of the composite
+            int16 natts; // Number of attributes
+            int16 *attnums; // Attribute numbers of the members
+            TupleDesc tupdesc; // Tuple Descriptor
+            struct TypeInfo **fields; // Fields of the composite type
+        };
 
-    char *nspname; // Schema and type name for composite types
+        // ARRAY
+        struct TypeInfo *element; // Element type of array
+    };
+
+    char *nspname; // Schema and type name
     char *typname;
 };
 
@@ -79,6 +89,13 @@ void delete_type_info(struct TypeInfo *p_type_info);
 
 void read_composite(struct TypeInfo *p_type_info, Datum composite_datum, Datum *field_values, bool *field_is_nulls);
 Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *field_is_nulls);
+
+Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls, int ndims, int *dims, int *lbs);
+ArrayType *get_array_type(Datum datum);
+int get_ndim(ArrayType *array);
+int* get_lbs_ptr(ArrayType *array);
+int* get_dims_ptr(ArrayType *array);
+void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems, Datum* elems, bool* nulls);
 
 // Functions for SPI queries
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values, bool *is_nulls);

@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGutils (PGm, ErrorLevel, assert, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, assert, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad         (zipWithM)
 import Control.Monad.Fail    (MonadFail (fail))
@@ -47,7 +47,7 @@ import Foreign.Storable      (peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, mconcat, return, undefined, ($), (.), (>>=), (==))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Datum (Datum), BaseType (decode, encode), TypeInfo, readComposite, writeComposite, maybeWrap)
+import PGsupport             (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, readComposite, writeComposite, maybeWrap)
 import PGcommon              (Oid (Oid), getCount, getFields, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
 
 data TupleTable

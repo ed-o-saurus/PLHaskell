@@ -275,6 +275,50 @@ $$
 $$
 LANGUAGE plhaskell;
 
+CREATE FUNCTION plhaskell_test.mk_array(int) RETURNS int[] IMMUTABLE AS
+$$
+    import PGutils (PGm, Array (..))
+    import Data.Int (Int32)
+
+    chunksOf :: Int -> [a] -> [[a]]
+    chunksOf _ [] = []
+    chunksOf n xs = fxs : chunksOf n sxs
+       where (fxs, sxs) = splitAt n xs
+
+    mkList :: Int32 -> [Maybe Int32]
+    mkList upper = [if x `mod` 3 == 0 then Nothing else Just x | x <- [0 .. upper-1]]
+
+    mk_array :: Maybe Int32 -> PGm (Maybe (Array (Maybe Int32)))
+    mk_array m = case m of
+        Nothing -> return Nothing
+        Just 0 -> return (Just ArrayEmpty)
+        Just 1 -> return (Just (Array1D  20                                                                                                (mkList    2)))
+        Just 2 -> return (Just (Array2D (20, 21)                 (                                                            (chunksOf 2) (mkList    6))))
+        Just 3 -> return (Just (Array3D (20, 21, 22)             (                                             (chunksOf 3) $ (chunksOf 2) (mkList   24))))
+        Just 4 -> return (Just (Array4D (20, 21, 22, 23)         (                              (chunksOf 4) $ (chunksOf 3) $ (chunksOf 2) (mkList  120))))
+        Just 5 -> return (Just (Array5D (20, 21, 22, 23, 24)     (               (chunksOf 5) $ (chunksOf 4) $ (chunksOf 3) $ (chunksOf 2) (mkList  720))))
+        Just 6 -> return (Just (Array6D (20, 21, 22, 23, 24, 25) ((chunksOf 6) $ (chunksOf 5) $ (chunksOf 4) $ (chunksOf 3) $ (chunksOf 2) (mkList 5040))))
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.echo(int[]) RETURNS int[] IMMUTABLE AS
+$$
+    import PGutils (PGm)
+
+    echo :: a -> PGm a
+    echo = return
+$$
+LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.echo(plhaskell_test.alpha[]) RETURNS plhaskell_test.alpha[] IMMUTABLE AS
+$$
+    import PGutils (PGm)
+
+    echo :: a -> PGm a
+    echo = return
+$$
+LANGUAGE plhaskell;
+
 CREATE FUNCTION plhaskell_test.query_create() RETURNS void VOLATILE AS
 $$
     import PGutils (PGm, query, QueryResults (UtilityResults))
@@ -815,6 +859,19 @@ $$;
 DO $$
 DECLARE
     r RECORD;
+
+    null_array int[];
+    array_empty int[];
+    array_1d int[];
+    array_2d int[];
+    array_3d int[];
+    array_4d int[];
+    array_5d int[];
+    array_6d int[];
+    x int;
+    a int;
+
+    alpha_array plhaskell_test.alpha[];
 BEGIN
     IF plhaskell_test.echo('\xabcdef'::bytea) <> '\xabcdef'::bytea THEN
         raise EXCEPTION 'echo bytea failed';
@@ -1079,6 +1136,324 @@ BEGIN
             raise EXCEPTION 'inline failed';
         END IF;
     END LOOP;
+
+    null_array = plhaskell_test.mk_array(NULL);
+    array_empty = plhaskell_test.mk_array(0);
+    array_1d = plhaskell_test.mk_array(1);
+    array_2d = plhaskell_test.mk_array(2);
+    array_3d = plhaskell_test.mk_array(3);
+    array_4d = plhaskell_test.mk_array(4);
+    array_5d = plhaskell_test.mk_array(5);
+    array_6d = plhaskell_test.mk_array(6);
+
+    IF null_array != NULL THEN
+        raise EXCEPTION 'null_array failed';
+    END IF;
+
+    IF array_empty != '{}'::int[] THEN
+        raise EXCEPTION 'empty array failed';
+    END IF;
+
+    FOR idx0 IN 20 .. 21 LOOP
+        x = idx0 - 20;
+        a = array_1d[idx0];
+
+        IF x%3 = 0 THEN
+            IF a is not null THEN
+                raise EXCEPTION '1-d array failed';
+            END IF;
+        ELSE
+            IF a is null THEN
+                raise EXCEPTION '1-d array failed';
+            END IF;
+            IF a != x THEN
+                raise EXCEPTION '1-d array failed';
+            END IF;
+        END IF;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 22 LOOP
+        FOR idx1 IN 21 .. 22 LOOP
+            x = 2*(idx0-20)+(idx1-21);
+            a = array_2d[idx0][idx1];
+
+            IF x%3 = 0 THEN
+                IF a is not null THEN
+                    raise EXCEPTION '1-d array failed';
+                END IF;
+            ELSE
+                IF a is null THEN
+                    raise EXCEPTION '1-d array failed';
+                END IF;
+                IF a != x THEN
+                    raise EXCEPTION '1-d array failed';
+                END IF;
+            END IF;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 23 LOOP
+        FOR idx1 IN 21 .. 23 LOOP
+            FOR idx2 IN 22 .. 23 LOOP
+                x = 2*(3*(idx0-20)+(idx1-21))+(idx2-22);
+                a = array_3d[idx0][idx1][idx2];
+
+                IF x%3 = 0 THEN
+                    IF a is not null THEN
+                        raise EXCEPTION '1-d array failed';
+                    END IF;
+                ELSE
+                    IF a is null THEN
+                        raise EXCEPTION '1-d array failed';
+                    END IF;
+                    IF a != x THEN
+                        raise EXCEPTION '1-d array failed';
+                    END IF;
+                END IF;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 24 LOOP
+        FOR idx1 IN 21 .. 24 LOOP
+            FOR idx2 IN 22 .. 24 LOOP
+                FOR idx3 IN 23 .. 24 LOOP
+                    x = 2*(3*(4*(idx0-20)+(idx1-21))+(idx2-22))+(idx3-23);
+                    a = array_4d[idx0][idx1][idx2][idx3];
+
+                    IF x%3 = 0 THEN
+                        IF a is not null THEN
+                            raise EXCEPTION '1-d array failed';
+                        END IF;
+                    ELSE
+                        IF a is null THEN
+                            raise EXCEPTION '1-d array failed';
+                        END IF;
+                        IF a != x THEN
+                            raise EXCEPTION '1-d array failed';
+                        END IF;
+                    END IF;
+                END LOOP;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 25 LOOP
+        FOR idx1 IN 21 .. 25 LOOP
+            FOR idx2 IN 22 .. 25 LOOP
+                FOR idx3 IN 23 .. 25 LOOP
+                    FOR idx4 IN 24 .. 25 LOOP
+                        x = 2*(3*(4*(5*(idx0-20)+(idx1-21))+(idx2-22))+(idx3-23))+(idx4-24);
+                        a = array_5d[idx0][idx1][idx2][idx3][idx4];
+
+                        IF x%3 = 0 THEN
+                            IF a is not null THEN
+                                raise EXCEPTION '1-d array failed';
+                            END IF;
+                        ELSE
+                            IF a is null THEN
+                                raise EXCEPTION '1-d array failed';
+                            END IF;
+                            IF a != x THEN
+                                raise EXCEPTION '1-d array failed';
+                            END IF;
+                        END IF;
+                    END LOOP;
+                END LOOP;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 26 LOOP
+        FOR idx1 IN 21 .. 26 LOOP
+            FOR idx2 IN 22 .. 26 LOOP
+                FOR idx3 IN 23 .. 26 LOOP
+                    FOR idx4 IN 24 .. 26 LOOP
+                        FOR idx5 IN 25 .. 26 LOOP
+                            x = array_6d[idx0][idx1][idx2][idx3][idx4][idx5];
+                            a = 2*(3*(4*(5*(6*(idx0-20)+(idx1-21))+(idx2-22))+(idx3-23))+(idx4-24))+(idx5-25);
+
+                            IF x%3 = 0 THEN
+                                IF a is not null THEN
+                                    raise EXCEPTION '1-d array failed';
+                                END IF;
+                            ELSE
+                                IF a is null THEN
+                                    raise EXCEPTION '1-d array failed';
+                                END IF;
+                                IF a != x THEN
+                                    raise EXCEPTION '1-d array failed';
+                                END IF;
+                            END IF;
+                        END LOOP;
+                    END LOOP;
+                END LOOP;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    null_array = plhaskell_test.echo(null_array);
+    array_empty = plhaskell_test.echo(array_empty);
+    array_1d = plhaskell_test.echo(array_1d);
+    array_2d = plhaskell_test.echo(array_2d);
+    array_3d = plhaskell_test.echo(array_3d);
+    array_4d = plhaskell_test.echo(array_4d);
+    array_5d = plhaskell_test.echo(array_5d);
+    array_6d = plhaskell_test.echo(array_6d);
+
+    IF null_array != NULL THEN
+        raise EXCEPTION 'null_array copy failed';
+    END IF;
+
+    IF array_empty != '{}'::int[] THEN
+        raise EXCEPTION 'empty array copy failed';
+    END IF;
+
+    FOR idx0 IN 20 .. 21 LOOP
+        x = idx0 - 20;
+        a = array_1d[idx0];
+
+        IF x%3 = 0 THEN
+            IF a is not null THEN
+                raise EXCEPTION '1-d array copy failed';
+            END IF;
+        ELSE
+            IF a is null THEN
+                raise EXCEPTION '1-d array copy failed';
+            END IF;
+            IF a != x THEN
+                raise EXCEPTION '1-d array copy failed';
+            END IF;
+        END IF;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 22 LOOP
+        FOR idx1 IN 21 .. 22 LOOP
+            x = 2*(idx0-20)+(idx1-21);
+            a = array_2d[idx0][idx1];
+
+            IF x%3 = 0 THEN
+                IF a is not null THEN
+                    raise EXCEPTION '1-d array copy failed';
+                END IF;
+            ELSE
+                IF a is null THEN
+                    raise EXCEPTION '1-d array copy failed';
+                END IF;
+                IF a != x THEN
+                    raise EXCEPTION '1-d array copy failed';
+                END IF;
+            END IF;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 23 LOOP
+        FOR idx1 IN 21 .. 23 LOOP
+            FOR idx2 IN 22 .. 23 LOOP
+                x = 2*(3*(idx0-20)+(idx1-21))+(idx2-22);
+                a = array_3d[idx0][idx1][idx2];
+
+                IF x%3 = 0 THEN
+                    IF a is not null THEN
+                        raise EXCEPTION '1-d array copy failed';
+                    END IF;
+                ELSE
+                    IF a is null THEN
+                        raise EXCEPTION '1-d array copy failed';
+                    END IF;
+                    IF a != x THEN
+                        raise EXCEPTION '1-d array copy failed';
+                    END IF;
+                END IF;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 24 LOOP
+        FOR idx1 IN 21 .. 24 LOOP
+            FOR idx2 IN 22 .. 24 LOOP
+                FOR idx3 IN 23 .. 24 LOOP
+                    x = 2*(3*(4*(idx0-20)+(idx1-21))+(idx2-22))+(idx3-23);
+                    a = array_4d[idx0][idx1][idx2][idx3];
+
+                    IF x%3 = 0 THEN
+                        IF a is not null THEN
+                            raise EXCEPTION '1-d array copy failed';
+                        END IF;
+                    ELSE
+                        IF a is null THEN
+                            raise EXCEPTION '1-d array copy failed';
+                        END IF;
+                        IF a != x THEN
+                            raise EXCEPTION '1-d array copy failed';
+                        END IF;
+                    END IF;
+                END LOOP;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 25 LOOP
+        FOR idx1 IN 21 .. 25 LOOP
+            FOR idx2 IN 22 .. 25 LOOP
+                FOR idx3 IN 23 .. 25 LOOP
+                    FOR idx4 IN 24 .. 25 LOOP
+                        x = 2*(3*(4*(5*(idx0-20)+(idx1-21))+(idx2-22))+(idx3-23))+(idx4-24);
+                        a = array_5d[idx0][idx1][idx2][idx3][idx4];
+
+                        IF x%3 = 0 THEN
+                            IF a is not null THEN
+                                raise EXCEPTION '1-d array copy failed';
+                            END IF;
+                        ELSE
+                            IF a is null THEN
+                                raise EXCEPTION '1-d array copy failed';
+                            END IF;
+                            IF a != x THEN
+                                raise EXCEPTION '1-d array copy failed';
+                            END IF;
+                        END IF;
+                    END LOOP;
+                END LOOP;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    FOR idx0 IN 20 .. 26 LOOP
+        FOR idx1 IN 21 .. 26 LOOP
+            FOR idx2 IN 22 .. 26 LOOP
+                FOR idx3 IN 23 .. 26 LOOP
+                    FOR idx4 IN 24 .. 26 LOOP
+                        FOR idx5 IN 25 .. 26 LOOP
+                            x = array_6d[idx0][idx1][idx2][idx3][idx4][idx5];
+                            a = 2*(3*(4*(5*(6*(idx0-20)+(idx1-21))+(idx2-22))+(idx3-23))+(idx4-24))+(idx5-25);
+
+                            IF x%3 = 0 THEN
+                                IF a is not null THEN
+                                    raise EXCEPTION '1-d array copy failed';
+                                END IF;
+                            ELSE
+                                IF a is null THEN
+                                    raise EXCEPTION '1-d array copy failed';
+                                END IF;
+                                IF a != x THEN
+                                    raise EXCEPTION '1-d array copy failed';
+                                END IF;
+                            END IF;
+                        END LOOP;
+                    END LOOP;
+                END LOOP;
+            END LOOP;
+        END LOOP;
+    END LOOP;
+
+    SELECT array_agg(plhaskell_test.alpha_test(i))
+    INTO alpha_array
+    FROM generate_series(1, 4) i;
+
+    IF alpha_array != plhaskell_test.echo(alpha_array) THEN
+        raise EXCEPTION 'alpha_array failed';
+    END IF;
 
     DROP SCHEMA plhaskell_test CASCADE;
 

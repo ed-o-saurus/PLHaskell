@@ -209,6 +209,22 @@ If a function returns a void (no value), the Haskell function should return type
 
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
+### Arrays
+
+Arrays can be passed to and returned from functions. They are represented in Haskell by the `Array a` type which can be imported from the `PGutils` module. The constructors are the following:
+
+`Array a`                                                          |
+------------------------------------------------------------------ |
+`ArrayEmpty`                                                       |
+`Array1D  Int32                                          [a]`      |
+`Array2D (Int32, Int32)                                 [[a]]`     |
+`Array3D (Int32, Int32, Int32)                         [[[a]]]`    |
+`Array4D (Int32, Int32, Int32, Int32)                 [[[[a]]]]`   |
+`Array5D (Int32, Int32, Int32, Int32, Int32)         [[[[[a]]]]]`  |
+`Array6D (Int32, Int32, Int32, Int32, Int32, Int32) [[[[[[a]]]]]]` |
+
+The `Int32` values represent the lower bounds of the array indexes and the lists represent the contents of the array
+
 ### Inline Code
 
 The extension supports anonymous code blocks with the use of the `DO` keyword. Code is written the same way as in functions. The Haskell function to be run must be named `_'` and have signature `_' :: PGm ()` or `_' :: IO ()` depending on the language variant used.

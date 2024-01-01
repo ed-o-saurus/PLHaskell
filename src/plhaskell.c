@@ -35,6 +35,8 @@
 #include "utils/typcache.h"
 #include "storage/ipc.h"
 
+#define ARRAY_SUBSCRIPT_HANDLER_NAME "array_subscript_handler"
+
 extern char pkglib_path[];
 
 static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool return_set, bool atomic);
@@ -61,6 +63,7 @@ static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info = NULL; // Points to list of all active CallInfos
 
 static int plhaskell_max_memory;
+static Oid array_subscript_handler_oid;
 
 PG_MODULE_MAGIC;
 
@@ -471,7 +474,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid, bool ret
 static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set_schema_name)
 {
     HeapTuple typtup, reltup, atttup, nsptup;
-    Datum typtype, typname, typlen, typbyval, typbasetype, typrelid, typnamespace;
+    Datum typtype, typname, typlen, typbyval, typalign, typbasetype, typrelid, typnamespace, typsubscript, typelem;
     Datum relnatts;
     Datum atttypid;
     Datum nspname;
@@ -499,8 +502,13 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
     if(is_null)
         ereport(ERROR, errmsg("pg_type.typbyval is NULL"));
 
+    typalign = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typalign, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_type.typalign is NULL"));
+
     p_type_info->type_len   = DatumGetInt16(typlen);
     p_type_info->type_byval = DatumGetBool(typbyval);
+    p_type_info->type_align = DatumGetChar(typalign);
 
     typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
     if(is_null)
@@ -515,11 +523,28 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
     switch(DatumGetChar(typtype))
     {
     case TYPTYPE_BASE :
-        if(!type_available(type_oid))
-            ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
+        typsubscript = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typsubscript, &is_null);
+        if(is_null)
+            ereport(ERROR, errmsg("pg_type.typsubscript is NULL"));
 
-        p_type_info->value_type = BASE_TYPE;
+        if(DatumGetObjectId(typsubscript) == array_subscript_handler_oid) // if type is an array type
+        {
+            p_type_info->value_type = ARRAY_TYPE;
 
+            typelem = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typelem, &is_null);
+            if(is_null)
+                ereport(ERROR, errmsg("pg_type.typelem is NULL"));
+
+            p_type_info->element = palloc0(sizeof(struct TypeInfo));
+            build_type_info(p_type_info->element, DatumGetObjectId(typelem), set_schema_name);
+        }
+        else
+        {
+            if(!type_available(type_oid))
+                ereport(ERROR, errmsg("PL/Haskell does not support type %s", type_name));
+
+            p_type_info->value_type = BASE_TYPE;
+        }
         break;
     case TYPTYPE_COMPOSITE :
         p_type_info->value_type = COMPOSITE_TYPE;
@@ -694,10 +719,72 @@ Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values, bool *f
     return PointerGetDatum(ret_val);
 }
 
+Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls, int ndims, int *dims, int *lbs) __attribute__((visibility ("hidden")));
+Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls, int ndims, int *dims, int *lbs)
+{
+    Pointer dest, src;
+
+    src = (Pointer)construct_md_array(elems, nulls, ndims, dims, lbs, pTypeInfo->element->type_oid, pTypeInfo->element->type_len, pTypeInfo->element->type_byval, pTypeInfo->element->type_align);
+    int16 len = VARSIZE_ANY_EXHDR(src) + VARHDRSZ;
+
+    dest = SPI_palloc(len);
+    memcpy(dest, src, len);
+    pfree(src);
+
+    return PointerGetDatum(dest);
+}
+
+ArrayType *get_array_type(Datum datum) __attribute__((visibility ("hidden")));
+ArrayType *get_array_type(Datum datum)
+{
+    return DatumGetArrayTypeP(datum);
+}
+
+int get_ndim(ArrayType *array) __attribute__((visibility ("hidden")));
+int get_ndim(ArrayType *array)
+{
+    return ARR_NDIM(array);
+}
+
+int* get_lbs_ptr(ArrayType *array) __attribute__((visibility ("hidden")));
+int* get_lbs_ptr(ArrayType *array)
+{
+    return ARR_LBOUND(array);
+}
+
+int* get_dims_ptr(ArrayType *array) __attribute__((visibility ("hidden")));
+int* get_dims_ptr(ArrayType *array)
+{
+    return ARR_DIMS(array);
+}
+
+void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems, Datum* elems, bool* nulls) __attribute__((visibility ("hidden")));
+void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems, Datum* elems, bool* nulls)
+{
+    Datum* elems_;
+    bool* nulls_;
+    int nelems_;
+
+    deconstruct_array(array, pTypeInfo->element->type_oid, pTypeInfo->element->type_len, pTypeInfo->element->type_byval, pTypeInfo->element->type_align, &elems_, &nulls_, &nelems_);
+    if(nelems != nelems_)
+        ereport(ERROR, errmsg("Element count mismatch"));
+
+    memcpy(elems, elems_, nelems*sizeof(Datum));
+    memcpy(nulls, nulls_, nelems*sizeof(bool));
+
+    pfree(elems_);
+    pfree(nulls_);
+}
+
 // Called when the module is loaded
 static void enter(void) __attribute__((constructor));
 static void enter(void)
 {
+    Oid arg_oid = INTERNALOID;
+    oidvector *parameterTypes;
+    HeapTuple proctup;
+    Datum procoid;
+    bool is_null;
     char GHC_PackagePath[MAXPGPATH+18];
     static char *argv[] = {"PLHaskell", "+RTS", "--install-signal-handlers=no", "-V0", "-RTS"}; // Configuration for the RTS
     static int argc = sizeof(argv) / sizeof(char*);
@@ -706,6 +793,31 @@ static void enter(void)
     char tempdirpath[MAXPGPATH];
 
     on_proc_exit(unlink_all, (Datum)0);
+
+    parameterTypes = (oidvector*)palloc0(offsetof(oidvector, values) + sizeof(Oid));
+    SET_VARSIZE(parameterTypes, offsetof(oidvector, values) + sizeof(Oid));
+    parameterTypes->ndim = 1;
+    parameterTypes->dataoffset = 0;
+    parameterTypes->elemtype = OIDOID;
+    parameterTypes->dim1 = 1;
+    parameterTypes->lbound1 = 0;
+    memcpy(parameterTypes->values, &arg_oid, sizeof(Oid));
+
+    proctup = SearchSysCache3(PROCNAMEARGSNSP, CStringGetDatum(ARRAY_SUBSCRIPT_HANDLER_NAME),
+                                               PointerGetDatum(parameterTypes),
+                                               ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
+
+    if(!HeapTupleIsValid(proctup))
+        ereport(ERROR, errmsg("cache lookup failed for proc %s", ARRAY_SUBSCRIPT_HANDLER_NAME));
+
+    procoid = SysCacheGetAttr(PROCNAMEARGSNSP, proctup, Anum_pg_proc_oid, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg("pg_proc.oid is NULL"));
+
+    array_subscript_handler_oid = DatumGetObjectId(procoid);
+
+    ReleaseSysCache(proctup);
+    pfree(parameterTypes);
 
     // Add the directory containing PGutils to the GHC Package Path
     snprintf(GHC_PackagePath, MAXPGPATH+18, "%s/plhaskell_pkg_db:", pkglib_path); // Note the colon
@@ -819,8 +931,9 @@ struct TypeInfo *new_type_info(Oid type_oid)
 void delete_type_info(struct TypeInfo *p_type_info) __attribute__((visibility ("hidden")));
 void delete_type_info(struct TypeInfo *p_type_info)
 {
-    if(p_type_info->value_type == COMPOSITE_TYPE)
+    switch(p_type_info->value_type)
     {
+    case COMPOSITE_TYPE :
         pfree(p_type_info->attnums);
         pfree(p_type_info->tupdesc);
 
@@ -828,6 +941,12 @@ void delete_type_info(struct TypeInfo *p_type_info)
             delete_type_info(p_type_info->fields[i]);
 
         pfree(p_type_info->fields);
+
+        break;
+    case ARRAY_TYPE :
+        delete_type_info(p_type_info->element);
+
+        break;
     }
 
     if(p_type_info->nspname)

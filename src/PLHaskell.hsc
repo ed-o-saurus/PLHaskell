@@ -102,6 +102,9 @@ getTypeOid = (#peek struct TypeInfo, type_oid)
 setPtr :: String -> Ptr a -> Interpreter ()
 setPtr name ptr = runStmt $ "let " ++ name ++ " = wordPtrToPtr " ++ show (ptrToWordPtr ptr)
 
+getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
+getElement = (#peek struct TypeInfo, element)
+
 -- Get Haskell type name based on TypeInfo struct
 getTypeName :: Ptr TypeInfo -> IO String
 getTypeName pTypeInfo = do
@@ -114,6 +117,9 @@ getTypeName pTypeInfo = do
         (#const COMPOSITE_TYPE) -> do
             names <- getFields pTypeInfo >>= (mapM getTypeName)
             return $ "Maybe (" ++ intercalate ", " names ++ ")"
+        (#const ARRAY_TYPE) -> do
+            elemName <- getElement pTypeInfo >>= getTypeName
+            return $ "Maybe (Array (" ++ elemName ++ "))"
         _ -> undefined
 
 -- Get argument TypeInfo struct from CallInfo struct
@@ -164,6 +170,9 @@ makeDecodeArgDef pTypeInfo = let
                         fieldDatumsList ++ " <- readComposite " ++ pTypeInfoAddr ++ " datum;" ++
                         concat decodeFieldDefs ++
                        "return " ++ fieldsTuple ++ ";})"
+            (#const ARRAY_TYPE) -> do
+                decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
+                return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> arrayMapM " ++ decodeResultDefElem ++ ")"
             _ -> undefined
 
 -- Return a string representing a function to take the result from a Haskell value and return Maybe Datum
@@ -191,6 +200,9 @@ makeEncodeResultDef pTypeInfo = let
                 return $ "(maybeWrap $ \\" ++ fieldsTuple ++ " -> do {" ++
                     concat encodeFieldDefs ++
                    "writeComposite " ++ pTypeInfoAddr ++ fieldDatumsList ++ "})"
+            (#const ARRAY_TYPE) -> do
+                encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
+                return $ "(maybeWrap $ arrayMapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
             _ -> undefined
 
 defineDecodeArg :: Ptr CallInfo -> Int16 -> Interpreter ()
@@ -208,6 +220,7 @@ setUpEvalInt pCallInfo = do
     --Name of function
     funcName <- getFuncName pCallInfo
     setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool(False, True)", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "return", "($)", "(.)", "(>>=)"]),
+                 ModuleImport "Control.Monad"     NotQualified (ImportList ["(>=>)"]),
                  ModuleImport "Data.ByteString"   NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"          NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Text"         NotQualified (ImportList ["Text"]),
@@ -215,7 +228,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["peekElemOff", "poke"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
-                 ModuleImport "PGsupport"         NotQualified (ImportList ["Datum", "BaseType (decode, encode)", "TypeInfo", "readComposite", "writeComposite", "encodeVoid", "maybeWrap", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum"]),
+                 ModuleImport "PGsupport"         NotQualified (ImportList ["Array", "Datum", "BaseType (encode, decode)", "TypeInfo", "arrayMapM", "encodeVoid", "maybeWrap", "readArray", "readComposite", "wrapFunction", "writeResult", "mkResultList", "unNullableDatum", "writeArray", "writeComposite"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     CBool trusted <- liftIO $ (#peek struct CallInfo, trusted) pCallInfo
@@ -268,6 +281,7 @@ checkSignature pCallInfo = execute $ do
                  ModuleImport "Data.Int"        NotQualified (ImportList ["Int16", "Int32", "Int64"]),
                  ModuleImport "Data.Text"       NotQualified (ImportList ["Text"]),
                  ModuleImport "PGutils"         NotQualified (ImportList ["PGm"]),
+                 ModuleImport "PGsupport"       NotQualified (ImportList ["Array"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
 
     signature <- getSignature pCallInfo
