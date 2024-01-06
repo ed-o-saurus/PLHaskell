@@ -253,7 +253,8 @@ $$
 
     import PGutils (PGm)
 
-    echo :: Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()) -> PGm (Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
+    echo :: Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()) ->
+        PGm (Maybe (Maybe (Maybe (Maybe Text, Maybe Int32, Maybe Double), Maybe Int32), Maybe ()))
     echo = return
 $$
 LANGUAGE plhaskell;
@@ -349,7 +350,13 @@ $$
 
     query_insert_returning :: PGm ()
     query_insert_returning = do
-        InsertReturningResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0], [QueryResultValueInt4 i1, QueryResultValueText l1], [QueryResultValueInt4 i2, QueryResultValueText l2]] <- query "INSERT INTO plhaskell_test.t(i, l) SELECT i+3, l FROM plhaskell_test.t WHERE i is not NULL ORDER BY i RETURNING i, l" []
+        InsertReturningResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0],
+                                                             [QueryResultValueInt4 i1, QueryResultValueText l1],
+                                                             [QueryResultValueInt4 i2, QueryResultValueText l2]] <- query "INSERT INTO plhaskell_test.t(i, l) \
+                                                                                                                         \ SELECT i+3, l \
+                                                                                                                         \ FROM plhaskell_test.t \
+                                                                                                                         \ WHERE i is not NULL \
+                                                                                                                         \ ORDER BY i RETURNING i, l" []
 
         if processed == 3
         then return ()
@@ -397,7 +404,15 @@ $$
 
     query_select :: PGm ()
     query_select = do
-        SelectResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0], [QueryResultValueInt4 i1, QueryResultValueText l1], [QueryResultValueInt4 i2, QueryResultValueText l2], [QueryResultValueInt4 i3, QueryResultValueText l3], [QueryResultValueInt4 i4, QueryResultValueText l4], [QueryResultValueInt4 i5, QueryResultValueText l5], [QueryResultValueInt4 i6, QueryResultValueText l6]] <- query "SELECT i, l FROM plhaskell_test.t ORDER BY i" []
+        SelectResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0],
+                                                    [QueryResultValueInt4 i1, QueryResultValueText l1],
+                                                    [QueryResultValueInt4 i2, QueryResultValueText l2],
+                                                    [QueryResultValueInt4 i3, QueryResultValueText l3],
+                                                    [QueryResultValueInt4 i4, QueryResultValueText l4],
+                                                    [QueryResultValueInt4 i5, QueryResultValueText l5],
+                                                    [QueryResultValueInt4 i6, QueryResultValueText l6]] <- query "SELECT i, l \
+                                                                                                                \ FROM plhaskell_test.t \
+                                                                                                                \ ORDER BY i" []
 
         if processed == 7
         then return ()
