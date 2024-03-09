@@ -225,6 +225,12 @@ Arrays can be passed to and returned from functions. They are represented in Has
 
 The `Int32` values represent the lower bounds of the array indexes and the lists represent the contents of the array
 
+#### Array Mapping Functions
+
+The function `arrayMap :: (a -> b) -> Array a -> Array b` applies the provided function to all elements in an array. 
+
+The function `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` applies a monadic action to the elements in an array in order. 
+
 ### Inline Code
 
 The extension supports anonymous code blocks with the use of the `DO` keyword. Code is written the same way as in functions. The Haskell function to be run must be named `_'` and have signature `_' :: PGm ()` or `_' :: IO ()` depending on the language variant used.
@@ -565,6 +571,44 @@ LIMIT 25
  83      |
  89      |
  97      |
+
+### Array
+
+The following add one to all non-null elements of an array.
+
+```
+CREATE FUNCTION increment_array(int[]) RETURNS int[] IMMUTABLE AS
+$$
+    import PGutils (PGm, Array, arrayMap)
+    import Data.Int (Int32)
+
+    increment :: Maybe Int32 -> Maybe Int32
+    increment Nothing = Nothing
+    increment (Just i) = Just (i+1)
+
+    increment_array :: Maybe (Array (Maybe Int32)) -> PGm (Maybe (Array (Maybe Int32)))
+    increment_array Nothing = return Nothing
+    increment_array (Just array) = return (Just (arrayMap increment array))
+$$
+LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION increment_array(int[]) RETURNS int[] IMMUTABLE AS
+$$
+    import PGutils (Array, arrayMap)
+    import Data.Int (Int32)
+
+    increment :: Maybe Int32 -> Maybe Int32
+    increment Nothing = Nothing
+    increment (Just i) = Just (i+1)
+
+    increment_array :: Maybe (Array (Maybe Int32)) -> IO (Maybe (Array (Maybe Int32)))
+    increment_array Nothing = return Nothing
+    increment_array (Just array) = return (Just (arrayMap increment array))
+$$
+LANGUAGE plhaskellu;
+```
 
 ### Message
 
