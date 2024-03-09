@@ -20,6 +20,12 @@
 #define __PLHASKELL
 
 #include "postgres.h"
+
+// If version 16 of higher
+#if PG_VERSION_NUM >= 160000
+#include "varatt.h"
+#endif
+
 #include "funcapi.h"
 #include "executor/spi.h"
 

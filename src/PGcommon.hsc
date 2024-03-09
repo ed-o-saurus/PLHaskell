@@ -80,15 +80,15 @@ getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
 getElement = (#peek struct TypeInfo, element)
 
 -- Allocate memory using postgres' mechanism
-foreign import capi unsafe "postgres.h palloc"
+foreign import capi unsafe "plhaskell.h palloc"
     palloc :: CSize -> IO (Ptr a)
 
 -- Allocate zeroed memory using postgres' mechanism
-foreign import capi unsafe "postgres.h palloc0"
+foreign import capi unsafe "plhaskell.h palloc0"
     palloc0 :: CSize -> IO (Ptr a)
 
 -- Free memory using postgres' mechanism
-foreign import capi unsafe "postgres.h pfree"
+foreign import capi unsafe "plhaskell.h pfree"
     pfree :: Ptr a -> IO ()
 
 pallocArray :: forall a b . Storable a => Int -> (Ptr a -> IO b) -> IO b

@@ -96,18 +96,18 @@ writeComposite pTypeInfo fields = do
     pWithArray datums $ pWithArray isNulls . c_writeComposite pTypeInfo
 
 -- Get the size of a variable length array
-foreign import capi unsafe "postgres.h VARSIZE_ANY_EXHDR"
+foreign import capi unsafe "plhaskell.h VARSIZE_ANY_EXHDR"
     getVarSize :: Datum -> IO CSize
 
 -- Set the size of a variable length array
-foreign import capi unsafe "postgres.h SET_VARSIZE"
+foreign import capi unsafe "plhaskell.h SET_VARSIZE"
     c_setVarSize :: Datum -> CSize -> IO ()
 
 setVarSize :: Datum -> CSize -> IO ()
 setVarSize datum len = c_setVarSize datum ((#const VARHDRSZ) + len)
 
 -- Get the start of a variable length array
-foreign import capi unsafe "postgres.h VARDATA_ANY"
+foreign import capi unsafe "plhaskell.h VARDATA_ANY"
     getVarData :: Datum -> IO (Ptr b)
 
 foreign import capi unsafe "plhaskell.h detoast_datum"
@@ -136,60 +136,60 @@ instance BaseType Char where
     read value = head <$> read value
     write = write . singleton
 
-foreign import capi unsafe "postgres.h DatumGetBool"
+foreign import capi unsafe "plhaskell.h DatumGetBool"
     datumGetBool :: Datum -> IO CBool
 
-foreign import capi unsafe "postgres.h BoolGetDatum"
+foreign import capi unsafe "plhaskell.h BoolGetDatum"
     boolGetDatum :: CBool -> IO Datum
 
 instance BaseType Bool where
     read value = toBool <$> datumGetBool value
     write = boolGetDatum . CBool . fromBool
 
-foreign import capi unsafe "postgres.h DatumGetInt16"
+foreign import capi unsafe "plhaskell.h DatumGetInt16"
     datumGetInt16 :: Datum -> IO Int16
 
-foreign import capi unsafe "postgres.h Int16GetDatum"
+foreign import capi unsafe "plhaskell.h Int16GetDatum"
     int16GetDatum :: Int16 -> IO Datum
 
 instance BaseType Int16 where
     read = datumGetInt16
     write = int16GetDatum
 
-foreign import capi unsafe "postgres.h DatumGetInt32"
+foreign import capi unsafe "plhaskell.h DatumGetInt32"
     datumGetInt32 :: Datum -> IO Int32
 
-foreign import capi unsafe "postgres.h Int32GetDatum"
+foreign import capi unsafe "plhaskell.h Int32GetDatum"
     int32GetDatum :: Int32 -> IO Datum
 
 instance BaseType Int32 where
     read = datumGetInt32
     write = int32GetDatum
 
-foreign import capi unsafe "postgres.h DatumGetInt64"
+foreign import capi unsafe "plhaskell.h DatumGetInt64"
     datumGetInt64 :: Datum -> IO Int64
 
-foreign import capi unsafe "postgres.h Int64GetDatum"
+foreign import capi unsafe "plhaskell.h Int64GetDatum"
     int64GetDatum :: Int64 -> IO Datum
 
 instance BaseType Int64 where
     read = datumGetInt64
     write = int64GetDatum
 
-foreign import capi unsafe "postgres.h DatumGetFloat4"
+foreign import capi unsafe "plhaskell.h DatumGetFloat4"
     datumGetFloat4 :: Datum -> IO Float
 
-foreign import capi unsafe "postgres.h Float4GetDatum"
+foreign import capi unsafe "plhaskell.h Float4GetDatum"
     float4GetDatum :: Float -> IO Datum
 
 instance BaseType Float where
     read = datumGetFloat4
     write = float4GetDatum
 
-foreign import capi unsafe "postgres.h DatumGetFloat8"
+foreign import capi unsafe "plhaskell.h DatumGetFloat8"
     datumGetFloat8 :: Datum -> IO Double
 
-foreign import capi unsafe "postgres.h Float8GetDatum"
+foreign import capi unsafe "plhaskell.h Float8GetDatum"
     float8GetDatum :: Double -> IO Datum
 
 instance BaseType Double where
