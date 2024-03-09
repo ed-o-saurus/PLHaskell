@@ -378,7 +378,7 @@ $$
     add :: Maybe Int32 -> Maybe Int32 -> PGm (Maybe Int32)
 
     add Nothing Nothing = return Nothing
-    add (Just a) (Just b) = return (Just (a+b))
+    add (Just a) (Just b) = return $ Just $ a+b
     add a Nothing = return a
     add Nothing b = return b
 $$
@@ -393,7 +393,7 @@ $$
     add :: Maybe Int32 -> Maybe Int32 -> IO (Maybe Int32)
 
     add Nothing Nothing = return Nothing
-    add (Just a) (Just b) = return (Just (a+b))
+    add (Just a) (Just b) = return $ Just $ a+b
     add a Nothing = return a
     add Nothing b = return b
 $$
@@ -415,7 +415,7 @@ $$
 
     fibonacci :: Maybe Int32 -> PGm (Maybe Int32)
     fibonacci Nothing = return Nothing
-    fibonacci (Just n) = return (Just (fibonacci' n))
+    fibonacci (Just n) = return $ Just $ fibonacci' n
 $$
 LANGUAGE plhaskell;
 ```
@@ -432,7 +432,7 @@ $$
 
     fibonacci :: Maybe Int32 -> IO (Maybe Int32)
     fibonacci Nothing = return Nothing
-    fibonacci (Just n) = return (Just (fibonacci' n))
+    fibonacci (Just n) = return $ Just $ fibonacci' n
 $$
 LANGUAGE plhaskellu;
 ```
@@ -461,7 +461,7 @@ $$
 
     primes :: Maybe Int32 -> PGm [Maybe (Maybe Int32, Maybe Int32)]
     primes Nothing = raiseError "Invalid Null"
-    primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
+    primes (Just n) = return $ map Just $ zip [Just i | i <- [1..n]] $ map Just $ sieve [2..]
 $$
 LANGUAGE plhaskell;
 ```
@@ -478,7 +478,7 @@ $$
 
     primes :: Maybe Int32 -> IO [Maybe (Maybe Int32, Maybe Int32)]
     primes Nothing = raiseError "Invalid Null"
-    primes (Just n) = return (map Just (zip [Just i | i <- [1..n]] (map Just (sieve [2..]))))
+    primes (Just n) = return $ map Just $ zip [Just i | i <- [1..n]] $ map Just $ sieve [2..]
 $$
 LANGUAGE plhaskellu;
 ```
@@ -518,7 +518,7 @@ $$
     sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
 
     primes :: PGm [Maybe Int32]
-    primes = return (map Just (sieve [2..]))
+    primes = return $ map Just $ sieve [2..]
 $$
 LANGUAGE plhaskell;
 ```
@@ -532,7 +532,7 @@ $$
     sieve (p:xs) = p : sieve [x | x <- xs, x `mod` p /= 0]
 
     primes :: IO [Maybe Int32]
-    primes = return (map Just (sieve [2..]))
+    primes = return $ map Just $ sieve [2..]
 $$
 LANGUAGE plhaskellu;
 ```
@@ -588,7 +588,7 @@ $$
 
     increment_array :: Maybe (Array (Maybe Int32)) -> PGm (Maybe (Array (Maybe Int32)))
     increment_array Nothing = return Nothing
-    increment_array (Just array) = return (Just (arrayMap increment array))
+    increment_array (Just array) = return $ Just $ arrayMap increment array
 $$
 LANGUAGE plhaskell;
 ```
@@ -605,7 +605,7 @@ $$
 
     increment_array :: Maybe (Array (Maybe Int32)) -> IO (Maybe (Array (Maybe Int32)))
     increment_array Nothing = return Nothing
-    increment_array (Just array) = return (Just (arrayMap increment array))
+    increment_array (Just array) = return $ Just $ arrayMap increment array
 $$
 LANGUAGE plhaskellu;
 ```
@@ -623,7 +623,7 @@ $$
     forty_two :: PGm (Maybe Int32)
     forty_two = do
         report notice "Don't Panic"
-        return (Just 42)
+        return $ Just 42
 $$
 LANGUAGE plhaskell;
 ```
@@ -637,7 +637,7 @@ $$
     forty_two :: IO (Maybe Int32)
     forty_two = do
         unPGm $ report notice "Don't Panic"
-        return (Just 42)
+        return $ Just 42
 $$
 LANGUAGE plhaskellu;
 ```
@@ -655,7 +655,7 @@ $$
     remove_all :: PGm (Maybe Int64)
     remove_all = do
         DeleteResults processed <- query "DELETE FROM t" []
-        return (Just (fromIntegral processed))
+        return $ Just $ fromIntegral processed
 $$
 LANGUAGE plhaskell;
 ```
@@ -669,7 +669,7 @@ $$
     remove_all :: IO (Maybe Int64)
     remove_all = do
         DeleteResults processed <- unPGm $ query "DELETE FROM t" []
-        return (Just (fromIntegral processed))
+        return $ Just $ fromIntegral processed
 $$
 LANGUAGE plhaskellu;
 ```
@@ -688,7 +688,7 @@ $$
     last_names :: Maybe Text -> PGm [Maybe Text]
     last_names first_name = do
         SelectResults _processed _header results <- query "SELECT last_name FROM students WHERE first_name = $1" [QueryParamText first_name]
-        return (map extract_text results)
+        return $ map extract_text results
 $$
 LANGUAGE plhaskell;
 ```
@@ -705,7 +705,7 @@ $$
     last_names :: Maybe Text -> IO [Maybe Text]
     last_names first_name = do
         SelectResults _processed _header results <- unPGm $ query "SELECT last_name FROM students WHERE first_name = $1" [QueryParamText first_name]
-        return (map extract_text results)
+        return $ map extract_text results
 $$
 LANGUAGE plhaskellu;
 ```
