@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGutils (PGm, ErrorLevel, assert, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, assert, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad         (zipWithM)
 import Control.Monad.Fail    (MonadFail (fail))
@@ -47,8 +47,8 @@ import Foreign.Storable      (peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, mconcat, return, undefined, ($), (.), (>>=), (==))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, readComposite, writeComposite, maybeWrap)
-import PGcommon              (Oid (Oid), getCount, getFields, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
+import PGsupport             (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, arrayMap, arrayMapM, readArray, readComposite, writeArray, writeComposite, maybeWrap)
+import PGcommon              (Oid (Oid), getCount, getElement, getFields, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
 
 data TupleTable
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
@@ -96,6 +96,7 @@ data QueryParam = QueryParamByteA                        (Maybe ByteString)
                 | QueryParamFloat4                       (Maybe Float)
                 | QueryParamFloat8                       (Maybe Double)
                 | QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])
+                | QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))
 
 -- Extract the value type from TypeInfo struct
 getValueType :: Ptr TypeInfo -> IO Word16
@@ -120,6 +121,7 @@ getOid (QueryParamInt8   _) = return (#const INT8OID)
 getOid (QueryParamFloat4 _) = return (#const FLOAT4OID)
 getOid (QueryParamFloat8 _) = return (#const FLOAT8OID)
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
+getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
 -- Verify that the TypeInfo struct oid is expected
 -- return encoded Maybe Datum
@@ -189,6 +191,20 @@ encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
         typeInfoFields <- getFields pTypeInfo
         zipWithM encode' typeInfoFields queryParamFields >>= writeComposite pTypeInfo
 
+encode' pTypeInfo (QueryParamArray schemaType mElems) = do
+    valueType <- getValueType pTypeInfo
+    unPGm $ assert (valueType == (#const ARRAY_TYPE)) "Expected array type"
+    oid <- getTypeOid pTypeInfo
+    oid' <- getArrayOid schemaType
+    if oid == oid'
+    then return ()
+    else do
+        name <- getSchemaTypeName pTypeInfo
+        unPGm $ report exception (mconcat ["Expected type ", name, " in query"])
+    (flip maybeWrap) mElems $ \queryParamElems -> do
+        pElemTypeInfo <- getElement pTypeInfo
+        arrayMapM (encode' pElemTypeInfo) queryParamElems >>= writeArray pTypeInfo
+
 -- Value returned by query
 data QueryResultValue = QueryResultValueByteA                  (Maybe ByteString)
                       | QueryResultValueText                   (Maybe Text)
@@ -199,7 +215,8 @@ data QueryResultValue = QueryResultValueByteA                  (Maybe ByteString
                       | QueryResultValueInt8                   (Maybe Int64)
                       | QueryResultValueFloat4                 (Maybe Float)
                       | QueryResultValueFloat8                 (Maybe Double)
-                      | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue]) deriving stock Show
+                      | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])
+                      | QueryResultValueArray     (Text, Text) (Maybe (Array QueryResultValue)) deriving stock Show
 
 -- Various query results
 data QueryResults = SelectResults          Word64 [Text] [[QueryResultValue]]
@@ -278,6 +295,12 @@ decode' pTypeInfo mDatum = do
                     fieldPTypeInfos <- getFields pTypeInfo
                     fieldMDatums <- readComposite pTypeInfo datum
                     (QueryResultValueComposite schemaType) . Just <$> zipWithM decode' fieldPTypeInfos fieldMDatums
+        (#const ARRAY_TYPE) -> do
+            pElemTypeInfo <- getElement pTypeInfo
+            schemaType <- getSchemaType pElemTypeInfo
+            case mDatum of
+                Nothing -> return $ QueryResultValueArray schemaType Nothing
+                Just datum -> (QueryResultValueArray schemaType) . Just <$> (readArray pTypeInfo datum >>= arrayMapM (decode' pElemTypeInfo))
         _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]
@@ -366,15 +389,19 @@ getSchemaTypeName pTypeInfo = do
     (nspname, typname) <- getSchemaType pTypeInfo
     return $ mconcat [nspname, ".", typname]
 
-foreign import capi unsafe "plhaskell.h get_composite_oid"
-    c_getCompositeOid :: CString -> CString -> IO Oid
+foreign import capi unsafe "plhaskell.h get_oid"
+    c_getOid :: CBool -> CString -> CString -> IO Oid
 
-foreign import capi unsafe "plhaskell.h find_composite_oid"
-    c_findCompositeOid :: CString -> IO Oid
+foreign import capi unsafe "plhaskell.h find_oid"
+    c_findOid :: CBool -> CString -> IO Oid
 
 getCompositeOid :: (Maybe Text, Text) -> IO Oid
-getCompositeOid (Nothing,      typname) = pWithCString                   (unpack typname) c_findCompositeOid
-getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) c_getCompositeOid
+getCompositeOid (Nothing,      typname) = pWithCString                   (unpack typname) $ c_findOid (fromBool False)
+getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ c_getOid  (fromBool False)
+
+getArrayOid :: (Maybe Text, Text) -> IO Oid
+getArrayOid (Nothing,      typname) = pWithCString                   (unpack typname) $ c_findOid (fromBool True)
+getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ c_getOid  (fromBool True)
 
 foreign import capi unsafe "plhaskell.h commit_rollback"
     commitRollback:: CBool -> CBool -> PGm ()

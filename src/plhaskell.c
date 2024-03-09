@@ -628,7 +628,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid, bool set
         ereport(ERROR, errmsg("pg_type.typtype is invalid : %c", DatumGetChar(typtype)));
     }
 
-    if(set_schema_name && p_type_info->value_type == COMPOSITE_TYPE)
+    if(set_schema_name)
     {
         typnamespace = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typnamespace, &is_null);
 
@@ -1020,12 +1020,12 @@ Datum ghc_version(PG_FUNCTION_ARGS)
     PG_RETURN_INT32(hint_ghc_version());
 }
 
-Oid get_composite_oid(char *nspname, char *typname) __attribute__((visibility ("hidden")));
-Oid get_composite_oid(char *nspname, char *typname)
+Oid get_oid(bool array, char *nspname, char *typname) __attribute__((visibility ("hidden")));
+Oid get_oid(bool array, char *nspname, char *typname)
 {
     bool is_null;
     HeapTuple nsptup, typtup;
-    Datum nspoid, typoid;
+    Datum nspoid, ret_val;
 
     nsptup = SearchSysCache1(NAMESPACENAME, CStringGetDatum(nspname));
     if(!HeapTupleIsValid(nsptup))
@@ -1039,22 +1039,34 @@ Oid get_composite_oid(char *nspname, char *typname)
     if(!HeapTupleIsValid(typtup))
         ereport(ERROR, errmsg("cannot find type %s.%s", nspname, typname));
 
-    typoid = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
-    if(is_null)
-        ereport(ERROR, errmsg("pg_type.oid is NULL"));
+    if(array)
+    {
+        ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_typarray, &is_null);
+        if(is_null)
+            ereport(ERROR, errmsg("pg_type.typarray is NULL"));
+
+        if(ret_val == InvalidOid)
+            ereport(ERROR, errmsg("no array type for type %s.%s", nspname, typname));
+    }
+    else
+    {
+        ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
+        if(is_null)
+            ereport(ERROR, errmsg("pg_type.oid is NULL"));
+    }
 
     ReleaseSysCache(typtup);
     ReleaseSysCache(nsptup);
 
-    return DatumGetObjectId(typoid);
+    return DatumGetObjectId(ret_val);
 }
 
-Oid find_composite_oid(char *typname) __attribute__((visibility ("hidden")));
-Oid find_composite_oid(char *typname)
+Oid find_oid(bool array, char *typname) __attribute__((visibility ("hidden")));
+Oid find_oid(bool array, char *typname)
 {
     bool is_null;
     HeapTuple typtup;
-    Datum typoid;
+    Datum ret_val;
     ListCell *nslc;
 
     List *namespacelist = fetch_search_path(true);
@@ -1063,19 +1075,30 @@ Oid find_composite_oid(char *typname)
         typtup = SearchSysCache2(TYPENAMENSP, CStringGetDatum(typname), ObjectIdGetDatum(nslc->oid_value));
         if(HeapTupleIsValid(typtup))
         {
-            typoid = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
-            if(is_null)
-                ereport(ERROR, errmsg("pg_type.oid is NULL"));
+            if(array)
+            {
+                ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_typarray, &is_null);
+                if(is_null)
+                    ereport(ERROR, errmsg("pg_type.typarray is NULL"));
+
+                if(ret_val == InvalidOid)
+                    ereport(ERROR, errmsg("no array type for type %s", typname));
+            }
+            else
+            {
+                ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
+                if(is_null)
+                    ereport(ERROR, errmsg("pg_type.oid is NULL"));
+            }
 
             ReleaseSysCache(typtup);
 
-            return DatumGetObjectId(typoid);
+            return DatumGetObjectId(ret_val);
         }
     }
 
     ereport(ERROR, errmsg("cannot find type %s in search_path", typname));
-
-    return INVALID_OBJECT;
+    return InvalidOid; // Never reached
 }
 
 Datum detoast_datum(Datum datum) __attribute__((visibility ("hidden")));

@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (ArrayType, CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon (ArrayType, CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getElement, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -75,6 +75,9 @@ getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
 getFields pTypeInfo = do
     count <- getCount pTypeInfo
     mapM (\j -> (#peek struct TypeInfo, fields) pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
+
+getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
+getElement = (#peek struct TypeInfo, element)
 
 -- Allocate memory using postgres' mechanism
 foreign import capi unsafe "postgres.h palloc"

@@ -40,7 +40,7 @@ import Foreign.Storable             (peek, peekByteOff, peekElemOff, poke)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
 import Prelude                      (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (.), (>>=))
 
-import PGcommon                     (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getFields, pWithCString, range, voidDatum)
+import PGcommon                     (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getElement, getFields, pWithCString, range, voidDatum)
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
@@ -101,9 +101,6 @@ getTypeOid = (#peek struct TypeInfo, type_oid)
 
 setPtr :: String -> Ptr a -> Interpreter ()
 setPtr name ptr = runStmt $ "let " ++ name ++ " = wordPtrToPtr " ++ show (ptrToWordPtr ptr)
-
-getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
-getElement = (#peek struct TypeInfo, element)
 
 -- Get Haskell type name based on TypeInfo struct
 getTypeName :: Ptr TypeInfo -> IO String

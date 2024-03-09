@@ -833,6 +833,49 @@ DO LANGUAGE plhaskellu $$
         return ()
 $$;
 
+CREATE TABLE plhaskellu_test.query_arrays(a int[]) ;
+CREATE FUNCTION plhaskellu_test.query_array_insert() RETURNS void VOLATILE AS
+$$
+    import PGutils (unPGm, query, Array(Array6D), QueryResults(InsertResults), QueryParam(QueryParamArray, QueryParamInt4))
+    import Data.Int (Int32)
+
+    chunksOf :: Int -> [a] -> [[a]]
+    chunksOf _ [] = []
+    chunksOf n xs = fxs : chunksOf n sxs
+       where (fxs, sxs) = splitAt n xs
+
+    mkList :: Int32 -> [Maybe Int32]
+    mkList upper = [if x `mod` 3 == 0 then Nothing else Just x | x <- [0 .. upper-1]]
+
+    mk_array :: Maybe (Array QueryParam)
+    mk_array = Just (Array6D (20, 21, 22, 23, 24, 25) ((chunksOf 6) $ (chunksOf 5) $ (chunksOf 4) $ (chunksOf 3) $ (chunksOf 2) (map QueryParamInt4 (mkList 5040))))
+
+    query_array_insert :: IO ()
+    query_array_insert = do
+        InsertResults _processed <- unPGm $ query "INSERT INTO plhaskellu_test.query_arrays(a) VALUES ($1)" [QueryParamArray (Nothing, "int4") mk_array]
+        return ()
+$$
+LANGUAGE plhaskellu;
+
+SELECT plhaskellu_test.query_array_insert();
+
+CREATE FUNCTION plhaskellu_test.query_array_select() RETURNS int[] IMMUTABLE AS
+$$
+    import PGutils (unPGm, raiseError, query, arrayMap, Array(Array6D), QueryResults(SelectResults), QueryResultValue(QueryResultValueArray, QueryResultValueInt4))
+    import Data.Int (Int32)
+
+    query_array_select :: IO (Maybe (Array (Maybe Int32)))
+    query_array_select = do
+        SelectResults _processed [_header] [[QueryResultValueArray (_schema, name) a]] <- unPGm $ query "SELECT a FROM plhaskellu_test.query_arrays" [];
+
+        if name == "int4"
+        then return ()
+        else raiseError "Bad type name"
+
+        return (fmap (arrayMap (\ (QueryResultValueInt4 i) -> i)) a)
+$$
+LANGUAGE plhaskellu;
+
 DO $$
 DECLARE
     r RECORD;
@@ -1430,6 +1473,10 @@ BEGIN
 
     IF alpha_array != plhaskellu_test.echo(alpha_array) THEN
         raise EXCEPTION 'alpha_array failed';
+    END IF;
+
+    IF plhaskellu_test.query_array_select() != plhaskellu_test.mk_array(6) THEN
+        raise EXCEPTION 'array query failed';
     END IF;
 
     DROP SCHEMA plhaskellu_test CASCADE;

@@ -264,20 +264,21 @@ Queries in stable and immutable functions are executed in read-only mode, while 
 
 Any type that can be passed to PL/Haskell functions can be used as a parameter by using the appropriate constructor for the type `QueryParam`. The constructors are the following:
 
-`QueryParam`                                                  |
-------------------------------------------------------------- |
-`QueryParamByteA                        (Maybe ByteString)`   |
-`QueryParamText                         (Maybe Text)`         |
-`QueryParamChar                         (Maybe Char)`         |
-`QueryParamBool                         (Maybe Bool)`         |
-`QueryParamInt2                         (Maybe Int16)`        |
-`QueryParamInt4                         (Maybe Int32)`        |
-`QueryParamInt8                         (Maybe Int64)`        |
-`QueryParamFloat4                       (Maybe Float)`        |
-`QueryParamFloat8                       (Maybe Double)`       |
-`QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])` |
+`QueryParam`                                                        |
+------------------------------------------------------------------- |
+`QueryParamByteA                        (Maybe ByteString)`         |
+`QueryParamText                         (Maybe Text)`               |
+`QueryParamChar                         (Maybe Char)`               |
+`QueryParamBool                         (Maybe Bool)`               |
+`QueryParamInt2                         (Maybe Int16)`              |
+`QueryParamInt4                         (Maybe Int32)`              |
+`QueryParamInt8                         (Maybe Int64)`              |
+`QueryParamFloat4                       (Maybe Float)`              |
+`QueryParamFloat8                       (Maybe Double)`             |
+`QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])`       |
+`QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))` |
 
-The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and type name. If `Nothing` is used as the schema name, the first matching type in the search path is used.
+The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and type name of the composite type. The `(Maybe Text, Text)` tuple in the `QueryParamArray` constructor is the schema and type name of the element type. If `Nothing` is used as the schema name, the first matching type in the search path is used.
 
 The constructors for `QueryResults` are the following:
 
@@ -298,20 +299,21 @@ The constructor indicates the type of query run. The `Word64` field is the numbe
 
 The constructors for `QueryResultValue` are the following:
 
-`QueryResultValue`                                                  |
-------------------------------------------------------------------- |
-`QueryResultValueByteA                  (Maybe ByteString)`         |
-`QueryResultValueText                   (Maybe Text)`               |
-`QueryResultValueChar                   (Maybe Char)`               |
-`QueryResultValueBool                   (Maybe Bool)`               |
-`QueryResultValueInt2                   (Maybe Int16)`              |
-`QueryResultValueInt4                   (Maybe Int32)`              |
-`QueryResultValueInt8                   (Maybe Int64)`              |
-`QueryResultValueFloat4                 (Maybe Float)`              |
-`QueryResultValueFloat8                 (Maybe Double)`             |
-`QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])` |
+`QueryResultValue`                                                        |
+------------------------------------------------------------------------- |
+`QueryResultValueByteA                  (Maybe ByteString)`               |
+`QueryResultValueText                   (Maybe Text)`                     |
+`QueryResultValueChar                   (Maybe Char)`                     |
+`QueryResultValueBool                   (Maybe Bool)`                     |
+`QueryResultValueInt2                   (Maybe Int16)`                    |
+`QueryResultValueInt4                   (Maybe Int32)`                    |
+`QueryResultValueInt8                   (Maybe Int64)`                    |
+`QueryResultValueFloat4                 (Maybe Float)`                    |
+`QueryResultValueFloat8                 (Maybe Double)`                   |
+`QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])`       |
+`QueryResultValueArray     (Text, Text) (Maybe (Array QueryResultValue))` |
 
-The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name.
+The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name of the composite type. The `(Text, Text)` tuple in the `QueryResultValueArray` constructor is the schema and type name of the element type.
 
 #### Commit and Rollback
 

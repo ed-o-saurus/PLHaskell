@@ -25,7 +25,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, arrayMapM, encodeVoid, maybeWrap, mkResultList, readArray, readComposite, unNullableDatum, wrapFunction, writeArray, writeComposite, writeResult) where
+module PGsupport (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, arrayMap, arrayMapM, encodeVoid, maybeWrap, mkResultList, readArray, readComposite, unNullableDatum, wrapFunction, writeArray, writeComposite, writeResult) where
 
 import Control.Monad         ((>=>))
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
@@ -40,7 +40,7 @@ import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
 import Foreign.Storable      (poke)
-import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, show, splitAt, undefined, zipWith, ($), (+), (++), (.), (>>=), (==))
+import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, show, splitAt, undefined, zipWith, ($), (+), (++), (.), (>>=), (==))
 
 import PGcommon              (ArrayType, Datum (Datum), NullableDatum, TypeInfo, getCount, palloc, pallocArray, pUseAsCString, pWithArray, unNullableDatum, voidDatum)
 
@@ -211,7 +211,7 @@ data Array a = ArrayEmpty
              | Array5D (Int32, Int32, Int32, Int32, Int32)         [[[[[a]]]]]
              | Array6D (Int32, Int32, Int32, Int32, Int32, Int32) [[[[[[a]]]]]] deriving stock Show
 
-arrayMapM :: (a -> IO b) -> Array a -> IO (Array b)
+arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)
 arrayMapM _ ArrayEmpty = return ArrayEmpty
 arrayMapM func (Array1D lbs elems) =  mapM                                     func elems >>= return <$> Array1D lbs
 arrayMapM func (Array2D lbs elems) = (mapM . mapM)                             func elems >>= return <$> Array2D lbs
@@ -219,6 +219,15 @@ arrayMapM func (Array3D lbs elems) = (mapM . mapM . mapM)                      f
 arrayMapM func (Array4D lbs elems) = (mapM . mapM . mapM . mapM)               func elems >>= return <$> Array4D lbs
 arrayMapM func (Array5D lbs elems) = (mapM . mapM . mapM . mapM . mapM)        func elems >>= return <$> Array5D lbs
 arrayMapM func (Array6D lbs elems) = (mapM . mapM . mapM . mapM . mapM . mapM) func elems >>= return <$> Array6D lbs
+
+arrayMap :: (a -> b) -> Array a -> Array b
+arrayMap _ ArrayEmpty = ArrayEmpty
+arrayMap func (Array1D lbs elems) = Array1D lbs $  map                                func elems
+arrayMap func (Array2D lbs elems) = Array2D lbs $ (map . map)                         func elems
+arrayMap func (Array3D lbs elems) = Array3D lbs $ (map . map . map)                   func elems
+arrayMap func (Array4D lbs elems) = Array4D lbs $ (map . map . map . map)             func elems
+arrayMap func (Array5D lbs elems) = Array5D lbs $ (map . map . map . map . map)       func elems
+arrayMap func (Array6D lbs elems) = Array6D lbs $ (map . map . map . map . map . map) func elems
 
 arrayDims1 :: [a] -> Int
 arrayDims1 = length
