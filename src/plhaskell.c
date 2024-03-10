@@ -856,32 +856,7 @@ static void gcDoneHook(const struct GCDetails_ *stats)
 void plhaskell_report(int elevel, char *msg) __attribute__((visibility ("hidden")));
 void plhaskell_report(int elevel, char *msg)
 {
-    char *filename_location;
-
-    // Strip trailing new-line if necessary
-    if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
-        msg[strlen(msg)-1] = '\0';
-
-    filename_location = strstr(msg, current_p_call_info->mod_file_name);
-
-    if(!filename_location)
-        ereport(elevel, errmsg_internal("%s", msg));
-    else
-    {
-        int filename_length = strlen(current_p_call_info->mod_file_name);
-        *filename_location = '\0';
-
-        if(filename_location[filename_length]==':' && isdigit(filename_location[filename_length+1]))
-        {
-            char *i;
-            for(i=filename_location+filename_length+1; isdigit(*i); i++);
-
-            // Reduce line number by one to account for added line of code in file
-            ereport(elevel, errmsg_internal("%s%s:%d%s", msg, current_p_call_info->func_name, atoi(filename_location+filename_length+1)-1, i));
-        }
-        else
-            ereport(elevel, errmsg_internal("%s%s%s", msg, current_p_call_info->func_name, filename_location+filename_length));
-    }
+    ereport(elevel, errmsg_internal("%s", msg));
 }
 
 static int rts_msg_fn(int elevel, const char *s, va_list ap)
@@ -894,7 +869,8 @@ static int rts_msg_fn(int elevel, const char *s, va_list ap)
     len = vsnprintf(NULL, 0, s, ap);
     buf = palloc(len);
     vsnprintf(buf, len, s, apc);
-    plhaskell_report(elevel, buf);
+
+    language_error(elevel, buf);
     pfree(buf);
 
     return len;
@@ -1147,5 +1123,100 @@ void commit_rollback(bool commit, bool chain)
             SPI_rollback_and_chain();
         else
             SPI_rollback();
+    }
+}
+
+void bad_multi_dim_array() __attribute__((visibility ("hidden")));
+void bad_multi_dim_array()
+{
+    ereport(ERROR, errmsg("Multidimensional arrays must have sub-arrays with matching dimensions."));
+}
+
+void expected_type(Oid type_oid) __attribute__((visibility ("hidden")));
+void expected_type(Oid type_oid)
+{
+    bool is_null;
+
+    HeapTuple typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
+    if(!HeapTupleIsValid(typtup))
+        ereport(ERROR, errmsg_internal("cache lookup failed for type %u", type_oid));
+
+    Datum typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
+    if(is_null)
+        ereport(ERROR, errmsg_internal("pg_type.typname is NULL"));
+
+    ereport(ERROR, errmsg("Expected type \"%s\" in query", DatumGetCString(typname)));
+}
+
+void expected_composite() __attribute__((visibility ("hidden")));
+void expected_composite()
+{
+    ereport(ERROR, errmsg("Expected composite type"));
+}
+
+void expected_array() __attribute__((visibility ("hidden")));
+void expected_array()
+{
+    ereport(ERROR, errmsg("Expected array type"));
+}
+
+void expected_type_in_query(struct TypeInfo* p_type_info) __attribute__((visibility ("hidden")));
+void expected_type_in_query(struct TypeInfo* p_type_info)
+{
+    ereport(ERROR, errmsg("Expected type \"%s.%s\" in query", p_type_info->nspname, p_type_info->typname));
+}
+
+void incorrect_length(struct TypeInfo* p_type_info) __attribute__((visibility ("hidden")));
+void incorrect_length(struct TypeInfo* p_type_info)
+{
+    ereport(ERROR, errmsg("Type \"%s.%s\" incorrect length", p_type_info->nspname, p_type_info->typname));
+}
+
+void higher_dim_arrays() __attribute__((visibility ("hidden")));
+void higher_dim_arrays()
+{
+    ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg("PL/Haskell does not support more than 6D arrays"));
+}
+
+void unknown_compiler_error() __attribute__((visibility ("hidden")));
+void unknown_compiler_error()
+{
+    ereport(ERROR, errmsg("PL/Haskell : Unknown Compiler Error"));
+}
+
+void error_func_sig(char* func_sig) __attribute__((visibility ("hidden")));
+void error_func_sig(char* func_sig)
+{
+    ereport(ERROR, errmsg("Expected Signature : %s", func_sig));
+}
+
+void language_error(int elevel, char* msg) __attribute__((visibility ("hidden")));
+void language_error(int elevel, char* msg)
+{
+    char *filename_location;
+
+    // Strip trailing new-line if necessary
+    if(strlen(msg)>1 && msg[strlen(msg)-1] == '\n')
+        msg[strlen(msg)-1] = '\0';
+
+    filename_location = strstr(msg, current_p_call_info->mod_file_name);
+
+    if(!filename_location)
+        ereport(elevel, errmsg_internal("%s", msg));
+    else
+    {
+        int filename_length = strlen(current_p_call_info->mod_file_name);
+        *filename_location = '\0';
+
+        if(filename_location[filename_length]==':' && isdigit(filename_location[filename_length+1]))
+        {
+            char *i;
+            for(i=filename_location+filename_length+1; isdigit(*i); i++);
+
+            // Reduce line number by one to account for added line of code in file
+            ereport(elevel, errmsg_internal("%s%s:%d%s", msg, current_p_call_info->func_name, atoi(filename_location+filename_length+1)-1, i));
+        }
+        else
+            ereport(elevel, errmsg_internal("%s%s%s", msg, current_p_call_info->func_name, filename_location+filename_length));
     }
 }

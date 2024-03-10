@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, assert, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, raiseError, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad         (zipWithM)
 import Control.Monad.Fail    (MonadFail (fail))
@@ -44,11 +44,11 @@ import Foreign.Marshal.Array (allocaArray)
 import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr))
 import Foreign.Storable      (peek, peekByteOff, peekElemOff)
-import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, mconcat, return, undefined, ($), (.), (>>=), (==))
+import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (>>=), (==))
 import System.IO.Unsafe      (unsafePerformIO)
 
 import PGsupport             (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, arrayMap, arrayMapM, readArray, readComposite, writeArray, writeComposite, maybeWrap)
-import PGcommon              (Oid (Oid), getCount, getElement, getFields, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
+import PGcommon              (Oid (Oid), assert, getCount, getElement, getFields, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
 
 data TupleTable
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
@@ -77,10 +77,6 @@ raiseError :: Text -> a
 raiseError msg = unsafePerformIO $ do
     unPGm $ report exception msg
     undefined
-
-assert :: Bool -> Text -> PGm ()
-assert True _msg = return ()
-assert False msg = report exception msg
 
 instance MonadFail PGm where
     fail = raiseError . pack
@@ -123,84 +119,87 @@ getOid (QueryParamFloat8 _) = return (#const FLOAT8OID)
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
+foreign import capi unsafe "plhaskell.h expected_type"
+    expectedType :: Oid -> IO ()
+
+foreign import capi unsafe "plhaskell.h expected_composite"
+    expectedComposite :: IO ()
+
+foreign import capi unsafe "plhaskell.h expected_array"
+    expectedArray :: IO ()
+
+foreign import capi unsafe "plhaskell.h expected_type_in_query"
+    expectedTypeInQuery :: Ptr TypeInfo -> IO ()
+
+foreign import capi unsafe "plhaskell.h incorrect_length"
+    incorrectLength :: Ptr TypeInfo -> IO ()
+
 -- Verify that the TypeInfo struct oid is expected
 -- return encoded Maybe Datum
 encode' :: Ptr TypeInfo -> QueryParam -> IO (Maybe Datum)
 encode' pTypeInfo (QueryParamByteA  value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const BYTEAOID))  "Expected type bytea in query"
+    assert (oid == (#const BYTEAOID))  $ expectedType (#const BYTEAOID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamText   value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const TEXTOID))   "Expected type text in query"
+    assert (oid == (#const TEXTOID))   $ expectedType (#const TEXTOID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamChar   value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const CHAROID))   "Expected type char in query"
+    assert (oid == (#const CHAROID))   $ expectedType (#const CHAROID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamBool   value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const BOOLOID))   "Expected type bool in query"
+    assert (oid == (#const BOOLOID))   $ expectedType (#const BOOLOID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt2   value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const INT2OID))   "Expected type int2 in query"
+    assert (oid == (#const INT2OID))   $ expectedType (#const INT2OID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt4   value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const INT4OID))   "Expected type int4 in query"
+    assert (oid == (#const INT4OID))   $ expectedType (#const INT4OID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt8   value) =  do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const INT8OID))   "Expected type int8 in query"
+    assert (oid == (#const INT8OID))   $ expectedType (#const INT8OID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamFloat4 value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const FLOAT4OID)) "Expected type float4 in query"
+    assert (oid == (#const FLOAT4OID)) $ expectedType (#const FLOAT4OID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamFloat8 value) = do
     oid <- getTypeOid pTypeInfo
-    unPGm $ assert (oid == (#const FLOAT8OID)) "Expected type float8 in query"
+    assert (oid == (#const FLOAT8OID)) $ expectedType (#const FLOAT8OID)
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
     valueType <- getValueType pTypeInfo
-    unPGm $ assert (valueType == (#const COMPOSITE_TYPE)) "Expected composite type"
+    assert (valueType == (#const COMPOSITE_TYPE)) expectedComposite
     oid <- getTypeOid pTypeInfo
     oid' <- getCompositeOid schemaType
-    if oid == oid'
-    then return ()
-    else do
-        name <- getSchemaTypeName pTypeInfo
-        unPGm $ report exception (mconcat ["Expected type ", name, " in query"])
+    assert (oid == oid') $ expectedTypeInQuery pTypeInfo
     (flip maybeWrap) mFields $ \queryParamFields -> do
         count <- getCount pTypeInfo
-        if (length queryParamFields) == (fromIntegral count)
-        then return ()
-        else do
-            name <- getSchemaTypeName pTypeInfo
-            unPGm $ report exception (mconcat ["Type ", name, " incorrect length"])
+        assert ((length queryParamFields) == (fromIntegral count)) $ incorrectLength pTypeInfo
         typeInfoFields <- getFields pTypeInfo
         zipWithM encode' typeInfoFields queryParamFields >>= writeComposite pTypeInfo
 
 encode' pTypeInfo (QueryParamArray schemaType mElems) = do
     valueType <- getValueType pTypeInfo
-    unPGm $ assert (valueType == (#const ARRAY_TYPE)) "Expected array type"
+    assert (valueType == (#const ARRAY_TYPE)) expectedArray
     oid <- getTypeOid pTypeInfo
     oid' <- getArrayOid schemaType
-    if oid == oid'
-    then return ()
-    else do
-        name <- getSchemaTypeName pTypeInfo
-        unPGm $ report exception (mconcat ["Expected type ", name, " in query"])
+    assert (oid == oid') $ expectedTypeInQuery pTypeInfo
     (flip maybeWrap) mElems $ \queryParamElems -> do
         pElemTypeInfo <- getElement pTypeInfo
         arrayMapM (encode' pElemTypeInfo) queryParamElems >>= writeArray pTypeInfo
@@ -383,11 +382,6 @@ getSchemaType pTypeInfo = do
     nspname <- (#peek struct TypeInfo, nspname) pTypeInfo >>= peekCString
     typname <- (#peek struct TypeInfo, typname) pTypeInfo >>= peekCString
     return (pack nspname, pack typname)
-
-getSchemaTypeName :: Ptr TypeInfo -> IO Text
-getSchemaTypeName pTypeInfo = do
-    (nspname, typname) <- getSchemaType pTypeInfo
-    return $ mconcat [nspname, ".", typname]
 
 foreign import capi unsafe "plhaskell.h get_oid"
     c_getOid :: CBool -> CString -> CString -> IO Oid

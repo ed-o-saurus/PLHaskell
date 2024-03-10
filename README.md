@@ -258,8 +258,6 @@ debug3    |
 debug4    |
 debug5    |
 
-The function `assert :: Bool -> Text -> PGm()` raises an exception if the boolean is false. Otherwise, it does nothing.
-
 In addition, the function `raiseError :: Text -> a` stops execution and raises an error.
 
 ### Queries

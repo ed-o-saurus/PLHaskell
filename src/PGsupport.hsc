@@ -32,17 +32,16 @@ import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
 import Data.Functor          ((<$>))
 import Data.Int              (Int16, Int32, Int64)
 import Data.Maybe            (fromMaybe, isNothing)
-import Data.Text             (head, pack, singleton, Text)
+import Data.Text             (head, singleton, Text)
 import Data.Text.Encoding    (decodeUtf8, encodeUtf8)
-import Foreign.C.String      (CString)
 import Foreign.C.Types       (CBool (CBool), CInt (CInt), CSize (CSize))
 import Foreign.Marshal.Array (peekArray)
 import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
 import Foreign.Storable      (poke)
-import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, show, splitAt, undefined, zipWith, ($), (+), (++), (.), (>>=), (==))
+import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, splitAt, undefined, zipWith, ($), (+), (.), (>>=), (==))
 
-import PGcommon              (ArrayType, Datum (Datum), NullableDatum, TypeInfo, getCount, palloc, pallocArray, pUseAsCString, pWithArray, unNullableDatum, voidDatum)
+import PGcommon              (ArrayType, Datum (Datum), NullableDatum, TypeInfo, assert, getCount, palloc, pallocArray, pWithArray, unNullableDatum, voidDatum)
 
 encodeVoid :: () -> IO (Maybe Datum)
 encodeVoid () =  return Nothing
@@ -196,13 +195,6 @@ instance BaseType Double where
     read = datumGetFloat8
     write = float8GetDatum
 
-foreign import capi safe "plhaskell.h plhaskell_report"
-    plhaskellReport :: CInt -> CString -> IO ()
-
-assert :: Bool -> Text -> IO ()
-assert True _msg = return ()
-assert False msg = pUseAsCString (encodeUtf8 msg) (plhaskellReport (#const ERROR))
-
 data Array a = ArrayEmpty
              | Array1D  Int32                                          [a]
              | Array2D (Int32, Int32)                                 [[a]]
@@ -271,33 +263,36 @@ arrayNDim (Array4D _lbs _elems) = 4
 arrayNDim (Array5D _lbs _elems) = 5
 arrayNDim (Array6D _lbs _elems) = 6
 
+foreign import capi unsafe "plhaskell.h bad_multi_dim_array"
+    badMultiDimArray :: IO ()
+
 isRectangular1 :: Int -> [a] -> IO ()
 isRectangular1 len0 elems = do
-    assert (length elems == len0) "Multidimensional arrays must have sub-arrays with matching dimensions."
+    assert (length elems == len0) badMultiDimArray
 
 isRectangular2 :: (Int, Int) -> [[a]] -> IO ()
 isRectangular2 (len0, len1) elems = do
-    assert (length elems == len0) "Multidimensional arrays must have sub-arrays with matching dimensions."
+    assert (length elems == len0) badMultiDimArray
     mapM_ (isRectangular1 len1) elems
 
 isRectangular3 :: (Int, Int, Int) -> [[[a]]] -> IO ()
 isRectangular3 (len0, len1, len2) elems = do
-    assert (length elems == len0) "Multidimensional arrays must have sub-arrays with matching dimensions."
+    assert (length elems == len0) badMultiDimArray
     mapM_ (isRectangular2 (len1, len2)) elems
 
 isRectangular4 :: (Int, Int, Int, Int) -> [[[[a]]]] -> IO ()
 isRectangular4 (len0, len1, len2, len3) elems = do
-    assert (length elems == len0) "Multidimensional arrays must have sub-arrays with matching dimensions."
+    assert (length elems == len0) badMultiDimArray
     mapM_ (isRectangular3 (len1, len2, len3)) elems
 
 isRectangular5 :: (Int, Int, Int, Int, Int) -> [[[[[a]]]]] -> IO ()
 isRectangular5 (len0, len1, len2, len3, len4) elems = do
-    assert (length elems == len0) "Multidimensional arrays must have sub-arrays with matching dimensions."
+    assert (length elems == len0) badMultiDimArray
     mapM_ (isRectangular4 (len1, len2, len3, len4)) elems
 
 isRectangular6 :: (Int, Int, Int, Int, Int, Int) -> [[[[[[a]]]]]] -> IO ()
 isRectangular6 (len0, len1, len2, len3, len4, len5) elems = do
-    assert (length elems == len0) "Multidimensional arrays must have sub-arrays with matching dimensions."
+    assert (length elems == len0) badMultiDimArray
     mapM_ (isRectangular5 (len1, len2, len3, len4, len5)) elems
 
 linearize :: Array a -> [a]
@@ -406,6 +401,10 @@ product' :: Num a => [a] -> a
 product' [] = 0 -- Wrong but it's what postgres needs
 product' dims = product dims
 
+-- TODO : safe / unsafe
+foreign import capi unsafe "plhaskell.h higher_dim_arrays"
+    higherDimArrays :: IO ()
+
 readArray :: Ptr TypeInfo -> Datum -> IO (Array (Maybe Datum))
 readArray pTypeInfo datum = do
     let pArray = getArrayType datum
@@ -430,7 +429,7 @@ readArray pTypeInfo datum = do
         6 -> return $ Array6D (listTo6Tuple (map fromIntegral lbs)) ((chunksOf dim1) $ (chunksOf dim2) $ (chunksOf dim3) $ (chunksOf dim4) $ (chunksOf dim5) elems)
             where (_dim0, dim1, dim2, dim3, dim4, dim5) = listTo6Tuple dims'
         _ -> do
-            pUseAsCString (encodeUtf8 (pack ("PL/Haskell does not support " ++ show ndim ++ "-dimensional arrays"))) (plhaskellReport (#const ERROR))
+            higherDimArrays
             undefined -- Never called
 
 foreign import capi unsafe "plhaskell.h write_array"

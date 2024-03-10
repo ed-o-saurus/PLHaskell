@@ -40,23 +40,13 @@ import Foreign.Storable             (peek, peekByteOff, peekElemOff, poke)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runInterpreter, runStmt, set, setImportsF, typeChecks)
 import Prelude                      (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (.), (>>=))
 
-import PGcommon                     (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getElement, getFields, pWithCString, range, voidDatum)
+import PGcommon                     (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, pWithCString, range, voidDatum)
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
 interpolate "" _n = ""
 interpolate ('?':ss) n = show n ++ interpolate ss n
 interpolate (s:ss) n = s : interpolate ss n
-
--- Function to record message or raise exception
-foreign import capi safe "plhaskell.h plhaskell_report"
-    plhaskellReport :: CInt -> CString -> IO ()
-
-raise :: CInt -> String -> IO ()
-raise level msg = pWithCString msg (plhaskellReport level)
-
-raiseError :: String -> IO ()
-raiseError = raise (#const ERROR)
 
 getDataType :: Oid -> Maybe String
 getDataType (#const BYTEAOID)  = Just "ByteString"
@@ -207,6 +197,12 @@ defineDecodeArg pCallInfo i = do
     decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
     runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
+foreign import capi safe "plhaskell.h error_func_sig"
+    c_errorFuncSig :: CString -> IO ()
+
+errorFuncSig :: String -> IO ()
+errorFuncSig funcSig = pWithCString funcSig c_errorFuncSig
+
 -- Set up interpreter to evaluate a function
 setUpEvalInt :: Ptr CallInfo -> Interpreter ([Int16], String, Bool)
 setUpEvalInt pCallInfo = do
@@ -232,10 +228,8 @@ setUpEvalInt pCallInfo = do
 
     -- Check signature
     signature <- getSignature pCallInfo
-    r <- typeChecks ("PGmodule." ++ funcName ++ "::" ++ signature)
-    if r
-        then return ()
-        else liftIO $ raiseError ("Expected Signature : " ++ funcName ++ " :: " ++ signature)
+    r <- typeChecks $ "PGmodule." ++ funcName ++ "::" ++ signature
+    liftIO $ assert r $ errorFuncSig $ funcName ++ " :: " ++ signature
 
     -- Number of arguments
     nargs <- liftIO $ (#peek struct CallInfo, nargs) pCallInfo
@@ -251,16 +245,25 @@ setUpEvalInt pCallInfo = do
 
     return (argIdxes, funcName, toBool trusted)
 
+foreign import capi unsafe "plhaskell.h unknown_compiler_error"
+    unknownComilerError :: IO ()
+
+foreign import capi unsafe "plhaskell.h language_error"
+    c_languageError :: CInt -> CString -> IO ()
+
+languageError :: String -> IO ()
+languageError msg = (pWithCString msg) (c_languageError (#const ERROR))
+
 -- Execute an interpreter monad and handle the result
 execute :: Interpreter () -> IO ()
 execute int = do
     r <- runInterpreter int
     case r of
-        Left (UnknownError msg)    -> raiseError msg
-        Left (WontCompile [])      -> raiseError "PL/Haskell : Unknown Compiler Error"
-        Left (WontCompile (err:_)) -> raiseError $ errMsg err
-        Left (NotAllowed msg)      -> raiseError msg
-        Left (GhcException msg)    -> raiseError msg
+        Left (UnknownError msg)    -> languageError msg
+        Left (WontCompile [])      -> unknownComilerError
+        Left (WontCompile (err:_)) -> languageError $ errMsg err
+        Left (NotAllowed msg)      -> languageError msg
+        Left (GhcException msg)    -> languageError msg
         Right ()                   -> return ()
 
 -- Check the type signature of the function against what is expected
@@ -283,9 +286,7 @@ checkSignature pCallInfo = execute $ do
 
     signature <- getSignature pCallInfo
     r <- typeChecks $ "PGmodule." ++ funcName ++ "::" ++ signature
-    if r
-        then return ()
-        else liftIO $ raiseError $ "Expected Signature : " ++ funcName ++ " :: " ++ signature
+    liftIO $ assert r $ errorFuncSig $ funcName ++ " :: " ++ signature
 
 -- Set the Function field of the CallInfo struct to a function that
 -- will read the arguments, call the function, and write the result

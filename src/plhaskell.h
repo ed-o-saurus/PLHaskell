@@ -117,4 +117,15 @@ Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
 
 void commit_rollback(bool commit, bool chain);
 
+void bad_multi_dim_array();
+void expected_type(Oid type_oid);
+void expected_composite();
+void expected_array();
+void expected_type_in_query(struct TypeInfo* p_type_info);
+void incorrect_length(struct TypeInfo* p_type_info);
+void higher_dim_arrays();
+void unknown_compiler_error();
+void error_func_sig(char* func_sig);
+void language_error(int elevel, char* msg);
+
 #endif

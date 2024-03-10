@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (ArrayType, CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, getCount, getElement, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon (ArrayType, CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -38,7 +38,7 @@ import Foreign.Marshal.Array (pokeArray)
 import Foreign.Marshal.Utils (copyBytes, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.Storable      (alignment, peek, peekByteOff, peekElemOff, poke, sizeOf, Storable)
-import Prelude               (Eq, Int, Integral, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
+import Prelude               (Bool(False, True), Eq, Int, Integral, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
 
 -- Dummy types to make pointers
 data CallInfo
@@ -47,6 +47,10 @@ data ArrayType
 
 newtype Datum = Datum WordPtr deriving newtype (Storable)
 newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
+
+assert :: Bool -> IO () -> IO ()
+assert True _action = return ()
+assert False action = action -- pUseAsCString (encodeUtf8 msg) (plhaskellReport (#const ERROR))
 
 voidDatum :: Datum
 voidDatum = Datum $ ptrToWordPtr nullPtr
