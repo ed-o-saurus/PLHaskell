@@ -28,6 +28,7 @@
 
 #include "funcapi.h"
 #include "executor/spi.h"
+#include "utils/array.h"
 
 #include "HsFFI.h"
 
