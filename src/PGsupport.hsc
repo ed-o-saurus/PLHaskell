@@ -50,7 +50,7 @@ maybeWrap :: (a -> IO b) -> Maybe a -> IO (Maybe b)
 maybeWrap _ Nothing = return Nothing
 maybeWrap func (Just value) = Just <$> func value
 
-foreign import capi unsafe "plhaskell.h datum_SPI_copy"
+foreign import capi safe "plhaskell.h datum_SPI_copy"
     datumSPICopy :: Ptr TypeInfo -> Datum -> IO Datum
 
 class BaseType a where
@@ -72,7 +72,7 @@ writeResult pIsNull (Just result) = do
     poke pIsNull (fromBool False)
     return result
 
-foreign import capi unsafe "plhaskell.h read_composite"
+foreign import capi safe "plhaskell.h read_composite"
     c_readComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
 
 readComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
@@ -85,7 +85,7 @@ readComposite pTypeInfo datum = do
         isNulls <- peekArray count' pIsNulls
         return $ zipWith (\fieldDatum isNull -> (if (toBool isNull) then Nothing else Just fieldDatum)) datums isNulls
 
-foreign import capi unsafe "plhaskell.h write_composite"
+foreign import capi safe "plhaskell.h write_composite"
     c_writeComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
 
 writeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
@@ -95,21 +95,21 @@ writeComposite pTypeInfo fields = do
     pWithArray datums $ pWithArray isNulls . c_writeComposite pTypeInfo
 
 -- Get the size of a variable length array
-foreign import capi unsafe "plhaskell.h VARSIZE_ANY_EXHDR"
+foreign import capi safe "plhaskell.h VARSIZE_ANY_EXHDR"
     getVarSize :: Datum -> IO CSize
 
 -- Set the size of a variable length array
-foreign import capi unsafe "plhaskell.h SET_VARSIZE"
+foreign import capi safe "plhaskell.h SET_VARSIZE"
     c_setVarSize :: Datum -> CSize -> IO ()
 
 setVarSize :: Datum -> CSize -> IO ()
 setVarSize datum len = c_setVarSize datum ((#const VARHDRSZ) + len)
 
 -- Get the start of a variable length array
-foreign import capi unsafe "plhaskell.h VARDATA_ANY"
+foreign import capi safe "plhaskell.h VARDATA_ANY"
     getVarData :: Datum -> IO (Ptr b)
 
-foreign import capi unsafe "plhaskell.h detoast_datum"
+foreign import capi safe "plhaskell.h detoast_datum"
     detoastDatum :: Datum -> IO Datum
 
 instance BaseType ByteString where
@@ -135,60 +135,60 @@ instance BaseType Char where
     read value = head <$> read value
     write = write . singleton
 
-foreign import capi unsafe "plhaskell.h DatumGetBool"
+foreign import capi safe "plhaskell.h DatumGetBool"
     datumGetBool :: Datum -> IO CBool
 
-foreign import capi unsafe "plhaskell.h BoolGetDatum"
+foreign import capi safe "plhaskell.h BoolGetDatum"
     boolGetDatum :: CBool -> IO Datum
 
 instance BaseType Bool where
     read value = toBool <$> datumGetBool value
     write = boolGetDatum . CBool . fromBool
 
-foreign import capi unsafe "plhaskell.h DatumGetInt16"
+foreign import capi safe "plhaskell.h DatumGetInt16"
     datumGetInt16 :: Datum -> IO Int16
 
-foreign import capi unsafe "plhaskell.h Int16GetDatum"
+foreign import capi safe "plhaskell.h Int16GetDatum"
     int16GetDatum :: Int16 -> IO Datum
 
 instance BaseType Int16 where
     read = datumGetInt16
     write = int16GetDatum
 
-foreign import capi unsafe "plhaskell.h DatumGetInt32"
+foreign import capi safe "plhaskell.h DatumGetInt32"
     datumGetInt32 :: Datum -> IO Int32
 
-foreign import capi unsafe "plhaskell.h Int32GetDatum"
+foreign import capi safe "plhaskell.h Int32GetDatum"
     int32GetDatum :: Int32 -> IO Datum
 
 instance BaseType Int32 where
     read = datumGetInt32
     write = int32GetDatum
 
-foreign import capi unsafe "plhaskell.h DatumGetInt64"
+foreign import capi safe "plhaskell.h DatumGetInt64"
     datumGetInt64 :: Datum -> IO Int64
 
-foreign import capi unsafe "plhaskell.h Int64GetDatum"
+foreign import capi safe "plhaskell.h Int64GetDatum"
     int64GetDatum :: Int64 -> IO Datum
 
 instance BaseType Int64 where
     read = datumGetInt64
     write = int64GetDatum
 
-foreign import capi unsafe "plhaskell.h DatumGetFloat4"
+foreign import capi safe "plhaskell.h DatumGetFloat4"
     datumGetFloat4 :: Datum -> IO Float
 
-foreign import capi unsafe "plhaskell.h Float4GetDatum"
+foreign import capi safe "plhaskell.h Float4GetDatum"
     float4GetDatum :: Float -> IO Datum
 
 instance BaseType Float where
     read = datumGetFloat4
     write = float4GetDatum
 
-foreign import capi unsafe "plhaskell.h DatumGetFloat8"
+foreign import capi safe "plhaskell.h DatumGetFloat8"
     datumGetFloat8 :: Datum -> IO Double
 
-foreign import capi unsafe "plhaskell.h Float8GetDatum"
+foreign import capi safe "plhaskell.h Float8GetDatum"
     float8GetDatum :: Double -> IO Datum
 
 instance BaseType Double where
@@ -263,7 +263,7 @@ arrayNDim (Array4D _lbs _elems) = 4
 arrayNDim (Array5D _lbs _elems) = 5
 arrayNDim (Array6D _lbs _elems) = 6
 
-foreign import capi unsafe "plhaskell.h bad_multi_dim_array"
+foreign import capi safe "plhaskell.h bad_multi_dim_array"
     badMultiDimArray :: IO ()
 
 isRectangular1 :: Int -> [a] -> IO ()
@@ -374,19 +374,19 @@ listTo6Tuple :: [a] -> (a, a, a, a, a, a)
 listTo6Tuple [x0, x1, x2, x3, x4, x5] = (x0, x1, x2, x3, x4, x5)
 listTo6Tuple _ = undefined
 
-foreign import capi unsafe "plhaskell.h get_array_type"
+foreign import capi safe "plhaskell.h get_array_type"
     getArrayType :: Datum -> Ptr ArrayType
 
-foreign import capi unsafe "plhaskell.h get_ndim"
+foreign import capi safe "plhaskell.h get_ndim"
     getNdim :: Ptr ArrayType -> IO CInt
 
-foreign import capi unsafe "plhaskell.h get_lbs_ptr"
+foreign import capi safe "plhaskell.h get_lbs_ptr"
     getLbsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
-foreign import capi unsafe "plhaskell.h get_dims_ptr"
+foreign import capi safe "plhaskell.h get_dims_ptr"
     getDimsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
-foreign import capi unsafe "plhaskell.h get_array_elems"
+foreign import capi safe "plhaskell.h get_array_elems"
     c_getArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> CInt -> Ptr Datum -> Ptr CBool -> IO ()
 
 getArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> Int -> IO [Maybe Datum]
@@ -402,7 +402,7 @@ product' [] = 0 -- Wrong but it's what postgres needs
 product' dims = product dims
 
 -- TODO : safe / unsafe
-foreign import capi unsafe "plhaskell.h higher_dim_arrays"
+foreign import capi safe "plhaskell.h higher_dim_arrays"
     higherDimArrays :: IO ()
 
 readArray :: Ptr TypeInfo -> Datum -> IO (Array (Maybe Datum))
@@ -432,7 +432,7 @@ readArray pTypeInfo datum = do
             higherDimArrays
             undefined -- Never called
 
-foreign import capi unsafe "plhaskell.h write_array"
+foreign import capi safe "plhaskell.h write_array"
     c_writeArray :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> CInt -> Ptr CInt -> Ptr CInt -> IO Datum
 
 writeArray :: Ptr TypeInfo -> Array (Maybe Datum) -> IO Datum

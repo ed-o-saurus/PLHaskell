@@ -245,10 +245,10 @@ setUpEvalInt pCallInfo = do
 
     return (argIdxes, funcName, toBool trusted)
 
-foreign import capi unsafe "plhaskell.h unknown_compiler_error"
+foreign import capi safe "plhaskell.h unknown_compiler_error"
     unknownComilerError :: IO ()
 
-foreign import capi unsafe "plhaskell.h language_error"
+foreign import capi safe "plhaskell.h language_error"
     c_languageError :: CInt -> CString -> IO ()
 
 languageError :: String -> IO ()

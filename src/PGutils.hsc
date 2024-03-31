@@ -119,19 +119,19 @@ getOid (QueryParamFloat8 _) = return (#const FLOAT8OID)
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
-foreign import capi unsafe "plhaskell.h expected_type"
+foreign import capi safe "plhaskell.h expected_type"
     expectedType :: Oid -> IO ()
 
-foreign import capi unsafe "plhaskell.h expected_composite"
+foreign import capi safe "plhaskell.h expected_composite"
     expectedComposite :: IO ()
 
-foreign import capi unsafe "plhaskell.h expected_array"
+foreign import capi safe "plhaskell.h expected_array"
     expectedArray :: IO ()
 
-foreign import capi unsafe "plhaskell.h expected_type_in_query"
+foreign import capi safe "plhaskell.h expected_type_in_query"
     expectedTypeInQuery :: Ptr TypeInfo -> IO ()
 
-foreign import capi unsafe "plhaskell.h incorrect_length"
+foreign import capi safe "plhaskell.h incorrect_length"
     incorrectLength :: Ptr TypeInfo -> IO ()
 
 -- Verify that the TypeInfo struct oid is expected
@@ -229,7 +229,7 @@ data QueryResults = SelectResults          Word64 [Text] [[QueryResultValue]]
                   | UtilityResults         Word64
                   | RewrittenResults       Word64 deriving stock Show
 
-foreign import capi unsafe "plhaskell.h get_header_field"
+foreign import capi safe "plhaskell.h get_header_field"
     c_getHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
 
 getHeaderField :: Ptr TupleTable -> Int16 -> IO Text
@@ -242,7 +242,7 @@ getHeader pTupleTable = do
     natts <- getNatts pTupleTable
     mapM (getHeaderField pTupleTable) [1 .. natts]
 
-foreign import capi unsafe "plhaskell.h get_oids"
+foreign import capi safe "plhaskell.h get_oids"
     c_getOids :: Ptr TupleTable -> Ptr Oid -> IO ()
 
 getOids :: Ptr TupleTable -> IO [Oid]
@@ -255,10 +255,10 @@ getOids pTupleTable = do
 foreign import capi safe "plhaskell.h new_type_info"
     newTypeInfo :: Oid -> IO (Ptr TypeInfo)
 
-foreign import capi unsafe "plhaskell.h delete_type_info"
+foreign import capi safe "plhaskell.h delete_type_info"
     deleteTypeInfo :: Ptr TypeInfo -> IO ()
 
-foreign import capi unsafe "plhaskell.h get_tuple_datum"
+foreign import capi safe "plhaskell.h get_tuple_datum"
     c_getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> Ptr CBool -> IO Datum
 
 getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> IO (Maybe Datum)
@@ -324,7 +324,7 @@ foreign import ccall safe "executor/spi.h &SPI_processed"
 foreign import ccall safe "executor/spi.h &SPI_tuptable"
     pSPITupTable :: Ptr (Ptr TupleTable)
 
-foreign import capi unsafe "plhaskell.h free_tuptable"
+foreign import capi safe "plhaskell.h free_tuptable"
     freeTupTable :: Ptr TupleTable -> IO ()
 
 getIsNull :: Maybe Datum -> CBool
@@ -383,10 +383,10 @@ getSchemaType pTypeInfo = do
     typname <- (#peek struct TypeInfo, typname) pTypeInfo >>= peekCString
     return (pack nspname, pack typname)
 
-foreign import capi unsafe "plhaskell.h get_oid"
+foreign import capi safe "plhaskell.h get_oid"
     c_getOid :: CBool -> CString -> CString -> IO Oid
 
-foreign import capi unsafe "plhaskell.h find_oid"
+foreign import capi safe "plhaskell.h find_oid"
     c_findOid :: CBool -> CString -> IO Oid
 
 getCompositeOid :: (Maybe Text, Text) -> IO Oid
@@ -397,7 +397,7 @@ getArrayOid :: (Maybe Text, Text) -> IO Oid
 getArrayOid (Nothing,      typname) = pWithCString                   (unpack typname) $ c_findOid (fromBool True)
 getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ c_getOid  (fromBool True)
 
-foreign import capi unsafe "plhaskell.h commit_rollback"
+foreign import capi safe "plhaskell.h commit_rollback"
     commitRollback:: CBool -> CBool -> PGm ()
 
 commit :: Bool -> PGm ()
