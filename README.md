@@ -412,8 +412,7 @@ $$
     fibonacci' n = fibonacci' (n-2) + fibonacci' (n-1)
 
     fibonacci :: Maybe Int32 -> PGm (Maybe Int32)
-    fibonacci Nothing = return Nothing
-    fibonacci (Just n) = return $ Just $ fibonacci' n
+    fibonacci = return . fmap fibonacci'
 $$
 LANGUAGE plhaskell;
 ```
@@ -429,8 +428,7 @@ $$
     fibonacci' n = fibonacci' (n-2) + fibonacci' (n-1)
 
     fibonacci :: Maybe Int32 -> IO (Maybe Int32)
-    fibonacci Nothing = return Nothing
-    fibonacci (Just n) = return $ Just $ fibonacci' n
+    fibonacci = return . fmap fibonacci'
 $$
 LANGUAGE plhaskellu;
 ```
@@ -580,13 +578,8 @@ $$
     import PGutils (PGm, Array, arrayMap)
     import Data.Int (Int32)
 
-    increment :: Maybe Int32 -> Maybe Int32
-    increment Nothing = Nothing
-    increment (Just i) = Just (i+1)
-
     increment_array :: Maybe (Array (Maybe Int32)) -> PGm (Maybe (Array (Maybe Int32)))
-    increment_array Nothing = return Nothing
-    increment_array (Just array) = return $ Just $ arrayMap increment array
+    increment_array  = return . (fmap $ arrayMap $ fmap succ)
 $$
 LANGUAGE plhaskell;
 ```
@@ -597,13 +590,8 @@ $$
     import PGutils (Array, arrayMap)
     import Data.Int (Int32)
 
-    increment :: Maybe Int32 -> Maybe Int32
-    increment Nothing = Nothing
-    increment (Just i) = Just (i+1)
-
     increment_array :: Maybe (Array (Maybe Int32)) -> IO (Maybe (Array (Maybe Int32)))
-    increment_array Nothing = return Nothing
-    increment_array (Just array) = return $ Just $ arrayMap increment array
+    increment_array  = return . (fmap $ arrayMap $ fmap succ)
 $$
 LANGUAGE plhaskellu;
 ```
