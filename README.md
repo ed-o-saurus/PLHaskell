@@ -292,6 +292,25 @@ The function `ghc_version` takes no arguments and returns the version of the und
 * 806 for GHC 8.6.x
 * etc...
 
+## Known Bugs
+
+### `lc_messages` Language issue
+
+It is known that the extension does not function properly if `lc_messages` runtime parameter is set to a value other than `'C'` or `'en_US.utf8'`. The workaround is to use the `SET` clause in function declarations.
+
+```
+CREATE FUNCTION increment_array(int[]) RETURNS int[] IMMUTABLE AS
+$$
+    import PGutils (PGm, Array, arrayMap)
+    import Data.Int (Int32)
+
+    increment_array :: Maybe (Array (Maybe Int32)) -> PGm (Maybe (Array (Maybe Int32)))
+    increment_array  = return . (fmap $ arrayMap $ fmap succ)
+$$
+LANGUAGE plhaskell
+SET lc_messages TO 'C';
+```
+
 ## Examples
 
 ### Addition
