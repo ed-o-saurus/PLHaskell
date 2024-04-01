@@ -227,9 +227,9 @@ The `Int32` values represent the lower bounds of the array indexes and the lists
 
 #### Array Mapping Functions
 
-The function `arrayMap :: (a -> b) -> Array a -> Array b` applies the provided function to all elements in an array. 
+The function `arrayMap :: (a -> b) -> Array a -> Array b` applies the provided function to all elements in an array.
 
-The function `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` applies a monadic action to the elements in an array in order. 
+The function `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` applies a monadic action to the elements in an array in order.
 
 ### Inline Code
 
