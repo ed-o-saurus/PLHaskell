@@ -32,6 +32,8 @@ PG_INCLUDE_DIR = $(shell pg_config --includedir-server)
 PG_SHARE_DIR   = $(shell pg_config --sharedir)
 PG_PKG_LIB_DIR = $(shell pg_config --pkglibdir)
 
+RTS_INCLUDE_DIR = $(shell ghc-pkg --simple-output field rts include-dirs)
+
 .PHONY: all install clean distclean uninstall
 
 all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/plhaskell.so src/pgutils-3.1.conf selinux/plhaskell.pp
@@ -60,7 +62,7 @@ src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGcommon.hs  -o src/PGcommon.o  -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-3.1
 
 %.hs : %.hsc src/plhaskell.h
-	hsc2hs $< -I$(PG_INCLUDE_DIR)
+	hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
 
 %.dyn_hi : %.hi
 	cp $^ $@
