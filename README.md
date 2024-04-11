@@ -345,7 +345,7 @@ The function `ghc_version` takes no arguments and returns the version of the und
 
 ## Known Bugs
 
-### `lc_messages` Language issue
+### `lc_messages` Language Issue
 
 It is known that the extension does not function properly if `lc_messages` runtime parameter is set to a value other than `'C'` or `'en_US.utf8'`. The workaround is to use the `SET` clause in function declarations.
 
