@@ -17,7 +17,7 @@
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 Name:           plhaskell
-Version:        3.1
+Version:        4.0
 Release:        1%{?dist}
 Summary:        PL/Haskell language extention for PostgreSQL
 
@@ -102,5 +102,5 @@ rm -frv *
 rm -frv %{buildroot}
 
 %changelog
-* Sun Jan 29 2023 Ed Behn <ed@behn.us>
+* Sat Apr 13 2024 Ed Behn <ed@behn.us>
 - Initial config
