@@ -121,7 +121,7 @@ Build the `.deb` package:
 
 **`$>`** `cd PLHaskell`
 
-**`$>`** `debuild --no-tgz-check`
+**`$>`** `debuild -j1 --no-tgz-check`
 
 Install the `.deb` package written to the parent directory on the target machine.
 
