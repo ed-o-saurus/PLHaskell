@@ -34,6 +34,8 @@ PG_PKG_LIB_DIR = $(shell pg_config --pkglibdir)
 
 RTS_INCLUDE_DIR = $(shell ghc-pkg --simple-output field rts include-dirs)
 
+.NOTPARALLEL:
+
 .PHONY: all install clean distclean uninstall
 
 all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp

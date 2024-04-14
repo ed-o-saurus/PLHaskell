@@ -121,7 +121,7 @@ Build the `.deb` package:
 
 **`$>`** `cd PLHaskell`
 
-**`$>`** `debuild --no-tgz-check -j1`
+**`$>`** `debuild --no-tgz-check`
 
 Install the `.deb` package written to the parent directory on the target machine.
 
@@ -363,10 +363,6 @@ $$
 LANGUAGE plhaskell
 SET lc_messages TO 'C';
 ```
-
-### Multiple Jobs in Make
-
-Attempting to make multiple files simultaneously can cause unpredictable errors. Do not attempt to use the `-j` option with the `make` command.
 
 ## Examples
 
