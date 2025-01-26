@@ -133,7 +133,9 @@ The following are needed to build and install PL/Haskell:
 * PostgreSQL server
 * PostgreSQL development files
 * Glasgow Haskell Compiler (GHC)
-* The GHC Hint development module
+* The GHC hint development package
+* The GHC bytestring development package
+* The GHC text development package
 * libpq-devel
 
 #### Build
