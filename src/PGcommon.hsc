@@ -29,7 +29,7 @@
 
 #include "plhaskell.h"
 
-module PGcommon (ArrayType, CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getTypeOid, getValueType, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getTypeOid, getValueType, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
@@ -42,10 +42,8 @@ import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.Storable      (alignment, peek, peekByteOff, peekElemOff, poke, sizeOf, Storable)
 import Prelude               (Bool(False, True), Eq, Int, Integral, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
 
--- Dummy types to make pointers
-data CallInfo
+-- Dummy type to make pointers
 data TypeInfo
-data ArrayType
 
 newtype Datum = Datum WordPtr deriving newtype (Storable)
 newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)

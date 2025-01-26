@@ -41,7 +41,10 @@ import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
 import Foreign.Storable      (poke)
 import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, splitAt, undefined, zipWith, ($), (+), (.), (>>=), (==))
 
-import PGcommon              (ArrayType, Datum (Datum), NullableDatum, TypeInfo, assert, getCount, palloc, pallocArray, pWithArray, unNullableDatum, voidDatum)
+import PGcommon              (Datum (Datum), NullableDatum, TypeInfo, assert, getCount, palloc, pallocArray, pWithArray, unNullableDatum, voidDatum)
+
+-- Dummy type to make pointers
+data ArrayType
 
 encodeVoid :: () -> IO (Maybe Datum)
 encodeVoid () =  return Nothing

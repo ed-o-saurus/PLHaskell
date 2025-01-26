@@ -40,7 +40,10 @@ import Language.Haskell.Interpreter        (Extension (OverloadedStrings, Safe),
 import Language.Haskell.Interpreter.Unsafe (unsafeRunInterpreterWithArgs)
 import Prelude                             (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (.), (>>=))
 
-import PGcommon                            (CallInfo, Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pWithCString, range, voidDatum)
+import PGcommon                            (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pWithCString, range, voidDatum)
+
+-- Dummy type to make pointers
+data CallInfo
 
 -- Replace all instances of ? with i
 interpolate :: String -> Int16 -> String
