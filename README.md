@@ -259,7 +259,7 @@ debug3    |
 debug4    |
 debug5    |
 
-In addition, the function `raiseError :: Text -> a` stops execution and raises an error.
+In addition, the functions `raiseError :: Text -> a` and `raiseFatal :: Text -> a` stop execution and raise an error.
 
 ### Queries
 

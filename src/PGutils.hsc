@@ -28,7 +28,7 @@
 
 #include "plhaskell.h"
 
-module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad         (zipWithM)
 import Control.Monad.Fail    (MonadFail (fail))
@@ -74,10 +74,16 @@ foreign import capi safe "plhaskell.h plhaskell_report"
 report :: ErrorLevel -> Text -> PGm ()
 report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) (plhaskellReport elevel)
 
+raise :: ErrorLevel -> Text -> a
+raise elevel msg = unsafePerformIO $ do
+    unPGm $ report elevel msg
+    undefined  -- Never reached
+
 raiseError :: Text -> a
-raiseError msg = unsafePerformIO $ do
-    unPGm $ report exception msg
-    undefined
+raiseError = raise exception
+
+raiseFatal :: Text -> a
+raiseFatal = raise fatal
 
 instance MonadFail PGm where
     fail = raiseError . pack
