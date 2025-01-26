@@ -80,7 +80,7 @@ struct CallInfo
 
     union
     {
-        Datum (*function)(NullableDatum *args, bool *isnull); // Pointer to the function to be called to read Args and populate Result
+        Datum (*function)(NullableDatum *args, bool *isnull); // Pointer to the function to be called to return result
         HsStablePtr list;                                     // Stable pointer to list of results
     };
 
