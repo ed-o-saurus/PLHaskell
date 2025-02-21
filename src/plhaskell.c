@@ -989,7 +989,7 @@ static void mod_exit(int _code, Datum arg)
 PG_FUNCTION_INFO_V1(ghc_version);
 Datum ghc_version(PG_FUNCTION_ARGS)
 {
-    PG_RETURN_INT32(hint_ghc_version());
+    PG_RETURN_INT32(__GLASGOW_HASKELL__);
 }
 
 Oid get_oid(bool array, char *nspname, char *typname) __attribute__((visibility("hidden")));

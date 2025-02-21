@@ -27,7 +27,7 @@
 module PLHaskell () where
 
 import Control.Monad                       (mapM, mapM_, (>=>), zipWithM)
-import Data.Int                            (Int16, Int32)
+import Data.Int                            (Int16)
 import Data.List                           (intercalate)
 import Data.Maybe                          (fromMaybe)
 import Foreign.C.String                    (CString, peekCString)
@@ -36,7 +36,7 @@ import Foreign.Marshal.Utils               (fromBool, toBool)
 import Foreign.Ptr                         (Ptr, nullPtr, plusPtr, ptrToWordPtr, WordPtr (WordPtr))
 import Foreign.StablePtr                   (castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable                    (peek, peekByteOff, peekElemOff, poke)
-import Language.Haskell.Interpreter        (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, ghcVersion, installedModulesInScope, languageExtensions, liftIO, loadModules, runStmt, set, setImportsF, typeChecks)
+import Language.Haskell.Interpreter        (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runStmt, set, setImportsF, typeChecks)
 import Language.Haskell.Interpreter.Unsafe (unsafeRunInterpreterWithArgs)
 import Prelude                             (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (.), (>>=))
 
@@ -344,8 +344,3 @@ iterate pCallInfo pResultIsNull = do
         (returnResult:tail) -> do
             (newStablePtr tail) >>= (poke pList)
             returnResult pResultIsNull
-
--- Version of the underlying GHC API.
-foreign export capi "hint_ghc_version" hintGhcVersion :: Int32
-hintGhcVersion :: Int32
-hintGhcVersion = fromIntegral ghcVersion
