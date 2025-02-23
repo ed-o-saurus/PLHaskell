@@ -257,7 +257,7 @@ arrayDims6 elems = case elems of
         where (len1, len2, len3, len4, len5) = arrayDims5 first
 
 arrayNDim :: Array a -> Int
-arrayNDim ArrayEmpty             = 0
+arrayNDim ArrayEmpty            = 0
 arrayNDim (Array1D _lbs _elems) = 1
 arrayNDim (Array2D _lbs _elems) = 2
 arrayNDim (Array3D _lbs _elems) = 3
