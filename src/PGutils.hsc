@@ -2,7 +2,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE OverloadedStrings #-}
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
 
