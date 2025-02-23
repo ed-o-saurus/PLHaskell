@@ -166,7 +166,7 @@ A policy file designed to accommodate Red Hat based systems can be built by runn
 
 ### Testing
 
-Test batteries are provided in the `tests_trusted.sql` and `tests_untrusted.sql` files in the root directory. They can be run with the commands
+Test batteries are provided in the `tests_trusted.sql` and `tests_untrusted.sql` files in the `tests` directory. They can be run with the commands
 
 **`$>`** `psql -f tests_trusted.sql`
 
