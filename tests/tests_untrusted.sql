@@ -1199,14 +1199,14 @@ BEGIN
 
             IF x%3 = 0 THEN
                 IF a is not null THEN
-                    raise EXCEPTION '1-d array failed';
+                    raise EXCEPTION '2-d array failed';
                 END IF;
             ELSE
                 IF a is null THEN
-                    raise EXCEPTION '1-d array failed';
+                    raise EXCEPTION '2-d array failed';
                 END IF;
                 IF a != x THEN
-                    raise EXCEPTION '1-d array failed';
+                    raise EXCEPTION '2-d array failed';
                 END IF;
             END IF;
         END LOOP;
@@ -1220,14 +1220,14 @@ BEGIN
 
                 IF x%3 = 0 THEN
                     IF a is not null THEN
-                        raise EXCEPTION '1-d array failed';
+                        raise EXCEPTION '3-d array failed';
                     END IF;
                 ELSE
                     IF a is null THEN
-                        raise EXCEPTION '1-d array failed';
+                        raise EXCEPTION '3-d array failed';
                     END IF;
                     IF a != x THEN
-                        raise EXCEPTION '1-d array failed';
+                        raise EXCEPTION '3-d array failed';
                     END IF;
                 END IF;
             END LOOP;
@@ -1243,14 +1243,14 @@ BEGIN
 
                     IF x%3 = 0 THEN
                         IF a is not null THEN
-                            raise EXCEPTION '1-d array failed';
+                            raise EXCEPTION '4-d array failed';
                         END IF;
                     ELSE
                         IF a is null THEN
-                            raise EXCEPTION '1-d array failed';
+                            raise EXCEPTION '4-d array failed';
                         END IF;
                         IF a != x THEN
-                            raise EXCEPTION '1-d array failed';
+                            raise EXCEPTION '4-d array failed';
                         END IF;
                     END IF;
                 END LOOP;
@@ -1268,14 +1268,14 @@ BEGIN
 
                         IF x%3 = 0 THEN
                             IF a is not null THEN
-                                raise EXCEPTION '1-d array failed';
+                                raise EXCEPTION '5-d array failed';
                             END IF;
                         ELSE
                             IF a is null THEN
-                                raise EXCEPTION '1-d array failed';
+                                raise EXCEPTION '5-d array failed';
                             END IF;
                             IF a != x THEN
-                                raise EXCEPTION '1-d array failed';
+                                raise EXCEPTION '5-d array failed';
                             END IF;
                         END IF;
                     END LOOP;
@@ -1295,14 +1295,14 @@ BEGIN
 
                             IF x%3 = 0 THEN
                                 IF a is not null THEN
-                                    raise EXCEPTION '1-d array failed';
+                                    raise EXCEPTION '6-d array failed';
                                 END IF;
                             ELSE
                                 IF a is null THEN
-                                    raise EXCEPTION '1-d array failed';
+                                    raise EXCEPTION '6-d array failed';
                                 END IF;
                                 IF a != x THEN
-                                    raise EXCEPTION '1-d array failed';
+                                    raise EXCEPTION '6-d array failed';
                                 END IF;
                             END IF;
                         END LOOP;
@@ -1354,14 +1354,14 @@ BEGIN
 
             IF x%3 = 0 THEN
                 IF a is not null THEN
-                    raise EXCEPTION '1-d array copy failed';
+                    raise EXCEPTION '2-d array copy failed';
                 END IF;
             ELSE
                 IF a is null THEN
-                    raise EXCEPTION '1-d array copy failed';
+                    raise EXCEPTION '2-d array copy failed';
                 END IF;
                 IF a != x THEN
-                    raise EXCEPTION '1-d array copy failed';
+                    raise EXCEPTION '2-d array copy failed';
                 END IF;
             END IF;
         END LOOP;
@@ -1375,14 +1375,14 @@ BEGIN
 
                 IF x%3 = 0 THEN
                     IF a is not null THEN
-                        raise EXCEPTION '1-d array copy failed';
+                        raise EXCEPTION '3-d array copy failed';
                     END IF;
                 ELSE
                     IF a is null THEN
-                        raise EXCEPTION '1-d array copy failed';
+                        raise EXCEPTION '3-d array copy failed';
                     END IF;
                     IF a != x THEN
-                        raise EXCEPTION '1-d array copy failed';
+                        raise EXCEPTION '3-d array copy failed';
                     END IF;
                 END IF;
             END LOOP;
@@ -1398,14 +1398,14 @@ BEGIN
 
                     IF x%3 = 0 THEN
                         IF a is not null THEN
-                            raise EXCEPTION '1-d array copy failed';
+                            raise EXCEPTION '4-d array copy failed';
                         END IF;
                     ELSE
                         IF a is null THEN
-                            raise EXCEPTION '1-d array copy failed';
+                            raise EXCEPTION '4-d array copy failed';
                         END IF;
                         IF a != x THEN
-                            raise EXCEPTION '1-d array copy failed';
+                            raise EXCEPTION '4-d array copy failed';
                         END IF;
                     END IF;
                 END LOOP;
@@ -1423,14 +1423,14 @@ BEGIN
 
                         IF x%3 = 0 THEN
                             IF a is not null THEN
-                                raise EXCEPTION '1-d array copy failed';
+                                raise EXCEPTION '5-d array copy failed';
                             END IF;
                         ELSE
                             IF a is null THEN
-                                raise EXCEPTION '1-d array copy failed';
+                                raise EXCEPTION '5-d array copy failed';
                             END IF;
                             IF a != x THEN
-                                raise EXCEPTION '1-d array copy failed';
+                                raise EXCEPTION '5-d array copy failed';
                             END IF;
                         END IF;
                     END LOOP;
@@ -1450,14 +1450,14 @@ BEGIN
 
                             IF x%3 = 0 THEN
                                 IF a is not null THEN
-                                    raise EXCEPTION '1-d array copy failed';
+                                    raise EXCEPTION '6-d array copy failed';
                                 END IF;
                             ELSE
                                 IF a is null THEN
-                                    raise EXCEPTION '1-d array copy failed';
+                                    raise EXCEPTION '6-d array copy failed';
                                 END IF;
                                 IF a != x THEN
-                                    raise EXCEPTION '1-d array copy failed';
+                                    raise EXCEPTION '6-d array copy failed';
                                 END IF;
                             END IF;
                         END LOOP;
