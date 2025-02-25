@@ -656,18 +656,28 @@ static void destroy_call_info(void *arg)
 {
     struct CallInfo *p_call_info = arg;
 
-    if (p_call_info->mod_file_name)
-        unlink(p_call_info->mod_file_name);
-
     if (p_call_info->return_set)
     {
         if (p_call_info->list)
+        {
             hs_free_stable_ptr(p_call_info->list);
+            p_call_info->list = NULL;
+        }
     }
     else
     {
         if (p_call_info->function)
+        {
             hs_free_fun_ptr((HsFunPtr)(p_call_info->function));
+            p_call_info->function = NULL;
+        }
+    }
+
+    if (p_call_info->mod_file_name)
+    {
+        unlink(p_call_info->mod_file_name);
+        pfree(p_call_info->mod_file_name);
+        p_call_info->mod_file_name = NULL;
     }
 
     if (first_p_call_info == p_call_info)
@@ -982,8 +992,32 @@ void free_tuptable(struct SPITupleTable *tuptable)
 static void mod_exit(int _code, Datum arg)
 {
     for (struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
+        if (p_call_info->return_set)
+        {
+            if (p_call_info->list)
+            {
+                hs_free_stable_ptr(p_call_info->list);
+                p_call_info->list = NULL;
+            }
+        }
+        else
+        {
+            if (p_call_info->function)
+            {
+                hs_free_fun_ptr((HsFunPtr)(p_call_info->function));
+                p_call_info->function = NULL;
+            }
+        }
+
+    hs_exit();
+
+    for (struct CallInfo *p_call_info = first_p_call_info; p_call_info; p_call_info = p_call_info->next)
         if (p_call_info->mod_file_name)
+        {
             unlink(p_call_info->mod_file_name);
+            pfree(p_call_info->mod_file_name);
+            p_call_info->mod_file_name = NULL;
+        }
 }
 
 PG_FUNCTION_INFO_V1(ghc_version);
