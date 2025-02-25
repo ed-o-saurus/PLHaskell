@@ -46,8 +46,8 @@ import Foreign.Storable      (peek, peekByteOff, peekElemOff)
 import Prelude               (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Nothing, Just), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (>>=), (==))
 import System.IO.Unsafe      (unsafePerformIO)
 
-import PGsupport             (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, arrayMap, arrayMapM, readArray, readComposite, writeArray, writeComposite, maybeWrap)
-import PGcommon              (Oid (Oid), assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
+import PGsupport             (Array (..), Datum (Datum), BaseType (decode, encode), arrayMap, arrayMapM, readArray, readComposite, writeArray, writeComposite, maybeWrap)
+import PGcommon              (Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
 
 data TupleTable
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)

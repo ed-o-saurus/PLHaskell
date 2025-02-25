@@ -24,7 +24,7 @@
 
 #include "plhaskell.h"
 
-module PGsupport (Array (..), Datum (Datum), BaseType (decode, encode), TypeInfo, arrayMap, arrayMapM, encodeVoid, maybeWrap, mkResultList, readArray, readComposite, unNullableDatum, wrapFunction, writeArray, writeComposite, writeResult) where
+module PGsupport (Array (..), Datum (Datum), BaseType (decode, encode), arrayMap, arrayMapM, encodeVoid, maybeWrap, mkResultList, readArray, readComposite, wrapFunction, writeArray, writeComposite, writeResult) where
 
 import Control.Monad         ((>=>))
 import Data.ByteString       (packCStringLen, useAsCStringLen, ByteString)
@@ -40,7 +40,7 @@ import Foreign.Ptr           (FunPtr, Ptr, WordPtr (WordPtr), ptrToWordPtr)
 import Foreign.Storable      (poke)
 import Prelude               (Bool (False, True), Char, Double, Float, Int, IO, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, splitAt, undefined, zipWith, ($), (+), (.), (>>=), (==))
 
-import PGcommon              (Datum (Datum), NullableDatum, TypeInfo, assert, getCount, palloc, pallocArray, pWithArray, unNullableDatum, voidDatum)
+import PGcommon              (Datum (Datum), NullableDatum, TypeInfo, assert, getCount, palloc, pallocArray, pWithArray, voidDatum)
 
 -- Dummy type to make pointers
 data ArrayType
