@@ -289,7 +289,7 @@ Any type that can be passed to PL/Haskell functions can be used as a parameter b
 `QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])`       |
 `QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))` |
 
-The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and type name of the composite type. The `(Maybe Text, Text)` tuple in the `QueryParamArray` constructor is the schema and type name of the element type. If `Nothing` is used as the schema name, the first matching type in the search path is used.
+The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and name of the composite type. The `(Maybe Text, Text)` tuple in the `QueryParamArray` constructor is the schema and name of the element type. If `Nothing` is used as the schema, the first matching type in the search path is used.
 
 The constructors for `QueryResults` are the following:
 
@@ -324,7 +324,7 @@ The constructors for `QueryResultValue` are the following:
 `QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])`       |
 `QueryResultValueArray     (Text, Text) (Maybe (Array QueryResultValue))` |
 
-The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and type name of the composite type. The `(Text, Text)` tuple in the `QueryResultValueArray` constructor is the schema and type name of the element type.
+The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and name of the composite type. The `(Text, Text)` tuple in the `QueryResultValueArray` constructor is the schema and name of the element type.
 
 #### Commit and Rollback
 
