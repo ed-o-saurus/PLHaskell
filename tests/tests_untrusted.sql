@@ -661,11 +661,11 @@ SELECT plhaskellu_test.query_composite();
 
 CREATE FUNCTION plhaskellu_test.query_pass_composite() RETURNS void IMMUTABLE AS
 $$
-    import PGutils (PGm, raiseError, query, QueryResults (SelectResults), QueryParam (QueryParamComposite, QueryParamText, QueryParamInt4, QueryParamFloat8), QueryResultValue (QueryResultValueComposite, QueryResultValueText, QueryResultValueInt4, QueryResultValueFloat8))
+    import PGutils (unPGm, raiseError, query, QueryResults (SelectResults), QueryParam (QueryParamComposite, QueryParamText, QueryParamInt4, QueryParamFloat8), QueryResultValue (QueryResultValueComposite, QueryResultValueText, QueryResultValueInt4, QueryResultValueFloat8))
     import Data.Text (Text, pack)
 
-    query_pass_composite ::  PGm ()
-    query_pass_composite = do
+    query_pass_composite :: IO ()
+    query_pass_composite = unPGm $ do
         SelectResults _processed _header [row0] <- query "SELECT $1" [QueryParamComposite (Just "plhaskellu_test", "delta") (Just [QueryParamComposite (Just "plhaskellu_test", "bravo") (Just [QueryParamComposite (Just "plhaskellu_test", "alpha") (Just [QueryParamText (Just "Hello"), QueryParamInt4 (Just 12), QueryParamFloat8 (Just 3.4)]), QueryParamInt4 (Just 76)]), QueryParamComposite (Just "plhaskellu_test", "charlie") (Just [])])]
         let [QueryResultValueComposite (delta_schema0, delta_type0) (Just [QueryResultValueComposite (bravo_schema0, bravo_type0) (Just [QueryResultValueComposite (alpha_schema0, alpha_type0) (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (charlie_schema0, charlie_type0) (Just [])])] = row0
 
@@ -808,7 +808,7 @@ $$
 
         return ()
 $$
-LANGUAGE plhaskell;
+LANGUAGE plhaskellu;
 
 SELECT plhaskellu_test.query_pass_composite();
 
