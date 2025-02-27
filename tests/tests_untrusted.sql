@@ -311,14 +311,14 @@ $$
     import PGutils (unPGm, query, QueryResults (InsertReturningResults), QueryResultValue (QueryResultValueInt4, QueryResultValueText), raiseError)
 
     query_insert_returning :: IO ()
-    query_insert_returning = do
+    query_insert_returning = unPGm $ do
         InsertReturningResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0],
                                                              [QueryResultValueInt4 i1, QueryResultValueText l1],
-                                                             [QueryResultValueInt4 i2, QueryResultValueText l2]] <- unPGm $ query "INSERT INTO plhaskellu_test.t(i, l) \
-                                                                                                                                 \ SELECT i+3, l \
-                                                                                                                                 \ FROM plhaskellu_test.t \
-                                                                                                                                 \ WHERE i is not NULL \
-                                                                                                                                 \ ORDER BY i RETURNING i, l" []
+                                                             [QueryResultValueInt4 i2, QueryResultValueText l2]] <- query "INSERT INTO plhaskellu_test.t(i, l) \
+                                                                                                                         \ SELECT i+3, l \
+                                                                                                                         \ FROM plhaskellu_test.t \
+                                                                                                                         \ WHERE i is not NULL \
+                                                                                                                         \ ORDER BY i RETURNING i, l" []
 
         if processed == 3
         then return ()
@@ -365,16 +365,16 @@ $$
     import PGutils (unPGm, query, QueryResults (SelectResults), QueryResultValue (QueryResultValueInt4, QueryResultValueText), raiseError)
 
     query_select :: IO ()
-    query_select = do
+    query_select = unPGm $ do
         SelectResults processed [header1, header2] [[QueryResultValueInt4 i0, QueryResultValueText l0],
                                                     [QueryResultValueInt4 i1, QueryResultValueText l1],
                                                     [QueryResultValueInt4 i2, QueryResultValueText l2],
                                                     [QueryResultValueInt4 i3, QueryResultValueText l3],
                                                     [QueryResultValueInt4 i4, QueryResultValueText l4],
                                                     [QueryResultValueInt4 i5, QueryResultValueText l5],
-                                                    [QueryResultValueInt4 i6, QueryResultValueText l6]] <- unPGm $ query "SELECT i, l \
-                                                                                                                        \ FROM plhaskellu_test.t \
-                                                                                                                        \ ORDER BY i" []
+                                                    [QueryResultValueInt4 i6, QueryResultValueText l6]] <- query "SELECT i, l \
+                                                                                                                \ FROM plhaskellu_test.t \
+                                                                                                                \ ORDER BY i" []
 
         if processed == 7
         then return ()
@@ -453,9 +453,9 @@ $$
     import PGutils (unPGm, query, QueryResults (DeleteResults), raiseError)
 
     query_delete :: IO ()
-    query_delete = do
-        DeleteResults processed1 <- unPGm $ query "DELETE FROM plhaskellu_test.t" []
-        DeleteResults processed2 <- unPGm $ query "DELETE FROM plhaskellu_test.t" []
+    query_delete = unPGm $ do
+        DeleteResults processed1 <- query "DELETE FROM plhaskellu_test.t" []
+        DeleteResults processed2 <- query "DELETE FROM plhaskellu_test.t" []
 
         if processed1 == 7
         then return ()
@@ -474,8 +474,8 @@ $$
     import PGutils (unPGm, query, QueryResults (UtilityResults))
 
     query_drop :: IO ()
-    query_drop = do
-        UtilityResults _processed <- unPGm $ query "DROP TABLE plhaskellu_test.t" []
+    query_drop = unPGm $ do
+        UtilityResults _processed <- query "DROP TABLE plhaskellu_test.t" []
         return ()
 $$
 LANGUAGE plhaskellu;
@@ -500,8 +500,8 @@ $$
     import PGutils (unPGm, query, QueryResults (SelectResults), QueryResultValue (QueryResultValueComposite, QueryResultValueInt4, QueryResultValueText, QueryResultValueFloat8), raiseError)
 
     query_composite :: IO ()
-    query_composite = do
-        SelectResults processed [header] [row0, row1, row2, row3] <- unPGm $ query "SELECT d FROM plhaskellu_test.deltas ORDER BY i" []
+    query_composite = unPGm $ do
+        SelectResults processed [header] [row0, row1, row2, row3] <- query "SELECT d FROM plhaskellu_test.deltas ORDER BY i" []
 
         if processed == 4
         then return ()
@@ -851,8 +851,8 @@ $$
     mk_array = Just (Array6D (20, 21, 22, 23, 24, 25) ((chunksOf 6) $ (chunksOf 5) $ (chunksOf 4) $ (chunksOf 3) $ (chunksOf 2) (map QueryParamInt4 (mkList 5040))))
 
     query_array_insert :: IO ()
-    query_array_insert = do
-        InsertResults _processed <- unPGm $ query "INSERT INTO plhaskellu_test.query_arrays(a) VALUES ($1)" [QueryParamArray (Nothing, "int4") mk_array]
+    query_array_insert = unPGm $ do
+        InsertResults _processed <- query "INSERT INTO plhaskellu_test.query_arrays(a) VALUES ($1)" [QueryParamArray (Nothing, "int4") mk_array]
         return ()
 $$
 LANGUAGE plhaskellu;
@@ -865,8 +865,8 @@ $$
     import Data.Int (Int32)
 
     query_array_select :: IO (Maybe (Array (Maybe Int32)))
-    query_array_select = do
-        SelectResults _processed [_header] [[QueryResultValueArray (_schema, name) a]] <- unPGm $ query "SELECT a FROM plhaskellu_test.query_arrays" [];
+    query_array_select = unPGm $ do
+        SelectResults _processed [_header] [[QueryResultValueArray (_schema, name) a]] <- query "SELECT a FROM plhaskellu_test.query_arrays" [];
 
         if name == "int4"
         then return ()
