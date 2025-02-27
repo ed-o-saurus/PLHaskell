@@ -75,26 +75,26 @@ writeResult pIsNull (Just result) = do
     return result
 
 foreign import capi safe "plhaskell.h read_composite"
-    c_readComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
+    cReadComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
 
 readComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
 readComposite pTypeInfo datum = do
     count <- getCount pTypeInfo
     let count' = fromIntegral count
     pallocArray count' $ \pDatums -> pallocArray count' $ \pIsNulls -> do
-        c_readComposite pTypeInfo datum pDatums pIsNulls
+        cReadComposite pTypeInfo datum pDatums pIsNulls
         datums  <- peekArray count' pDatums
         isNulls <- peekArray count' pIsNulls
         return $ zipWith (\fieldDatum isNull -> (if (toBool isNull) then Nothing else Just fieldDatum)) datums isNulls
 
 foreign import capi safe "plhaskell.h write_composite"
-    c_writeComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
+    cWriteComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
 
 writeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
 writeComposite pTypeInfo fields = do
     let datums  = map (fromMaybe voidDatum)          fields
     let isNulls = map (CBool . fromBool . isNothing) fields
-    pWithArray datums $ pWithArray isNulls . c_writeComposite pTypeInfo
+    pWithArray datums $ pWithArray isNulls . cWriteComposite pTypeInfo
 
 -- Get the size of a variable length array
 foreign import capi safe "plhaskell.h VARSIZE_ANY_EXHDR"
@@ -102,10 +102,10 @@ foreign import capi safe "plhaskell.h VARSIZE_ANY_EXHDR"
 
 -- Set the size of a variable length array
 foreign import capi safe "plhaskell.h SET_VARSIZE"
-    c_setVarSize :: Datum -> CSize -> IO ()
+    cSetVarSize :: Datum -> CSize -> IO ()
 
 setVarSize :: Datum -> CSize -> IO ()
-setVarSize datum len = c_setVarSize datum ((#const VARHDRSZ) + len)
+setVarSize datum len = cSetVarSize datum ((#const VARHDRSZ) + len)
 
 -- Get the start of a variable length array
 foreign import capi safe "plhaskell.h VARDATA_ANY"
@@ -389,12 +389,12 @@ foreign import capi safe "plhaskell.h get_dims_ptr"
     getDimsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
 foreign import capi safe "plhaskell.h get_array_elems"
-    c_getArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> CInt -> Ptr Datum -> Ptr CBool -> IO ()
+    cGetArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> CInt -> Ptr Datum -> Ptr CBool -> IO ()
 
 getArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> Int -> IO [Maybe Datum]
 getArrayElems pTypeInfo array nelems = do
     pallocArray nelems $ \pDatums -> pallocArray nelems $ \pIsNulls -> do
-        c_getArrayElems pTypeInfo array (fromIntegral nelems) pDatums pIsNulls
+        cGetArrayElems pTypeInfo array (fromIntegral nelems) pDatums pIsNulls
         datums  <- peekArray nelems pDatums
         isNulls <- peekArray nelems pIsNulls
         return $ zipWith (\elemDatum isNull -> (if (toBool isNull) then Nothing else Just elemDatum)) datums isNulls
@@ -435,7 +435,7 @@ readArray pTypeInfo datum = do
             undefined -- Never called
 
 foreign import capi safe "plhaskell.h write_array"
-    c_writeArray :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> CInt -> Ptr CInt -> Ptr CInt -> IO Datum
+    cWriteArray :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> CInt -> Ptr CInt -> Ptr CInt -> IO Datum
 
 writeArray :: Ptr TypeInfo -> Array (Maybe Datum) -> IO Datum
 writeArray pTypeInfo array = do
@@ -449,7 +449,7 @@ writeArray pTypeInfo array = do
         pWithArray isNulls $ \pIsNulls ->
             pWithArray (map fromIntegral dims) $ \pDims ->
                 pWithArray (map fromIntegral lbs) $ \pLbs ->
-                    c_writeArray pTypeInfo pDatums pIsNulls (fromIntegral ndims) pDims pLbs
+                    cWriteArray pTypeInfo pDatums pIsNulls (fromIntegral ndims) pDims pLbs
 
 mkResultList :: (a -> IO (Maybe Datum)) -> [a] -> [Ptr CBool -> IO Datum]
 mkResultList encodeResult = map (\result pIsNull -> encodeResult result >>= writeResult pIsNull)

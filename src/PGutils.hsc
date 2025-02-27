@@ -229,11 +229,11 @@ data QueryResults = SelectResults          Word64 [Text] [[QueryResultValue]]
                   | RewrittenResults       Word64 deriving stock Show
 
 foreign import capi safe "plhaskell.h get_header_field"
-    c_getHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
+    cGetHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
 
 getHeaderField :: Ptr TupleTable -> Int16 -> IO Text
 getHeaderField pTupleTable fnumber = allocaArray (#const NAMEDATALEN) $ \pName -> do
-    c_getHeaderField pTupleTable pName (fromIntegral fnumber)
+    cGetHeaderField pTupleTable pName (fromIntegral fnumber)
     pack <$> peekCString pName
 
 getHeader :: Ptr TupleTable -> IO [Text]
@@ -242,13 +242,13 @@ getHeader pTupleTable = do
     mapM (getHeaderField pTupleTable) [1 .. natts]
 
 foreign import capi safe "plhaskell.h get_oids"
-    c_getOids :: Ptr TupleTable -> Ptr Oid -> IO ()
+    cGetOids :: Ptr TupleTable -> Ptr Oid -> IO ()
 
 getOids :: Ptr TupleTable -> IO [Oid]
 getOids pTupleTable = do
     natts <- getNatts pTupleTable
     allocaArray (fromIntegral natts) $ \oids -> do
-        c_getOids pTupleTable oids
+        cGetOids pTupleTable oids
         mapM (peekElemOff oids) (range $ fromIntegral natts)
 
 foreign import capi safe "plhaskell.h new_type_info"
@@ -258,11 +258,11 @@ foreign import capi safe "plhaskell.h delete_type_info"
     deleteTypeInfo :: Ptr TypeInfo -> IO ()
 
 foreign import capi safe "plhaskell.h get_tuple_datum"
-    c_getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> Ptr CBool -> IO Datum
+    cGetTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> Ptr CBool -> IO Datum
 
 getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> IO (Maybe Datum)
 getTupleDatum pTupleTable rowNumber fnumber = pWithArray [0] $ \pIsNull -> do
-        datum <- c_getTupleDatum pTupleTable rowNumber fnumber pIsNull
+        datum <- cGetTupleDatum pTupleTable rowNumber fnumber pIsNull
         isNull <- peek pIsNull
         if (toBool isNull)
         then return Nothing
@@ -383,18 +383,18 @@ getSchemaType pTypeInfo = do
     return (pack nspname, pack typname)
 
 foreign import capi safe "plhaskell.h get_oid"
-    c_getOid :: CBool -> CString -> CString -> IO Oid
+    cGetOid :: CBool -> CString -> CString -> IO Oid
 
 foreign import capi safe "plhaskell.h find_oid"
-    c_findOid :: CBool -> CString -> IO Oid
+    cFindOid :: CBool -> CString -> IO Oid
 
 getCompositeOid :: (Maybe Text, Text) -> IO Oid
-getCompositeOid (Nothing,      typname) = pWithCString                   (unpack typname) $ c_findOid (fromBool False)
-getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ c_getOid  (fromBool False)
+getCompositeOid (Nothing,      typname) = pWithCString                   (unpack typname) $ cFindOid (fromBool False)
+getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid  (fromBool False)
 
 getArrayOid :: (Maybe Text, Text) -> IO Oid
-getArrayOid (Nothing,      typname) = pWithCString                   (unpack typname) $ c_findOid (fromBool True)
-getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ c_getOid  (fromBool True)
+getArrayOid (Nothing,      typname) = pWithCString                   (unpack typname) $ cFindOid (fromBool True)
+getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid  (fromBool True)
 
 foreign import capi safe "plhaskell.h commit_rollback"
     commitRollback:: CBool -> CBool -> PGm ()

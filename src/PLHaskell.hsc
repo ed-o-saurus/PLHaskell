@@ -68,9 +68,9 @@ typeAvailable :: Oid -> Bool
 typeAvailable oid = not $ null $ getDataType oid
 
 -- Run the function pointed to by the stable pointer
-foreign export capi "type_available" c_typeAvailable :: Oid -> CBool
-c_typeAvailable :: Oid -> CBool
-c_typeAvailable oid = CBool $ fromBool $ typeAvailable oid
+foreign export capi "type_available" cTypeAvailable :: Oid -> CBool
+cTypeAvailable :: Oid -> CBool
+cTypeAvailable oid = CBool $ fromBool $ typeAvailable oid
 
 -- Name of corresponding Haskell type
 baseName :: Oid -> String
@@ -193,10 +193,10 @@ defineDecodeArg pCallInfo i = do
     runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
 foreign import capi safe "plhaskell.h error_func_sig"
-    c_errorFuncSig :: CString -> IO ()
+    cErrorFuncSig :: CString -> IO ()
 
 errorFuncSig :: String -> IO ()
-errorFuncSig funcSig = pWithCString funcSig c_errorFuncSig
+errorFuncSig funcSig = pWithCString funcSig cErrorFuncSig
 
 -- Set up interpreter to evaluate a function
 setUpEvalInt :: Ptr CallInfo -> Interpreter ([Int16], String, Bool)
@@ -245,10 +245,10 @@ foreign import capi safe "plhaskell.h unknown_compiler_error"
     unknownComilerError :: IO ()
 
 foreign import capi safe "plhaskell.h language_error"
-    c_languageError :: CInt -> CString -> IO ()
+    cLanguageError :: CInt -> CString -> IO ()
 
 languageError :: String -> IO ()
-languageError msg = (pWithCString msg) (c_languageError (#const ERROR))
+languageError msg = (pWithCString msg) (cLanguageError (#const ERROR))
 
 foreign import ccall safe "utils/global.h &pkglib_path"
     pPkgLibPath :: CString
