@@ -347,6 +347,11 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.query_insert_returning() RETURNS void VOLATILE AS
 $$
     import PGutils (PGm, query, QueryResults (InsertReturningResults), QueryResultValue (QueryResultValueInt4, QueryResultValueText), raiseError)
+    import Data.Text (Text)
+
+    assert :: Bool -> Text -> PGm ()
+    assert True _msg = return ()
+    assert False msg = raiseError msg
 
     query_insert_returning :: PGm ()
     query_insert_returning = do
@@ -358,41 +363,15 @@ $$
                                                                                                                          \ WHERE i is not NULL \
                                                                                                                          \ ORDER BY i RETURNING i, l" []
 
-        if processed == 3
-        then return ()
-        else raiseError "Bad processed"
-
-        if header1 == "i"
-        then return ()
-        else raiseError "Bad header1"
-
-        if header2 == "l"
-        then return ()
-        else raiseError "Bad header2"
-
-        if i0 == Just 4
-        then return ()
-        else raiseError "Bad i0"
-
-        if l0 == Just "A"
-        then return ()
-        else raiseError "Bad l0"
-
-        if i1 == Just 5
-        then return ()
-        else raiseError "Bad i1"
-
-        if l1 == Just "B"
-        then return ()
-        else raiseError "Bad l1"
-
-        if i2 == Just 6
-        then return ()
-        else raiseError "Bad i2"
-
-        if l2 == Just "C"
-        then return ()
-        else raiseError "Bad l2"
+        assert (processed == 3) "Bad processed"
+        assert (header1 == "i") "Bad header1"
+        assert (header2 == "l") "Bad header2"
+        assert (i0 == Just 4) "Bad i0"
+        assert (l0 == Just "A") "Bad l0"
+        assert (i1 == Just 5) "Bad i1"
+        assert (l1 == Just "B") "Bad l1"
+        assert (i2 == Just 6) "Bad i2"
+        assert (l2 == Just "C") "Bad l2"
 
         return ()
 $$
@@ -401,6 +380,11 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.query_select() RETURNS void IMMUTABLE AS
 $$
     import PGutils (PGm, query, QueryResults (SelectResults), QueryResultValue (QueryResultValueInt4, QueryResultValueText), raiseError)
+    import Data.Text (Text)
+    
+    assert :: Bool -> Text -> PGm ()
+    assert True _msg = return ()
+    assert False msg = raiseError msg
 
     query_select :: PGm ()
     query_select = do
@@ -414,73 +398,23 @@ $$
                                                                                                                 \ FROM plhaskell_test.t \
                                                                                                                 \ ORDER BY i" []
 
-        if processed == 7
-        then return ()
-        else raiseError "Bad processed"
-
-        if header1 == "i"
-        then return ()
-        else raiseError "Bad header1"
-
-        if header2 == "l"
-        then return ()
-        else raiseError "Bad header2"
-
-        if i0 == Just 1
-        then return ()
-        else raiseError "Bad i0"
-
-        if l0 == Just "A"
-        then return ()
-        else raiseError "Bad l0"
-
-        if i1 == Just 2
-        then return ()
-        else raiseError "Bad i1"
-
-        if l1 == Just "B"
-        then return ()
-        else raiseError "Bad l1"
-
-        if i2 == Just 3
-        then return ()
-        else raiseError "Bad i2"
-
-        if l2 == Just "C"
-        then return ()
-        else raiseError "Bad l2"
-
-        if i3 == Just 4
-        then return ()
-        else raiseError "Bad i3"
-
-        if l3 == Just "A"
-        then return ()
-        else raiseError "Bad l3"
-
-        if i4 == Just 5
-        then return ()
-        else raiseError "Bad i4"
-
-        if l4 == Just "B"
-        then return ()
-        else raiseError "Bad l4"
-
-        if i5 == Just 6
-        then return ()
-        else raiseError "Bad i5"
-
-        if l5 == Just "C"
-        then return ()
-        else raiseError "Bad l5"
-
-        if i6 == Nothing
-        then return ()
-        else raiseError "Bad i6"
-
-        if l6 == Nothing
-        then return ()
-        else raiseError "Bad l6"
+        assert (processed == 7) "Bad processed"
+        assert (header1 == "i") "Bad header1"
+        assert (header2 == "l") "Bad header2"
+        assert (i0 == Just 1) "Bad i0"
+        assert (l0 == Just "A") "Bad l0"
+        assert (i1 == Just 2) "Bad i1"
+        assert (l1 == Just "B") "Bad l1"
+        assert (i2 == Just 3) "Bad i2"
+        assert (l2 == Just "C") "Bad l2"
+        assert (i3 == Just 4) "Bad i3"
+        assert (l3 == Just "A") "Bad l3"
+        assert (i4 == Just 5) "Bad i4"
+        assert (l4 == Just "B") "Bad l4"
+        assert (i5 == Just 6) "Bad i5"
+        assert (l5 == Just "C") "Bad l5"
+        assert (i6 == Nothing) "Bad i6"
+        assert (l6 == Nothing) "Bad l6"
 
         return ()
 $$
@@ -489,19 +423,19 @@ LANGUAGE plhaskell;
 CREATE FUNCTION plhaskell_test.query_delete() RETURNS void VOLATILE AS
 $$
     import PGutils (PGm, query, QueryResults (DeleteResults), raiseError)
+    import Data.Text (Text)
+    
+    assert :: Bool -> Text -> PGm ()
+    assert True _msg = return ()
+    assert False msg = raiseError msg
 
     query_delete :: PGm ()
     query_delete = do
         DeleteResults processed1 <- query "DELETE FROM plhaskell_test.t" []
         DeleteResults processed2 <- query "DELETE FROM plhaskell_test.t" []
 
-        if processed1 == 7
-        then return ()
-        else raiseError "Bad processed1"
-
-        if processed2 == 0
-        then return ()
-        else raiseError "Bad processed2"
+        assert (processed1 == 7) "Bad processed1"
+        assert (processed2 == 0) "Bad processed2"
 
         return ()
 $$
@@ -536,154 +470,62 @@ SELECT plhaskell_test.query_drop();
 CREATE FUNCTION plhaskell_test.query_composite() RETURNS void IMMUTABLE AS
 $$
     import PGutils (PGm, query, QueryResults (SelectResults), QueryResultValue (QueryResultValueComposite, QueryResultValueInt4, QueryResultValueText, QueryResultValueFloat8), raiseError)
+    import Data.Text (Text)
+    
+    assert :: Bool -> Text -> PGm ()
+    assert True _msg = return ()
+    assert False msg = raiseError msg
 
     query_composite :: PGm ()
     query_composite = do
         SelectResults processed [header] [row0, row1, row2, row3] <- query "SELECT d FROM plhaskell_test.deltas ORDER BY i" []
 
-        if processed == 4
-        then return ()
-        else raiseError "Bad processed"
-
-        if header == "d"
-        then return ()
-        else raiseError "Bad header"
+        assert (processed == 4) "Bad processed"
+        assert (header == "d") "Bad header"
 
         let [QueryResultValueComposite (delta_schema0, delta_type0) (Just [QueryResultValueComposite (bravo_schema0, bravo_type0) (Just [QueryResultValueComposite (alpha_schema0, alpha_type0) (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (charlie_schema0, charlie_type0) (Just [])])] = row0
 
-        if delta_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema0"
-
-        if delta_type0 == "delta"
-        then return ()
-        else raiseError "Bad delta_type0"
-
-        if bravo_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad bravo_schema0"
-
-        if bravo_type0 == "bravo"
-        then return ()
-        else raiseError "Bad bravo_type0"
-
-        if alpha_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad alpha_schema0"
-
-        if alpha_type0 == "alpha"
-        then return ()
-        else raiseError "Bad alpha_type0"
-
-        if charlie_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad charlie_schema0"
-
-        if charlie_type0 == "charlie"
-        then return ()
-        else raiseError "Bad charlie_type0"
-
-        if x0 == "Hello"
-        then return ()
-        else raiseError "Bad x0"
-
-        if x1 == 12
-        then return ()
-        else raiseError "Bad x1"
-
-        if x2 == 3.4
-        then return ()
-        else raiseError "Bad x2"
-
-        if x3 == 76
-        then return ()
-        else raiseError "Bad x3"
+        assert (delta_schema0 == "plhaskell_test") "Bad delta_schema0"
+        assert (delta_type0 == "delta") "Bad delta_type0"
+        assert (bravo_schema0 == "plhaskell_test") "Bad bravo_schema0"
+        assert (bravo_type0 == "bravo") "Bad bravo_type0"
+        assert (alpha_schema0 == "plhaskell_test") "Bad alpha_schema0"
+        assert (alpha_type0 == "alpha") "Bad alpha_type0"
+        assert (charlie_schema0 == "plhaskell_test") "Bad charlie_schema0"
+        assert (charlie_type0 == "charlie") "Bad charlie_type0"
+        assert (x0 == "Hello") "Bad x0"
+        assert (x1 == 12) "Bad x1"
+        assert (x2 == 3.4) "Bad x2"
+        assert (x3 == 76) "Bad x3"
 
         let [QueryResultValueComposite (delta_schema1, delta_type1) (Just [QueryResultValueComposite (bravo_schema1, bravo_type1) (Just [QueryResultValueComposite (alpha_schema1, alpha_type1) (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite (charlie_schema1, charlie_type1) Nothing])] = row1
 
-        if delta_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema1"
-
-        if delta_type1 == "delta"
-        then return ()
-        else raiseError "Bad delta_type1"
-
-        if bravo_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad bravo_schema1"
-
-        if bravo_type1 == "bravo"
-        then return ()
-        else raiseError "Bad bravo_type1"
-
-        if alpha_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad alpha_schema1"
-
-        if alpha_type1 == "alpha"
-        then return ()
-        else raiseError "Bad alpha_type1"
-
-        if charlie_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad charlie_schema1"
-
-        if charlie_type1 == "charlie"
-        then return ()
-        else raiseError "Bad charlie_type1"
-
-        if x4 == "world"
-        then return ()
-        else raiseError "Bad x4"
-
-        if x5 == 42
-        then return ()
-        else raiseError "Bad x5"
-
-        if x6 == 1.0
-        then return ()
-        else raiseError "Bad x6"
-
-        if x7 == -12
-        then return ()
-        else raiseError "Bad x7"
+        assert (delta_schema1 == "plhaskell_test") "Bad delta_schema1"
+        assert (delta_type1 == "delta") "Bad delta_type1"
+        assert (bravo_schema1 == "plhaskell_test") "Bad bravo_schema1"
+        assert (bravo_type1 == "bravo") "Bad bravo_type1"
+        assert (alpha_schema1 == "plhaskell_test") "Bad alpha_schema1"
+        assert (alpha_type1 == "alpha") "Bad alpha_type1"
+        assert (charlie_schema1 == "plhaskell_test") "Bad charlie_schema1"
+        assert (charlie_type1 == "charlie") "Bad charlie_type1"
+        assert (x4 == "world") "Bad x4"
+        assert (x5 == 42) "Bad x5"
+        assert (x6 == 1.0) "Bad x6"
+        assert (x7 == -12) "Bad x7"
 
         let [QueryResultValueComposite (delta_schema2, delta_type2) (Just [QueryResultValueComposite (bravo_schema2, bravo_type2) Nothing, QueryResultValueComposite (charlie_schema2, charlie_type2) (Just [])])] = row2
 
-        if delta_schema2 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema2"
-
-        if delta_type2 == "delta"
-        then return ()
-        else raiseError "Bad delta_type2"
-
-        if bravo_schema2 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad bravo_schema2"
-
-        if bravo_type2 == "bravo"
-        then return ()
-        else raiseError "Bad bravo_type2"
-
-        if charlie_schema2 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad charlie_schema2"
-
-        if charlie_type2 == "charlie"
-        then return ()
-        else raiseError "Bad charlie_type2"
+        assert (delta_schema2 == "plhaskell_test") "Bad delta_schema2"
+        assert (delta_type2 == "delta") "Bad delta_type2"
+        assert (bravo_schema2 == "plhaskell_test") "Bad bravo_schema2"
+        assert (bravo_type2 == "bravo") "Bad bravo_type2"
+        assert (charlie_schema2 == "plhaskell_test") "Bad charlie_schema2"
+        assert (charlie_type2 == "charlie") "Bad charlie_type2"
 
         let [QueryResultValueComposite (delta_schema3, delta_type3) Nothing] = row3
 
-        if delta_schema3 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema3"
-
-        if delta_type3 == "delta"
-        then return ()
-        else raiseError "Bad delta_type3"
+        assert (delta_schema3 == "plhaskell_test") "Bad delta_schema3"
+        assert (delta_type3 == "delta") "Bad delta_type3"
 
         return ()
 $$
@@ -701,148 +543,60 @@ CREATE FUNCTION plhaskell_test.query_pass_composite() RETURNS void IMMUTABLE AS
 $$
     import PGutils (PGm, raiseError, query, QueryResults (SelectResults), QueryParam (QueryParamComposite, QueryParamText, QueryParamInt4, QueryParamFloat8), QueryResultValue (QueryResultValueComposite, QueryResultValueText, QueryResultValueInt4, QueryResultValueFloat8))
     import Data.Text (Text, pack)
+    
+    assert :: Bool -> Text -> PGm ()
+    assert True _msg = return ()
+    assert False msg = raiseError msg
 
     query_pass_composite ::  PGm ()
     query_pass_composite = do
         SelectResults _processed _header [row0] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") (Just [QueryParamComposite (Just "plhaskell_test", "bravo") (Just [QueryParamComposite (Just "plhaskell_test", "alpha") (Just [QueryParamText (Just "Hello"), QueryParamInt4 (Just 12), QueryParamFloat8 (Just 3.4)]), QueryParamInt4 (Just 76)]), QueryParamComposite (Just "plhaskell_test", "charlie") (Just [])])]
         let [QueryResultValueComposite (delta_schema0, delta_type0) (Just [QueryResultValueComposite (bravo_schema0, bravo_type0) (Just [QueryResultValueComposite (alpha_schema0, alpha_type0) (Just [QueryResultValueText (Just x0), QueryResultValueInt4 (Just x1), QueryResultValueFloat8 (Just x2)]), QueryResultValueInt4 (Just x3)]), QueryResultValueComposite (charlie_schema0, charlie_type0) (Just [])])] = row0
 
-        if delta_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema0"
-
-        if delta_type0 == "delta"
-        then return ()
-        else raiseError "Bad delta_type0"
-
-        if bravo_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad bravo_schema0"
-
-        if bravo_type0 == "bravo"
-        then return ()
-        else raiseError "Bad bravo_type0"
-
-        if alpha_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad alpha_schema0"
-
-        if alpha_type0 == "alpha"
-        then return ()
-        else raiseError "Bad alpha_type0"
-
-        if charlie_schema0 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad charlie_schema0"
-
-        if charlie_type0 == "charlie"
-        then return ()
-        else raiseError "Bad charlie_type0"
-
-        if x0 == "Hello"
-        then return ()
-        else raiseError "Bad x0"
-
-        if x1 == 12
-        then return ()
-        else raiseError "Bad x1"
-
-        if x2 == 3.4
-        then return ()
-        else raiseError "Bad x2"
-
-        if x3 == 76
-        then return ()
-        else raiseError "Bad x3"
+        assert (delta_schema0 == "plhaskell_test") "Bad delta_schema0"
+        assert (delta_type0 == "delta") "Bad delta_type0"
+        assert (bravo_schema0 == "plhaskell_test") "Bad bravo_schema0"
+        assert (bravo_type0 == "bravo") "Bad bravo_type0"
+        assert (alpha_schema0 == "plhaskell_test") "Bad alpha_schema0"
+        assert (alpha_type0 == "alpha") "Bad alpha_type0"
+        assert (charlie_schema0 == "plhaskell_test") "Bad charlie_schema0"
+        assert (charlie_type0 == "charlie") "Bad charlie_type0"
+        assert (x0 == "Hello") "Bad x0"
+        assert (x1 == 12) "Bad x1"
+        assert (x2 == 3.4) "Bad x2"
+        assert (x3 == 76) "Bad x3"
 
         SelectResults _processed _header [row1] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") (Just [QueryParamComposite (Just "plhaskell_test", "bravo") (Just [QueryParamComposite (Just "plhaskell_test", "alpha") (Just [QueryParamText (Just "world"), QueryParamInt4 (Just 42), QueryParamFloat8 (Just 1.0)]), QueryParamInt4 (Just (-12))]), QueryParamComposite (Just "plhaskell_test", "charlie") Nothing])]
         let [QueryResultValueComposite (delta_schema1, delta_type1) (Just [QueryResultValueComposite (bravo_schema1, bravo_type1) (Just [QueryResultValueComposite (alpha_schema1, alpha_type1) (Just [QueryResultValueText (Just x4), QueryResultValueInt4 (Just x5), QueryResultValueFloat8 (Just x6)]), QueryResultValueInt4 (Just x7)]), QueryResultValueComposite (charlie_schema1, charlie_type1) Nothing])] = row1
 
-        if delta_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema1"
-
-        if delta_type1 == "delta"
-        then return ()
-        else raiseError "Bad delta_type1"
-
-        if bravo_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad bravo_schema1"
-
-        if bravo_type1 == "bravo"
-        then return ()
-        else raiseError "Bad bravo_type1"
-
-        if alpha_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad alpha_schema1"
-
-        if alpha_type1 == "alpha"
-        then return ()
-        else raiseError "Bad alpha_type1"
-
-        if charlie_schema1 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad charlie_schema1"
-
-        if charlie_type1 == "charlie"
-        then return ()
-        else raiseError "Bad charlie_type1"
-
-        if x4 == "world"
-        then return ()
-        else raiseError "Bad x4"
-
-        if x5 == 42
-        then return ()
-        else raiseError "Bad x5"
-
-        if x6 == 1.0
-        then return ()
-        else raiseError "Bad x6"
-
-        if x7 == -12
-        then return ()
-        else raiseError "Bad x7"
+        assert (delta_schema1 == "plhaskell_test") "Bad delta_schema1"
+        assert (delta_type1 == "delta") "Bad delta_type1"
+        assert (bravo_schema1 == "plhaskell_test") "Bad bravo_schema1"
+        assert (bravo_type1 == "bravo") "Bad bravo_type1"
+        assert (alpha_schema1 == "plhaskell_test") "Bad alpha_schema1"
+        assert (alpha_type1 == "alpha") "Bad alpha_type1"
+        assert (charlie_schema1 == "plhaskell_test") "Bad charlie_schema1"
+        assert (charlie_type1 == "charlie") "Bad charlie_type1"
+        assert (x4 == "world") "Bad x4"
+        assert (x5 == 42) "Bad x5"
+        assert (x6 == 1.0) "Bad x6"
+        assert (x7 == -12) "Bad x7"
 
         SelectResults _processed _header [row2] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") (Just [QueryParamComposite (Just "plhaskell_test", "bravo") Nothing, QueryParamComposite (Just "plhaskell_test", "charlie") (Just [])])]
         let [QueryResultValueComposite (delta_schema2, delta_type2) (Just [QueryResultValueComposite (bravo_schema2, bravo_type2) Nothing, QueryResultValueComposite (charlie_schema2, charlie_type2) (Just [])])] = row2
 
-        if delta_schema2 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema2"
-
-        if delta_type2 == "delta"
-        then return ()
-        else raiseError "Bad delta_type2"
-
-        if bravo_schema2 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad bravo_schema2"
-
-        if bravo_type2 == "bravo"
-        then return ()
-        else raiseError "Bad bravo_type2"
-
-        if charlie_schema2 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad charlie_schema2"
-
-        if charlie_type2 == "charlie"
-        then return ()
-        else raiseError "Bad charlie_type2"
+        assert (delta_schema2 == "plhaskell_test") "Bad delta_schema2"
+        assert (delta_type2 == "delta") "Bad delta_type2"
+        assert (bravo_schema2 == "plhaskell_test") "Bad bravo_schema2"
+        assert (bravo_type2 == "bravo") "Bad bravo_type2"
+        assert (charlie_schema2 == "plhaskell_test") "Bad charlie_schema2"
+        assert (charlie_type2 == "charlie") "Bad charlie_type2"
 
         SelectResults _processed _header [row3] <- query "SELECT $1" [QueryParamComposite (Just "plhaskell_test", "delta") Nothing]
         let [QueryResultValueComposite (delta_schema3, delta_type3) Nothing] = row3
 
-        if delta_schema3 == "plhaskell_test"
-        then return ()
-        else raiseError "Bad delta_schema3"
-
-        if delta_type3 == "delta"
-        then return ()
-        else raiseError "Bad delta_type3"
+        assert (delta_schema3 == "plhaskell_test") "Bad delta_schema3"
+        assert (delta_type3 == "delta") "Bad delta_type3"
 
         return ()
 $$
@@ -901,14 +655,17 @@ CREATE FUNCTION plhaskell_test.query_array_select() RETURNS int[] IMMUTABLE AS
 $$
     import PGutils (PGm, raiseError, query, arrayMap, Array(Array6D), QueryResults(SelectResults), QueryResultValue(QueryResultValueArray, QueryResultValueInt4))
     import Data.Int (Int32)
+    import Data.Text (Text)
+    
+    assert :: Bool -> Text -> PGm ()
+    assert True _msg = return ()
+    assert False msg = raiseError msg
 
     query_array_select :: PGm (Maybe (Array (Maybe Int32)))
     query_array_select = do
         SelectResults _processed [_header] [[QueryResultValueArray (_schema, name) a]] <- query "SELECT a FROM plhaskell_test.query_arrays" [];
 
-        if name == "int4"
-        then return ()
-        else raiseError "Bad type name"
+        assert (name == "int4") "Bad type name"
 
         return (fmap (arrayMap (\ (QueryResultValueInt4 i) -> i)) a)
 $$
