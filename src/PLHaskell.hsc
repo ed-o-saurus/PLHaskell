@@ -26,6 +26,7 @@
 
 module PLHaskell () where
 
+import Control.Exception                   (handle)
 import Control.Monad                       (mapM, mapM_, (>=>), zipWithM)
 import Data.Int                            (Int16)
 import Data.List                           (intercalate)
@@ -40,7 +41,7 @@ import Language.Haskell.Interpreter        (Extension (OverloadedStrings, Safe),
 import Language.Haskell.Interpreter.Unsafe (unsafeRunInterpreterWithArgs)
 import Prelude                             (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (.), (>>=))
 
-import PGcommon                            (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pWithCString, range, voidDatum)
+import PGcommon                            (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, handler, pWithCString, range, voidDatum)
 
 -- Dummy type to make pointers
 data CallInfo
@@ -208,6 +209,7 @@ setUpEvalInt pCallInfo = do
     --Name of function
     funcName <- getFuncName pCallInfo
     setImportsF [ModuleImport "Prelude"           NotQualified (ImportList ["Bool(False, True)", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "return", "($)", "(.)", "(>>=)"]),
+                 ModuleImport "Control.Exception" NotQualified (ImportList ["handle"]),
                  ModuleImport "Control.Monad"     NotQualified (ImportList ["(>=>)"]),
                  ModuleImport "Data.ByteString"   NotQualified (ImportList ["ByteString"]),
                  ModuleImport "Data.Int"          NotQualified (ImportList ["Int16", "Int32", "Int64"]),
@@ -215,7 +217,7 @@ setUpEvalInt pCallInfo = do
                  ModuleImport "Foreign.Ptr"       NotQualified (ImportList ["Ptr", "wordPtrToPtr"]),
                  ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
                  ModuleImport "Foreign.Storable"  NotQualified (ImportList ["peekElemOff", "poke"]),
-                 ModuleImport "PGcommon"          NotQualified (ImportList ["unNullableDatum"]),
+                 ModuleImport "PGcommon"          NotQualified (ImportList ["handler", "unNullableDatum"]),
                  ModuleImport "PGutils"           NotQualified (ImportList ["PGm", "unPGm"]),
                  ModuleImport "PGsupport"         NotQualified (ImportList ["Array", "Datum", "BaseType (encode, decode)", "arrayMapM", "encodeVoid", "maybeWrap", "readArray", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeArray", "writeComposite"]),
                  ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])]
@@ -302,7 +304,7 @@ mkFunction pCallInfo = execute $ do
         then "result <- unPGm $ PGmodule." ++ funcName ++ argsNames ++ ";"
         else "result <-         PGmodule." ++ funcName ++ argsNames ++ ";"
     let prog_encode_result = "encodeResult result >>= writeResult pResultIsNull"
-    runStmt $ "function <- wrapFunction $ (\\pArgs pResultIsNull -> do {" ++ prog_decode_args ++ prog_call ++ prog_encode_result ++ "})"
+    runStmt $ "function <- wrapFunction $ (\\pArgs pResultIsNull -> handle handler $ do {" ++ prog_decode_args ++ prog_call ++ prog_encode_result ++ "})"
 
     -- Poke the value of the pointer into the Function field of the CallInfo struct
     setPtr "pFunction" ((#ptr struct CallInfo, function) pCallInfo)
@@ -333,7 +335,7 @@ mkList pCallInfo pArgs = execute $ do
 
 foreign export capi "iterate" iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
 iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
-iterate pCallInfo pResultIsNull = do
+iterate pCallInfo pResultIsNull = handle handler $ do
     let pList = (#ptr struct CallInfo, list) pCallInfo
     spList <- peek pList
     returnResultList <- deRefStablePtr spList

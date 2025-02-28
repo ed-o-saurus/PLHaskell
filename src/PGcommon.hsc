@@ -29,18 +29,19 @@
 
 #include "plhaskell.h"
 
-module PGcommon (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getTypeOid, getValueType, getFields, palloc, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon (Datum (Datum), ErrorLevel (ErrorLevel), NullableDatum, Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, pallocArray, plhaskellReport, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
+import Control.Exception     (SomeException)
 import Data.ByteString       (ByteString, useAsCStringLen)
 import Data.Int              (Int16)
 import Data.Word             (Word16)
 import Foreign.C.String      (CString, CStringLen, withCStringLen)
-import Foreign.C.Types       (CBool (CBool), CSize (CSize), CUInt (CUInt))
+import Foreign.C.Types       (CBool (CBool), CInt (CInt), CSize (CSize), CUInt (CUInt))
 import Foreign.Marshal.Array (pokeArray)
 import Foreign.Marshal.Utils (copyBytes, toBool)
 import Foreign.Ptr           (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
 import Foreign.Storable      (alignment, peek, peekByteOff, peekElemOff, poke, sizeOf, Storable)
-import Prelude               (Bool(False, True), Eq, Int, Integral, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, undefined, ($), (.), (*), (-), (+), (>>=))
+import Prelude               (Bool(False, True), Eq, Int, Integral, IO, Maybe (Nothing, Just), Num, String, const, flip, fromIntegral, length, mapM, return, show, undefined, ($), (++), (.), (*), (-), (+), (>>), (>>=))
 
 -- Dummy type to make pointers
 data TypeInfo
@@ -66,6 +67,11 @@ getTypeOid = (#peek struct TypeInfo, type_oid)
 -- Extract count of sub-fields from TypeInfo struct
 getCount :: Ptr TypeInfo -> IO Int16
 getCount = (#peek struct TypeInfo, count)
+
+newtype ErrorLevel = ErrorLevel CInt
+
+foreign import capi safe "plhaskell.h plhaskell_report"
+    plhaskellReport :: ErrorLevel -> CString -> IO ()
 
 newtype NullableDatum = NullableDatum {unNullableDatum :: Maybe Datum}
 instance Storable NullableDatum where
@@ -148,6 +154,9 @@ pWithArrayLen vals action = do
     pallocArray len $ \ptr -> do
         pokeArray ptr vals
         action len ptr
+
+handler :: SomeException -> IO Datum
+handler exp = pWithCString ("PL/Haskell: " ++ show exp) (plhaskellReport $ ErrorLevel (#const ERROR)) >> (return voidDatum)
 
 range :: (Integral a) => a -> [a]
 range 0 = []
