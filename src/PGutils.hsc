@@ -29,7 +29,7 @@
 
 module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
-import Control.Monad         (zipWithM)
+import Control.Monad         (zipWithM, (>=>))
 import Control.Monad.Fail    (MonadFail (fail))
 import Data.ByteString       (ByteString)
 import Data.Int              (Int16, Int32, Int64)
@@ -97,7 +97,7 @@ data QueryParam = QueryParamByteA                        (Maybe ByteString)
                 | QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))
 
 getNatts :: Ptr TupleTable -> IO Int16
-getNatts pTupleTable = (#peek struct SPITupleTable, tupdesc) pTupleTable >>= (#peek struct TupleDescData, natts)
+getNatts = (#peek struct SPITupleTable, tupdesc) >=> (#peek struct TupleDescData, natts)
 
 -- Get Oid base on the constructor or stated type
 -- Does not verify contents comply with the Oid
