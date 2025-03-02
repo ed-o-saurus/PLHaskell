@@ -8,8 +8,7 @@ Source: <url:https://github.com/ed-o-saurus/PLHaskell>
 Files:     .gitignore
            Makefile
            README.md
-           tests/tests_trusted.sql
-           tests/tests_untrusted.sql
+           tests.sql
            selinux/plhaskell.te
            spec/plhaskell.spec
            src/PGcommon.hsc

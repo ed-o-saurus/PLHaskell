@@ -604,11 +604,30 @@ LANGUAGE plhaskell;
 
 SELECT plhaskell_test.query_pass_composite();
 
+CREATE FUNCTION plhaskell_test.primes_upper(minimum int) RETURNS SETOF plhaskell_test.n_p IMMUTABLE AS
+$$
+    import PGutils (unPGm, query, QueryParam (QueryParamInt4), QueryResults (SelectResults), QueryResultValue (QueryResultValueInt4))
+    import Data.Int (Int32)
+
+    primes_upper :: Maybe Int32 -> IO [Maybe (Maybe Int32, Maybe Int32)]
+    primes_upper minimum = do
+        SelectResults _processed [_header_n, _header_p] rows <- unPGm $ query "SELECT n, p FROM plhaskell_test.primes WHERE p >= $1" [QueryParamInt4 minimum]
+        return $ map get_data rows
+        where get_data [QueryResultValueInt4 n, QueryResultValueInt4 p] = Just (n, p)
+$$
+LANGUAGE plhaskellu;
+
 CREATE TABLE plhaskell_test.primes(n int, p int);
 
 INSERT INTO plhaskell_test.primes(n, p)
 SELECT n, p
 FROM plhaskell_test.primes(10);
+
+CREATE TABLE plhaskell_test.primes_upper(n int, p int);
+
+INSERT INTO plhaskell_test.primes_upper(n, p)
+SELECT n, p
+FROM plhaskell_test.primes_upper(13);
 
 CREATE TABLE plhaskell_test.inline_test(i int, i_sq int);
 DO LANGUAGE plhaskell $$
@@ -670,6 +689,18 @@ $$
         return (fmap (arrayMap (\ (QueryResultValueInt4 i) -> i)) a)
 $$
 LANGUAGE plhaskell;
+
+CREATE FUNCTION plhaskell_test.forty_two() RETURNS int IMMUTABLE AS
+$$
+    import PGutils (unPGm, query, QueryParam (QueryParamInt4), QueryResults (SelectResults), QueryResultValue (QueryResultValueInt4))
+    import Data.Int (Int32)
+
+    forty_two :: IO (Maybe Int32)
+    forty_two = do
+        SelectResults _processed [_header] [[QueryResultValueInt4 val]] <- unPGm $ query "SELECT $1" [QueryParamInt4 (Just 42)]
+        return val
+$$
+LANGUAGE plhaskellu;
 
 DO $$
 DECLARE
@@ -921,6 +952,38 @@ BEGIN
 
         IF r.n = 10 AND r.p <> 29 THEN
             raise EXCEPTION 'primes failed';
+        END IF;
+    END LOOP;
+
+    FOR r IN
+        SELECT count(*) FROM plhaskell_test.primes_upper
+    LOOP
+        IF r.count <> 5 THEN
+            raise EXCEPTION 'primes_upper failed';
+        END IF;
+    END LOOP;
+
+    FOR r IN
+        SELECT * FROM plhaskell_test.primes_upper
+    LOOP
+        IF r.n = 6 AND r.p <> 13 THEN
+            raise EXCEPTION 'primes_upper failed';
+        END IF;
+
+        IF r.n = 7 AND r.p <> 17 THEN
+            raise EXCEPTION 'primes_upper failed';
+        END IF;
+
+        IF r.n = 8 AND r.p <> 19 THEN
+            raise EXCEPTION 'primes_upper failed';
+        END IF;
+
+        IF r.n = 9 AND r.p <> 23 THEN
+            raise EXCEPTION 'primes_upper failed';
+        END IF;
+
+        IF r.n = 10 AND r.p <> 29 THEN
+            raise EXCEPTION 'primes_upper failed';
         END IF;
     END LOOP;
 
@@ -1272,6 +1335,10 @@ BEGIN
 
     IF plhaskell_test.query_array_select() != plhaskell_test.mk_array(6) THEN
         raise EXCEPTION 'array query failed';
+    END IF;
+
+    IF plhaskell_test.forty_two() != 42 THEN
+        raise EXCEPTION 'plhaskellu forty_two failed';
     END IF;
 
     DROP SCHEMA plhaskell_test CASCADE;
