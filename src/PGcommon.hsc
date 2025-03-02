@@ -27,7 +27,7 @@
 -- This module implements functions to allocate memory using postgres' memory allocation.
 -- This prevents memory leaks in case of an ERROR event.
 
-#include "plhaskell.h"
+#{include "plhaskell.h"}
 
 module PGcommon (Datum (Datum), ErrorLevel (ErrorLevel), NullableDatum, Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, pallocArray, plhaskellReport, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
@@ -58,15 +58,15 @@ voidDatum = Datum $ ptrToWordPtr nullPtr
 
 -- Extract the value type from TypeInfo struct
 getValueType :: Ptr TypeInfo -> IO Word16
-getValueType = (#peek struct TypeInfo, value_type)
+getValueType = #{peek struct TypeInfo, value_type}
 
 -- Extract type_oid from TypeInfo struct
 getTypeOid :: Ptr TypeInfo -> IO Oid
-getTypeOid = (#peek struct TypeInfo, type_oid)
+getTypeOid = #{peek struct TypeInfo, type_oid}
 
 -- Extract count of sub-fields from TypeInfo struct
 getCount :: Ptr TypeInfo -> IO Int16
-getCount = (#peek struct TypeInfo, count)
+getCount = #{peek struct TypeInfo, count}
 
 newtype ErrorLevel = ErrorLevel CInt
 
@@ -75,15 +75,15 @@ foreign import capi safe "plhaskell.h plhaskell_report"
 
 newtype NullableDatum = NullableDatum {unNullableDatum :: Maybe Datum}
 instance Storable NullableDatum where
-    sizeOf _ = (#size NullableDatum)
-    alignment _ = (#alignment NullableDatum)
+    sizeOf _ = #{size NullableDatum}
+    alignment _ = #{alignment NullableDatum}
 
     peek pNullableDatum = do
-        CBool isNull <- (#peek NullableDatum, isnull) pNullableDatum
+        CBool isNull <- #{peek NullableDatum, isnull} pNullableDatum
         if (toBool isNull)
         then return $ NullableDatum Nothing
         else do
-            datum <- (#peek NullableDatum, value) pNullableDatum
+            datum <- #{peek NullableDatum, value} pNullableDatum
             return $ NullableDatum $ Just datum
 
     poke = undefined -- Never used
@@ -92,10 +92,10 @@ instance Storable NullableDatum where
 getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
 getFields pTypeInfo = do
     count <- getCount pTypeInfo
-    mapM (\j -> (#peek struct TypeInfo, fields) pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
+    mapM (\j -> #{peek struct TypeInfo, fields} pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
 
 getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
-getElement = (#peek struct TypeInfo, element)
+getElement = #{peek struct TypeInfo, element}
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "plhaskell.h palloc"
@@ -156,7 +156,7 @@ pWithArrayLen vals action = do
         action len ptr
 
 handler :: SomeException -> IO Datum
-handler exp = pWithCString ("PL/Haskell: " ++ show exp) (plhaskellReport $ ErrorLevel (#const ERROR)) >> (return voidDatum)
+handler exp = pWithCString ("PL/Haskell: " ++ show exp) (plhaskellReport $ ErrorLevel #{const ERROR}) >> (return voidDatum)
 
 range :: (Integral a) => a -> [a]
 range 0 = []

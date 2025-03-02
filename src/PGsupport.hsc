@@ -22,7 +22,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "plhaskell.h"
+#{include "plhaskell.h"}
 
 module PGsupport (Array (..), Datum (Datum), BaseType (decode, encode), arrayMap, arrayMapM, encodeVoid, maybeWrap, mkResultList, readArray, readComposite, wrapFunction, writeArray, writeComposite, writeResult) where
 
@@ -105,7 +105,7 @@ foreign import capi safe "plhaskell.h SET_VARSIZE"
     cSetVarSize :: Datum -> CSize -> IO ()
 
 setVarSize :: Datum -> CSize -> IO ()
-setVarSize datum len = cSetVarSize datum ((#const VARHDRSZ) + len)
+setVarSize datum len = cSetVarSize datum $ #{const VARHDRSZ} + len
 
 -- Get the start of a variable length array
 foreign import capi safe "plhaskell.h VARDATA_ANY"
@@ -122,7 +122,7 @@ instance BaseType ByteString where
         packCStringLen (pData, fromIntegral len)
 
     write result = useAsCStringLen result (\(src, len) -> do
-        ptr <- palloc $ fromIntegral (len + (#const VARHDRSZ))
+        ptr <- palloc $ fromIntegral (len + #{const VARHDRSZ})
         let value = Datum $ ptrToWordPtr ptr
         setVarSize value (fromIntegral len)
         pData <- getVarData value

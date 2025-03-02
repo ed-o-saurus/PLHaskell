@@ -25,7 +25,7 @@
 
 -- This module is designed to be imported by each PostgreSQL function
 
-#include "plhaskell.h"
+#{include "plhaskell.h"}
 
 module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
@@ -97,20 +97,20 @@ data QueryParam = QueryParamByteA                        (Maybe ByteString)
                 | QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))
 
 getNatts :: Ptr TupleTable -> IO Int16
-getNatts = (#peek struct SPITupleTable, tupdesc) >=> (#peek struct TupleDescData, natts)
+getNatts = #{peek struct SPITupleTable, tupdesc} >=> #{peek struct TupleDescData, natts}
 
 -- Get Oid base on the constructor or stated type
 -- Does not verify contents comply with the Oid
 getOid :: QueryParam -> IO Oid
-getOid (QueryParamByteA  _) = return (#const BYTEAOID)
-getOid (QueryParamText   _) = return (#const TEXTOID)
-getOid (QueryParamChar   _) = return (#const CHAROID)
-getOid (QueryParamBool   _) = return (#const BOOLOID)
-getOid (QueryParamInt2   _) = return (#const INT2OID)
-getOid (QueryParamInt4   _) = return (#const INT4OID)
-getOid (QueryParamInt8   _) = return (#const INT8OID)
-getOid (QueryParamFloat4 _) = return (#const FLOAT4OID)
-getOid (QueryParamFloat8 _) = return (#const FLOAT8OID)
+getOid (QueryParamByteA  _) = return #{const BYTEAOID}
+getOid (QueryParamText   _) = return #{const TEXTOID}
+getOid (QueryParamChar   _) = return #{const CHAROID}
+getOid (QueryParamBool   _) = return #{const BOOLOID}
+getOid (QueryParamInt2   _) = return #{const INT2OID}
+getOid (QueryParamInt4   _) = return #{const INT4OID}
+getOid (QueryParamInt8   _) = return #{const INT8OID}
+getOid (QueryParamFloat4 _) = return #{const FLOAT4OID}
+getOid (QueryParamFloat8 _) = return #{const FLOAT8OID}
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
@@ -134,52 +134,52 @@ foreign import capi safe "plhaskell.h incorrect_length"
 encode' :: Ptr TypeInfo -> QueryParam -> IO (Maybe Datum)
 encode' pTypeInfo (QueryParamByteA  value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const BYTEAOID))  $ expectedType (#const BYTEAOID)
+    assert (oid == #{const BYTEAOID})  $ expectedType #{const BYTEAOID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamText   value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const TEXTOID))   $ expectedType (#const TEXTOID)
+    assert (oid == #{const TEXTOID})   $ expectedType #{const TEXTOID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamChar   value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const CHAROID))   $ expectedType (#const CHAROID)
+    assert (oid == #{const CHAROID})   $ expectedType #{const CHAROID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamBool   value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const BOOLOID))   $ expectedType (#const BOOLOID)
+    assert (oid == #{const BOOLOID})   $ expectedType #{const BOOLOID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt2   value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const INT2OID))   $ expectedType (#const INT2OID)
+    assert (oid == #{const INT2OID})   $ expectedType #{const INT2OID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt4   value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const INT4OID))   $ expectedType (#const INT4OID)
+    assert (oid == #{const INT4OID})   $ expectedType #{const INT4OID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamInt8   value) =  do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const INT8OID))   $ expectedType (#const INT8OID)
+    assert (oid == #{const INT8OID})   $ expectedType #{const INT8OID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamFloat4 value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const FLOAT4OID)) $ expectedType (#const FLOAT4OID)
+    assert (oid == #{const FLOAT4OID}) $ expectedType #{const FLOAT4OID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamFloat8 value) = do
     oid <- getTypeOid pTypeInfo
-    assert (oid == (#const FLOAT8OID)) $ expectedType (#const FLOAT8OID)
+    assert (oid == #{const FLOAT8OID}) $ expectedType #{const FLOAT8OID}
     encode pTypeInfo value
 
 encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
     valueType <- getValueType pTypeInfo
-    assert (valueType == (#const COMPOSITE_TYPE)) expectedComposite
+    assert (valueType == #{const COMPOSITE_TYPE}) expectedComposite
     oid <- getTypeOid pTypeInfo
     oid' <- getCompositeOid schemaType
     assert (oid == oid') $ expectedTypeInQuery pTypeInfo
@@ -191,7 +191,7 @@ encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
 
 encode' pTypeInfo (QueryParamArray schemaType mElems) = do
     valueType <- getValueType pTypeInfo
-    assert (valueType == (#const ARRAY_TYPE)) expectedArray
+    assert (valueType == #{const ARRAY_TYPE}) expectedArray
     oid <- getTypeOid pTypeInfo
     oid' <- getArrayOid schemaType
     assert (oid == oid') $ expectedTypeInQuery pTypeInfo
@@ -228,7 +228,7 @@ foreign import capi safe "plhaskell.h get_header_field"
     cGetHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
 
 getHeaderField :: Ptr TupleTable -> Int16 -> IO Text
-getHeaderField pTupleTable fnumber = allocaArray (#const NAMEDATALEN) $ \pName -> do
+getHeaderField pTupleTable fnumber = allocaArray #{const NAMEDATALEN} $ \pName -> do
     cGetHeaderField pTupleTable pName (fromIntegral fnumber)
     pack <$> peekCString pName
 
@@ -268,20 +268,20 @@ decode' :: Ptr TypeInfo -> Maybe Datum -> IO QueryResultValue
 decode' pTypeInfo mDatum = do
     valueType <- getValueType pTypeInfo
     case valueType of
-        (#const BASE_TYPE) -> do
+        #{const BASE_TYPE} -> do
             typeOid <- getTypeOid pTypeInfo
             case typeOid of
-                (#const BYTEAOID)  -> QueryResultValueByteA  <$> decode mDatum
-                (#const TEXTOID)   -> QueryResultValueText   <$> decode mDatum
-                (#const CHAROID)   -> QueryResultValueChar   <$> decode mDatum
-                (#const BOOLOID)   -> QueryResultValueBool   <$> decode mDatum
-                (#const INT2OID)   -> QueryResultValueInt2   <$> decode mDatum
-                (#const INT4OID)   -> QueryResultValueInt4   <$> decode mDatum
-                (#const INT8OID)   -> QueryResultValueInt8   <$> decode mDatum
-                (#const FLOAT4OID) -> QueryResultValueFloat4 <$> decode mDatum
-                (#const FLOAT8OID) -> QueryResultValueFloat8 <$> decode mDatum
+                #{const BYTEAOID}  -> QueryResultValueByteA  <$> decode mDatum
+                #{const TEXTOID}   -> QueryResultValueText   <$> decode mDatum
+                #{const CHAROID}   -> QueryResultValueChar   <$> decode mDatum
+                #{const BOOLOID}   -> QueryResultValueBool   <$> decode mDatum
+                #{const INT2OID}   -> QueryResultValueInt2   <$> decode mDatum
+                #{const INT4OID}   -> QueryResultValueInt4   <$> decode mDatum
+                #{const INT8OID}   -> QueryResultValueInt8   <$> decode mDatum
+                #{const FLOAT4OID} -> QueryResultValueFloat4 <$> decode mDatum
+                #{const FLOAT8OID} -> QueryResultValueFloat8 <$> decode mDatum
                 _                  -> undefined
-        (#const COMPOSITE_TYPE) -> do
+        #{const COMPOSITE_TYPE} -> do
             schemaType <- getSchemaType pTypeInfo
             case mDatum of
                 Nothing -> return $ QueryResultValueComposite schemaType Nothing
@@ -289,7 +289,7 @@ decode' pTypeInfo mDatum = do
                     fieldPTypeInfos <- getFields pTypeInfo
                     fieldMDatums <- readComposite pTypeInfo datum
                     (QueryResultValueComposite schemaType) . Just <$> zipWithM decode' fieldPTypeInfos fieldMDatums
-        (#const ARRAY_TYPE) -> do
+        #{const ARRAY_TYPE} -> do
             pElemTypeInfo <- getElement pTypeInfo
             schemaType <- getSchemaType pElemTypeInfo
             case mDatum of
@@ -346,36 +346,36 @@ query q params = PGm $ do
                     processed <- peek pSPIProcessed
                     pTupleTable <- peek pSPITupTable
                     queryResult <- case spiCode of
-                        (#const SPI_OK_SELECT) -> do
+                        #{const SPI_OK_SELECT} -> do
                             header <- getHeader pTupleTable
                             rows <- getRows pTupleTable processed
                             return (SelectResults processed header rows)
-                        (#const SPI_OK_SELINTO) -> return (SelectIntoResults processed)
-                        (#const SPI_OK_INSERT)  -> return (InsertResults     processed)
-                        (#const SPI_OK_DELETE)  -> return (DeleteResults     processed)
-                        (#const SPI_OK_UPDATE)  -> return (UpdateResults     processed)
-                        (#const SPI_OK_INSERT_RETURNING) -> do
+                        #{const SPI_OK_SELINTO} -> return (SelectIntoResults processed)
+                        #{const SPI_OK_INSERT}  -> return (InsertResults     processed)
+                        #{const SPI_OK_DELETE}  -> return (DeleteResults     processed)
+                        #{const SPI_OK_UPDATE}  -> return (UpdateResults     processed)
+                        #{const SPI_OK_INSERT_RETURNING} -> do
                             header <- getHeader pTupleTable
                             rows <- getRows pTupleTable processed
                             return (InsertReturningResults processed header rows)
-                        (#const SPI_OK_DELETE_RETURNING) -> do
+                        #{const SPI_OK_DELETE_RETURNING} -> do
                             header <- getHeader pTupleTable
                             rows <- getRows pTupleTable processed
                             return (DeleteReturningResults processed header rows)
-                        (#const SPI_OK_UPDATE_RETURNING) -> do
+                        #{const SPI_OK_UPDATE_RETURNING} -> do
                             header <- getHeader pTupleTable
                             rows <- getRows pTupleTable processed
                             return (UpdateReturningResults processed header rows)
-                        (#const SPI_OK_UTILITY)   -> return (UtilityResults    processed)
-                        (#const SPI_OK_REWRITTEN) -> return (RewrittenResults  processed)
+                        #{const SPI_OK_UTILITY}   -> return (UtilityResults    processed)
+                        #{const SPI_OK_REWRITTEN} -> return (RewrittenResults  processed)
                         _ -> undefined
                     freeTupTable pTupleTable
                     return queryResult
 
 getSchemaType :: Ptr TypeInfo -> IO (Text, Text)
 getSchemaType pTypeInfo = do
-    nspname <- (#peek struct TypeInfo, nspname) pTypeInfo >>= peekCString
-    typname <- (#peek struct TypeInfo, typname) pTypeInfo >>= peekCString
+    nspname <- #{peek struct TypeInfo, nspname} pTypeInfo >>= peekCString
+    typname <- #{peek struct TypeInfo, typname} pTypeInfo >>= peekCString
     return (pack nspname, pack typname)
 
 foreign import capi safe "plhaskell.h get_oid"
