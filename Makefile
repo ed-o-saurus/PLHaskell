@@ -40,14 +40,14 @@ RTS_INCLUDE_DIR = $(shell ghc-pkg --simple-output field rts include-dirs)
 
 .PHONY: all install clean distclean uninstall
 
-all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp
+all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp
 
 clean :
 	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/*.so src/*.conf src/*_hsc_make.c selinux/*.mod selinux/*.pp
 
 distclean: clean
 
-src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGcommon.o
+src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGcommon.o
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -L$(BYTESTRING_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -l$(BYTESTRING_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR):$(BYTESTRING_DYN_LIB_DIR)
 
 src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
@@ -56,11 +56,14 @@ src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs -o src/PLHaskell.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
-src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGcommon.hi src/plhaskell.h
+src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs   -o src/PGutils.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs -o src/PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+
+src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/plhaskell.h
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGarray.hs   -o src/PGarray.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGcommon.hs  -o src/PGcommon.o  -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
@@ -87,12 +90,13 @@ endif
 
 install : export GHC_PACKAGE_PATH = $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 
-install : src/plhaskell.control src/plhaskell--4.0.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp
+install : src/plhaskell.control src/plhaskell--4.0.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell.control
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell--4.0.sql
 	install -m 0755 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/plhaskell.so
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGutils.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGsupport.dyn_hi
+	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGarray.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGcommon.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db src/pgutils-4.0.conf
 	ghc-pkg recache
@@ -104,6 +108,7 @@ uninstall :
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell.so
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGutils.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGsupport.dyn_hi
+	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGarray.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGcommon.dyn_hi
 	-rm -fr $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 	-rm -f  $(DESTDIR)/usr/share/selinux/packages/plhaskell.pp

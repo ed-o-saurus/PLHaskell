@@ -235,7 +235,8 @@ setUpEvalInt pCallInfo = do
       ModuleImport "Foreign.Storable" NotQualified (ImportList ["peekElemOff", "poke"]),
       ModuleImport "PGcommon" NotQualified (ImportList ["handler", "unNullableDatum"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm", "unPGm"]),
-      ModuleImport "PGsupport" NotQualified (ImportList ["Array", "Datum", "BaseType (encode, decode)", "arrayMapM", "encodeVoid", "maybeWrap", "readArray", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeArray", "writeComposite"]),
+      ModuleImport "PGsupport" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
+      ModuleImport "PGarray" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 
@@ -302,7 +303,7 @@ checkSignature pCallInfo = execute $ do
       ModuleImport "Data.Int" NotQualified (ImportList ["Int16", "Int32", "Int64"]),
       ModuleImport "Data.Text" NotQualified (ImportList ["Text"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm"]),
-      ModuleImport "PGsupport" NotQualified (ImportList ["Array"]),
+      ModuleImport "PGarray" NotQualified (ImportList ["Array"]),
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 
