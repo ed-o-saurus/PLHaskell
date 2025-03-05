@@ -23,8 +23,6 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#{include "plhaskell.h"}
-
 module PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray) where
 
 import Data.Functor ((<$>))
