@@ -75,7 +75,16 @@ src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs
 	cp $^ $@
 
 src/pgutils-4.0.conf :
-	./src/mk_pgutils_conf.sh $(PG_PKG_LIB_DIR) > $@
+	echo "name:            pgutils"                             > $@
+	echo "version:         4.0"                                >> $@
+	echo "visibility:      public"                             >> $@
+	echo "id:              pgutils-4.0"                        >> $@
+	echo "key:             pgutils-4.0"                        >> $@
+	echo "license:         GPL"                                >> $@
+	echo "synopsis:        PL/Haskell Utilities"               >> $@
+	echo "exposed:         True"                               >> $@
+	echo "exposed-modules: PGutils PGsupport PGarray PGcommon" >> $@
+	echo "import-dirs:     $(PG_PKG_LIB_DIR)"                  >> $@
 
 ifeq ($(SELINUX),1)
 %.mod : %.te
