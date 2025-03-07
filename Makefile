@@ -107,7 +107,7 @@ install : src/plhaskell.control src/plhaskell--4.0.sql src/PGutils.dyn_hi src/PG
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGsupport.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGarray.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGcommon.dyn_hi
-	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db src/pgutils-4.0.conf
+	install -m 0644 -D -t $(GHC_PACKAGE_PATH) src/pgutils-4.0.conf
 	ghc-pkg recache
 	if [ -s selinux/plhaskell.pp ]; then install -m 0644 -D -t $(DESTDIR)/usr/share/selinux/packages selinux/plhaskell.pp; fi
 
