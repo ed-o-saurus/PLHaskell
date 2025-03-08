@@ -254,31 +254,29 @@ foreign import capi safe "plhaskell.h higher_dim_arrays"
 readArray :: Ptr TypeInfo -> Datum -> IO (Array (Maybe Datum))
 readArray pTypeInfo datum = do
   let pArray = getArrayType datum
-  ndim <- getNdim pArray
-  let ndim' = fromIntegral ndim
-  lbs <- getLbsPtr pArray >>= peekArray ndim'
-  dims <- getDimsPtr pArray >>= peekArray ndim'
-  let dims' = map fromIntegral dims
-  let nelems = product' dims'
+  ndim <- getNdim pArray >>= return . fromIntegral
+  lbs <- getLbsPtr pArray >>= peekArray ndim
+  dims <- getDimsPtr pArray >>= peekArray ndim >>= mapM (return . fromIntegral)
+  let nelems = product' dims
   elems <- getArrayElems pTypeInfo pArray nelems
   case ndim of
     0 -> return ArrayEmpty
     1 -> return $ Array1D (listTo1Tuple (map fromIntegral lbs)) elems
     2 -> return $ Array2D (listTo2Tuple (map fromIntegral lbs)) (chunksOf dim1 elems)
       where
-        (_dim0, dim1) = listTo2Tuple dims'
+        (_dim0, dim1) = listTo2Tuple dims
     3 -> return $ Array3D (listTo3Tuple (map fromIntegral lbs)) ((chunksOf dim1) $ (chunksOf dim2) elems)
       where
-        (_dim0, dim1, dim2) = listTo3Tuple dims'
+        (_dim0, dim1, dim2) = listTo3Tuple dims
     4 -> return $ Array4D (listTo4Tuple (map fromIntegral lbs)) ((chunksOf dim1) $ (chunksOf dim2) $ (chunksOf dim3) elems)
       where
-        (_dim0, dim1, dim2, dim3) = listTo4Tuple dims'
+        (_dim0, dim1, dim2, dim3) = listTo4Tuple dims
     5 -> return $ Array5D (listTo5Tuple (map fromIntegral lbs)) ((chunksOf dim1) $ (chunksOf dim2) $ (chunksOf dim3) $ (chunksOf dim4) elems)
       where
-        (_dim0, dim1, dim2, dim3, dim4) = listTo5Tuple dims'
+        (_dim0, dim1, dim2, dim3, dim4) = listTo5Tuple dims
     6 -> return $ Array6D (listTo6Tuple (map fromIntegral lbs)) ((chunksOf dim1) $ (chunksOf dim2) $ (chunksOf dim3) $ (chunksOf dim4) $ (chunksOf dim5) elems)
       where
-        (_dim0, dim1, dim2, dim3, dim4, dim5) = listTo6Tuple dims'
+        (_dim0, dim1, dim2, dim3, dim4, dim5) = listTo6Tuple dims
     _ -> do
       higherDimArrays
       undefined -- Never called

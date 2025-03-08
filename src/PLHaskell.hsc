@@ -147,9 +147,8 @@ makeDecodeArgDef pTypeInfo =
             typeOid <- getTypeOid pTypeInfo
             return $ "(decode :: Maybe Datum -> IO (Maybe " ++ baseName typeOid ++ "))"
           #{const COMPOSITE_TYPE} -> do
-            count <- getCount pTypeInfo
+            fieldIndexes <- getCount pTypeInfo >>= return . range
             decodeFieldDefs <- getFields pTypeInfo >>= zipWithM decodeFieldDef [0 ..]
-            let fieldIndexes = range count
             let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
             let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
             return $
@@ -184,9 +183,8 @@ makeEncodeResultDef pTypeInfo =
             typeOid <- getTypeOid pTypeInfo
             return $ "((encode " ++ pTypeInfoAddr ++ ") :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
           #{const COMPOSITE_TYPE} -> do
-            count <- getCount pTypeInfo
+            fieldIndexes <- getCount pTypeInfo >>= return . range
             encodeFieldDefs <- getFields pTypeInfo >>= zipWithM encodeFieldDef [0 ..]
-            let fieldIndexes = range count
             let fieldDatumsList = " [" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
             let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
             return $

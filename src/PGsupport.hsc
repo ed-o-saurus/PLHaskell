@@ -75,12 +75,11 @@ foreign import capi safe "plhaskell.h read_composite"
 
 readComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
 readComposite pTypeInfo datum = do
-  count <- getCount pTypeInfo
-  let count' = fromIntegral count
-  pallocArray count' $ \pDatums -> pallocArray count' $ \pIsNulls -> do
+  count <- getCount pTypeInfo >>= return . fromIntegral
+  pallocArray count $ \pDatums -> pallocArray count $ \pIsNulls -> do
     cReadComposite pTypeInfo datum pDatums pIsNulls
-    datums <- peekArray count' pDatums
-    isNulls <- peekArray count' pIsNulls
+    datums <- peekArray count pDatums
+    isNulls <- peekArray count pIsNulls
     return $ zipWith (\fieldDatum isNull -> (if (toBool isNull) then Nothing else Just fieldDatum)) datums isNulls
 
 foreign import capi safe "plhaskell.h write_composite"
@@ -121,7 +120,7 @@ instance BaseType ByteString where
     useAsCStringLen
       result
       ( \(src, len) -> do
-          ptr <- palloc $ fromIntegral (len + #{const VARHDRSZ})
+          ptr <- palloc $ fromIntegral (len + #{const VARHDRSZ}) -- TODO
           let value = Datum $ ptrToWordPtr ptr
           setVarSize value (fromIntegral len)
           pData <- getVarData value
