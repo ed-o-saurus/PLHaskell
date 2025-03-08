@@ -352,7 +352,6 @@ mkList pCallInfo pArgs = execute $ do
 
   -- poke the stable pointer value into the List field of the CallInfo struct
   runStmt "spList <- newStablePtr returnResultList"
-  {- __CODE_1__:ptr struct CallInfo, list -}
   setPtr "pList" $ #{ptr struct CallInfo, list} pCallInfo
   runStmt "poke pList spList"
 
