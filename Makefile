@@ -62,7 +62,7 @@ src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi sr
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs -o src/PGsupport.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
-src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/plhaskell.h
+src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGarray.hs   -o src/PGarray.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs
