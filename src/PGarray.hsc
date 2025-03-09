@@ -25,7 +25,7 @@
 
 module PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray) where
 
-import Data.Functor ((<$>))
+import Data.Functor ((<$>), (<&>))
 import Data.Int (Int32)
 import Data.Maybe (fromMaybe, isNothing)
 import Foreign.C.Types (CBool (CBool), CInt (CInt))
@@ -254,7 +254,7 @@ foreign import capi safe "plhaskell.h higher_dim_arrays"
 readArray :: Ptr TypeInfo -> Datum -> IO (Array (Maybe Datum))
 readArray pTypeInfo datum = do
   let pArray = getArrayType datum
-  ndim <- getNdim pArray >>= return . fromIntegral
+  ndim <- getNdim pArray <&> fromIntegral
   lbs <- getLbsPtr pArray >>= peekArray ndim
   dims <- getDimsPtr pArray >>= peekArray ndim >>= mapM (return . fromIntegral)
   let nelems = product' dims

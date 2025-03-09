@@ -29,6 +29,7 @@ module PLHaskell () where
 
 import Control.Exception (handle)
 import Control.Monad (mapM, mapM_, zipWithM, (>=>))
+import Data.Functor ((<&>))
 import Data.Int (Int16)
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
@@ -147,7 +148,7 @@ makeDecodeArgDef pTypeInfo =
             typeOid <- getTypeOid pTypeInfo
             return $ "(decode :: Maybe Datum -> IO (Maybe " ++ baseName typeOid ++ "))"
           #{const COMPOSITE_TYPE} -> do
-            fieldIndexes <- getCount pTypeInfo >>= return . range
+            fieldIndexes <- getCount pTypeInfo <&> range
             decodeFieldDefs <- getFields pTypeInfo >>= zipWithM decodeFieldDef [0 ..]
             let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
             let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
@@ -183,7 +184,7 @@ makeEncodeResultDef pTypeInfo =
             typeOid <- getTypeOid pTypeInfo
             return $ "((encode " ++ pTypeInfoAddr ++ ") :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
           #{const COMPOSITE_TYPE} -> do
-            fieldIndexes <- getCount pTypeInfo >>= return . range
+            fieldIndexes <- getCount pTypeInfo <&> range
             encodeFieldDefs <- getFields pTypeInfo >>= zipWithM encodeFieldDef [0 ..]
             let fieldDatumsList = " [" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
             let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
