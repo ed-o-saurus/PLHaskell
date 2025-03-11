@@ -90,23 +90,6 @@ getFuncName pCallInfo = liftIO $ #{peek struct CallInfo, func_name} pCallInfo >>
 setPtr :: String -> Ptr a -> Interpreter ()
 setPtr name ptr = runStmt $ "let " ++ name ++ " = wordPtrToPtr " ++ show (ptrToWordPtr ptr)
 
--- Get Haskell type name based on TypeInfo struct
-getTypeName :: Ptr TypeInfo -> IO String
-getTypeName pTypeInfo = do
-  valueType <- getValueType pTypeInfo
-  case valueType of
-    #{const VOID_TYPE} -> return "()"
-    #{const BASE_TYPE} -> do
-      typeOid <- getTypeOid pTypeInfo
-      return $ "Maybe " ++ baseName typeOid
-    #{const COMPOSITE_TYPE} -> do
-      names <- getFields pTypeInfo >>= (mapM getTypeName)
-      return $ "Maybe (" ++ intercalate ", " names ++ ")"
-    #{const ARRAY_TYPE} -> do
-      elemName <- getElement pTypeInfo >>= getTypeName
-      return $ "Maybe (Array (" ++ elemName ++ "))"
-    _ -> undefined
-
 -- Get argument TypeInfo struct from CallInfo struct
 getArgTypeInfo :: Ptr CallInfo -> Int16 -> IO (Ptr TypeInfo)
 getArgTypeInfo pCallInfo i = do
@@ -131,81 +114,23 @@ getSignature pCallInfo = liftIO $ do
       if toBool returnSet
         then return $ intercalate " -> " (argTypeNames ++ ["IO [" ++ resultTypeName ++ "]"])
         else return $ intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"])
-
--- Return a string representing a function to take an argument from a Maybe Datum and return the Haskell value
--- returned code :: Maybe Datum -> IO (Maybe a)
--- where a is the type represented by TypeInfo
-makeDecodeArgDef :: Ptr TypeInfo -> IO String
-makeDecodeArgDef pTypeInfo =
-  let decodeFieldDef j fieldPTypeInfo = do
-        def <- makeDecodeArgDef fieldPTypeInfo
-        return $ interpolate ("field? <- " ++ def ++ " fieldMDatum?;") j
-   in do
-        let pTypeInfoAddr = "(wordPtrToPtr " ++ show (ptrToWordPtr pTypeInfo) ++ ")"
-        valueType <- getValueType pTypeInfo
-        case valueType of
-          #{const BASE_TYPE} -> do
-            typeOid <- getTypeOid pTypeInfo
-            return $ "(decode :: Maybe Datum -> IO (Maybe " ++ baseName typeOid ++ "))"
-          #{const COMPOSITE_TYPE} -> do
-            fieldIndexes <- getCount pTypeInfo <&> range
-            decodeFieldDefs <- getFields pTypeInfo >>= zipWithM decodeFieldDef [0 ..]
-            let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
-            let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
-            return $
-              "(maybeWrap $ \\datum -> do {"
-                ++ fieldDatumsList
-                ++ " <- readComposite "
-                ++ pTypeInfoAddr
-                ++ " datum;"
-                ++ concat decodeFieldDefs
-                ++ "return "
-                ++ fieldsTuple
-                ++ ";})"
-          #{const ARRAY_TYPE} -> do
-            decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
-            return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> arrayMapM " ++ decodeResultDefElem ++ ")"
-          _ -> undefined
-
--- Return a string representing a function to take the result from a Haskell value and return Maybe Datum
--- returned code :: Maybe a -> IO (Maybe Datum)
--- where a is the type represented by TypeInfo
-makeEncodeResultDef :: Ptr TypeInfo -> IO String
-makeEncodeResultDef pTypeInfo =
-  let encodeFieldDef j fieldPTypeInfo = do
-        def <- makeEncodeResultDef fieldPTypeInfo
-        return $ interpolate ("fieldMDatum? <- " ++ def ++ " field?;") j
-   in do
-        let pTypeInfoAddr = "(wordPtrToPtr " ++ show (ptrToWordPtr pTypeInfo) ++ ")"
-        valueType <- getValueType pTypeInfo
-        case valueType of
-          #{const VOID_TYPE} -> return "encodeVoid"
-          #{const BASE_TYPE} -> do
-            typeOid <- getTypeOid pTypeInfo
-            return $ "((encode " ++ pTypeInfoAddr ++ ") :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
-          #{const COMPOSITE_TYPE} -> do
-            fieldIndexes <- getCount pTypeInfo <&> range
-            encodeFieldDefs <- getFields pTypeInfo >>= zipWithM encodeFieldDef [0 ..]
-            let fieldDatumsList = " [" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
-            let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
-            return $
-              "(maybeWrap $ \\"
-                ++ fieldsTuple
-                ++ " -> do {"
-                ++ concat encodeFieldDefs
-                ++ "writeComposite "
-                ++ pTypeInfoAddr
-                ++ fieldDatumsList
-                ++ "})"
-          #{const ARRAY_TYPE} -> do
-            encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
-            return $ "(maybeWrap $ arrayMapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
-          _ -> undefined
-
-defineDecodeArg :: Ptr CallInfo -> Int16 -> Interpreter ()
-defineDecodeArg pCallInfo i = do
-  decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
-  runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
+  where
+    -- Get Haskell type name based on TypeInfo struct
+    getTypeName :: Ptr TypeInfo -> IO String
+    getTypeName pTypeInfo = do
+      valueType <- getValueType pTypeInfo
+      case valueType of
+        #{const VOID_TYPE} -> return "()"
+        #{const BASE_TYPE} -> do
+          typeOid <- getTypeOid pTypeInfo
+          return $ "Maybe " ++ baseName typeOid
+        #{const COMPOSITE_TYPE} -> do
+          names <- getFields pTypeInfo >>= (mapM getTypeName)
+          return $ "Maybe (" ++ intercalate ", " names ++ ")"
+        #{const ARRAY_TYPE} -> do
+          elemName <- getElement pTypeInfo >>= getTypeName
+          return $ "Maybe (Array (" ++ elemName ++ "))"
+        _ -> undefined
 
 foreign import capi safe "plhaskell.h error_func_sig"
   cErrorFuncSig :: CString -> IO ()
@@ -251,7 +176,7 @@ setUpEvalInt pCallInfo = do
   let argIndexes = range nargs
 
   -- Fill all decodeArg? values with functions to decode arguments
-  mapM_ (defineDecodeArg pCallInfo) argIndexes
+  mapM_ defineDecodeArg argIndexes
 
   -- Fill encodeResult value with function to return Maybe Datum
   pResultTypeInfo <- liftIO $ #{peek struct CallInfo, result} pCallInfo
@@ -259,6 +184,76 @@ setUpEvalInt pCallInfo = do
   runStmt $ "let encodeResult = " ++ encodeResultDef
 
   return (argIndexes, funcName, toBool trusted)
+  where
+    -- Return a string representing a function to take an argument from a Maybe Datum and return the Haskell value
+    -- returned code :: Maybe Datum -> IO (Maybe a)
+    -- where a is the type represented by TypeInfo
+    decodeFieldDef j fieldPTypeInfo = do
+      def <- makeDecodeArgDef fieldPTypeInfo
+      return $ interpolate ("field? <- " ++ def ++ " fieldMDatum?;") j
+    makeDecodeArgDef pTypeInfo =
+      do
+        let pTypeInfoAddr = "(wordPtrToPtr " ++ show (ptrToWordPtr pTypeInfo) ++ ")"
+        valueType <- getValueType pTypeInfo
+        case valueType of
+          #{const BASE_TYPE} -> do
+            typeOid <- getTypeOid pTypeInfo
+            return $ "(decode :: Maybe Datum -> IO (Maybe " ++ baseName typeOid ++ "))"
+          #{const COMPOSITE_TYPE} -> do
+            fieldIndexes <- getCount pTypeInfo <&> range
+            decodeFieldDefs <- getFields pTypeInfo >>= zipWithM decodeFieldDef [0 ..]
+            let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
+            let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
+            return $
+              "(maybeWrap $ \\datum -> do {"
+                ++ fieldDatumsList
+                ++ " <- readComposite "
+                ++ pTypeInfoAddr
+                ++ " datum;"
+                ++ concat decodeFieldDefs
+                ++ "return "
+                ++ fieldsTuple
+                ++ ";})"
+          #{const ARRAY_TYPE} -> do
+            decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
+            return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> arrayMapM " ++ decodeResultDefElem ++ ")"
+          _ -> undefined
+    -- Return a string representing a function to take the result from a Haskell value and return Maybe Datum
+    -- returned code :: Maybe a -> IO (Maybe Datum)
+    -- where a is the type represented by TypeInfo
+    encodeFieldDef j fieldPTypeInfo = do
+      def <- makeEncodeResultDef fieldPTypeInfo
+      return $ interpolate ("fieldMDatum? <- " ++ def ++ " field?;") j
+    makeEncodeResultDef pTypeInfo =
+      do
+        let pTypeInfoAddr = "(wordPtrToPtr " ++ show (ptrToWordPtr pTypeInfo) ++ ")"
+        valueType <- getValueType pTypeInfo
+        case valueType of
+          #{const VOID_TYPE} -> return "encodeVoid"
+          #{const BASE_TYPE} -> do
+            typeOid <- getTypeOid pTypeInfo
+            return $ "((encode " ++ pTypeInfoAddr ++ ") :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
+          #{const COMPOSITE_TYPE} -> do
+            fieldIndexes <- getCount pTypeInfo <&> range
+            encodeFieldDefs <- getFields pTypeInfo >>= zipWithM encodeFieldDef [0 ..]
+            let fieldDatumsList = " [" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
+            let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
+            return $
+              "(maybeWrap $ \\"
+                ++ fieldsTuple
+                ++ " -> do {"
+                ++ concat encodeFieldDefs
+                ++ "writeComposite "
+                ++ pTypeInfoAddr
+                ++ fieldDatumsList
+                ++ "})"
+          #{const ARRAY_TYPE} -> do
+            encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
+            return $ "(maybeWrap $ arrayMapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
+          _ -> undefined
+    defineDecodeArg i = do
+      decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
+      runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
 foreign import capi safe "plhaskell.h unknown_compiler_error"
   unknownComilerError :: IO ()
