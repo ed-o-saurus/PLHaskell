@@ -25,7 +25,7 @@
 
 #{include "plhaskell.h"}
 
-module PGsupport (Datum (Datum), BaseType (decode, encode), encodeVoid, maybeWrap, mkResultList, readComposite, wrapFunction, writeComposite, writeResult) where
+module PGsupport (Datum (Datum), BaseType (read, write, decode, encode), encodeVoid, maybeWrap, mkResultList, readComposite, wrapFunction, writeComposite, writeResult) where
 
 import Control.Monad ((>=>))
 import Data.ByteString (ByteString, packCStringLen, useAsCStringLen)

@@ -63,6 +63,12 @@ getDataType #{const INT4OID} = Just "Int32"
 getDataType #{const INT8OID} = Just "Int64"
 getDataType #{const FLOAT4OID} = Just "Float"
 getDataType #{const FLOAT8OID} = Just "Double"
+getDataType #{const DATEOID} = Just "Date"
+getDataType #{const TIMEOID} = Just "Time"
+getDataType #{const TIMETZOID} = Just "TimeTZ"
+getDataType #{const TIMESTAMPOID} = Just "Timestamp"
+getDataType #{const TIMESTAMPTZOID} = Just "TimestampTZ"
+getDataType #{const INTERVALOID} = Just "Interval"
 getDataType _oid = Nothing
 
 -- Is a type supported
@@ -161,6 +167,7 @@ setUpEvalInt pCallInfo = do
       ModuleImport "PGutils" NotQualified (ImportList ["PGm", "unPGm"]),
       ModuleImport "PGsupport" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
       ModuleImport "PGarray" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
+      ModuleImport "PGdatetime" NotQualified (ImportList ["Date", "Time", "TimeTZ", "Timestamp", "TimestampTZ", "Interval"]),
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 
@@ -298,6 +305,7 @@ checkSignature pCallInfo = execute $ do
       ModuleImport "Data.Text" NotQualified (ImportList ["Text"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm"]),
       ModuleImport "PGarray" NotQualified (ImportList ["Array"]),
+      ModuleImport "PGdatetime" NotQualified (ImportList ["Date", "Time", "TimeTZ", "Timestamp", "TimestampTZ", "Interval"]),
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 

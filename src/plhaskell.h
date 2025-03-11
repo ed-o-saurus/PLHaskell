@@ -29,6 +29,8 @@
 #include "executor/spi.h"
 #include "funcapi.h"
 #include "utils/array.h"
+#include "utils/date.h"
+#include "utils/timestamp.h"
 
 #include "HsFFI.h"
 

@@ -28,7 +28,7 @@
 
 #{include "plhaskell.h"}
 
-module PGutils (PGm, ErrorLevel, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad (zipWithM, (>=>))
 import Control.Monad.Fail (MonadFail (fail))
@@ -46,6 +46,7 @@ import Foreign.Ptr (Ptr, WordPtr (WordPtr))
 import Foreign.Storable (peek, peekByteOff, peekElemOff)
 import PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray)
 import PGcommon (ErrorLevel (..), Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, plhaskellReport, range, voidDatum)
+import PGdatetime (Date, Interval, Time, TimeTZ, Timestamp, TimestampTZ)
 import PGsupport (BaseType (decode, encode), Datum (Datum), maybeWrap, readComposite, writeComposite)
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
