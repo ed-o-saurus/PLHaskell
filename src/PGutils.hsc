@@ -49,7 +49,7 @@ import PGcommon (ErrorLevel (..), Oid (Oid), TypeInfo, assert, getCount, getElem
 import PGdatetime (Date, Interval, Time, TimeTZ, Timestamp, TimestampTZ)
 import PGsupport (BaseType (decode, encode), Datum (Datum), maybeWrap, readComposite, writeComposite)
 import System.IO.Unsafe (unsafePerformIO)
-import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
+import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
 
 data TupleTable
 
