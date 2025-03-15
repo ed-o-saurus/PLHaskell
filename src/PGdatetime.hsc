@@ -35,7 +35,7 @@ import Foreign.Storable (Storable (alignment, peek, poke, sizeOf), peekByteOff, 
 import PGcommon (Datum (Datum), palloc, pallocArray, palloca)
 import PGsupport (BaseType (read, write))
 import System.IO.Unsafe (unsafePerformIO)
-import Prelude (IO, Show (show), maxBound, minBound, otherwise, return, ($), (&&), (+), (==))
+import Prelude (IO, Show (show), maxBound, minBound, otherwise, return, ($), (&&), (+), (==), (>>=))
 
 foreign import capi safe "plhaskell.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
@@ -104,16 +104,10 @@ instance Show Time where
 data TimeTZ = TimeTZ Int64 Int32
 
 instance BaseType TimeTZ where
-  read datum = do
-    pTimeTZ <- datumGetPointer datum
-    time <- #{peek TimeTzADT, time} pTimeTZ
-    zone <- #{peek TimeTzADT, zone} pTimeTZ
-    return $ TimeTZ time zone
-
-  write (TimeTZ time zone) = do
+  read datum = datumGetPointer datum >>= peek
+  write timeTZ = do
     pTimeTZ <- palloc #{size TimeTzADT}
-    #{poke TimeTzADT, time} pTimeTZ time
-    #{poke TimeTzADT, zone} pTimeTZ zone
+    poke pTimeTZ timeTz
     pointerGetDatum pTimeTZ
 
 instance Storable TimeTZ where
@@ -219,34 +213,10 @@ data Interval
   | IntervalPInfinity
 
 instance BaseType Interval where
-  read datum = do
-    pInterval <- datumGetPointer datum
-    time <- #{peek Interval, time} pInterval
-    day <- #{peek Interval, day} pInterval
-    month <- #{peek Interval, month} pInterval
-    let result
-          | time == minBound && day == minBound && month == minBound = IntervalNInfinity
-          | time == maxBound && day == maxBound && month == maxBound = IntervalPInfinity
-          | otherwise = Interval time day month
-    return result
-
-  write IntervalNInfinity = do
+  read datum = datumGetPointer datum >>= peek
+  write interval = do
     pInterval <- palloc #{size Interval}
-    #{poke Interval, time} pInterval (minBound :: Int64)
-    #{poke Interval, day} pInterval (minBound :: Int32)
-    #{poke Interval, month} pInterval (minBound :: Int32)
-    pointerGetDatum pInterval
-  write (Interval time day month) = do
-    pInterval <- palloc #{size Interval}
-    #{poke Interval, time} pInterval time
-    #{poke Interval, day} pInterval day
-    #{poke Interval, month} pInterval month
-    pointerGetDatum pInterval
-  write IntervalPInfinity = do
-    pInterval <- palloc #{size Interval}
-    #{poke Interval, time} pInterval (maxBound :: Int64)
-    #{poke Interval, day} pInterval (maxBound :: Int32)
-    #{poke Interval, month} pInterval (maxBound :: Int32)
+    poke pInterval interval
     pointerGetDatum pInterval
 
 instance Storable Interval where
