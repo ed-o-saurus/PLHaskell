@@ -206,6 +206,12 @@ PostgreSQL Type |   Module          | Haskell Type
 `bigint`        | `Data.Int`        | `Int64`
 `real`          | `Prelude`         | `Float`
 `float`         | `Prelude`         | `Double`
+`date`          | `PGutils`         | `Date`
+`time`          | `PGutils`         | `Time`
+`timetz`        | `PGutils`         | `TimeTZ`
+`timestamp`     | `PGutils`         | `Timestamp`
+`timestamptz`   | `PGutils`         | `TimestampTZ`
+`interval`      | `PGutils`         | `Interval`
 
 Trusted functions must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function while untrusted functions must return type `IO (Maybe `*`result`*`)`. The `PGm`  monad type can be imported from the `PGutils` module.
 
