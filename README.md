@@ -284,6 +284,12 @@ Any type that can be passed to PL/Haskell functions can be used as a parameter b
 `QueryParamInt8                         (Maybe Int64)`              |
 `QueryParamFloat4                       (Maybe Float)`              |
 `QueryParamFloat8                       (Maybe Double)`             |
+`QueryParamDate                         (Maybe Date)`               |
+`QueryParamTime                         (Maybe Time)`               |
+`QueryParamTimeTZ                       (Maybe TimeTZ)`             |
+`QueryParamTimestamp                    (Maybe Timestamp)`          |
+`QueryParamTimestampTZ                  (Maybe TimestampTZ)`        |
+`QueryParamInterval                     (Maybe Interval)`           |
 `QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])`       |
 `QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))` |
 
@@ -319,6 +325,12 @@ The constructors for `QueryResultValue` are the following:
 `QueryResultValueInt8                   (Maybe Int64)`                    |
 `QueryResultValueFloat4                 (Maybe Float)`                    |
 `QueryResultValueFloat8                 (Maybe Double)`                   |
+`QueryResultValueDate                   (Maybe Date)`                     |
+`QueryResultValueTime                   (Maybe Time)`                     |
+`QueryResultValueTimeTZ                 (Maybe TimeTZ)`                   |
+`QueryResultValueTimestamp              (Maybe Timestamp)`                |
+`QueryResultValueTimestampTZ            (Maybe TimestampTZ)`              |
+`QueryResultValueInterval               (Maybe Interval)`                 |
 `QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])`       |
 `QueryResultValueArray     (Text, Text) (Maybe (Array QueryResultValue))` |
 

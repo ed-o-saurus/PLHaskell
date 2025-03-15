@@ -49,7 +49,7 @@ import PGcommon (ErrorLevel (..), Oid (Oid), TypeInfo, assert, getCount, getElem
 import PGdatetime (Date, Interval, Time, TimeTZ, Timestamp, TimestampTZ)
 import PGsupport (BaseType (decode, encode), Datum (Datum), maybeWrap, readComposite, writeComposite)
 import System.IO.Unsafe (unsafePerformIO)
-import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
+import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
 
 data TupleTable
 
@@ -97,6 +97,12 @@ data QueryParam
   | QueryParamInt8 (Maybe Int64)
   | QueryParamFloat4 (Maybe Float)
   | QueryParamFloat8 (Maybe Double)
+  | QueryParamDate (Maybe Date)
+  | QueryParamTime (Maybe Time)
+  | QueryParamTimeTZ (Maybe TimeTZ)
+  | QueryParamTimestamp (Maybe Timestamp)
+  | QueryParamTimestampTZ (Maybe TimestampTZ)
+  | QueryParamInterval (Maybe Interval)
   | QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])
   | QueryParamArray (Maybe Text, Text) (Maybe (Array QueryParam))
 
@@ -115,6 +121,12 @@ getOid (QueryParamInt4 _) = return #{const INT4OID}
 getOid (QueryParamInt8 _) = return #{const INT8OID}
 getOid (QueryParamFloat4 _) = return #{const FLOAT4OID}
 getOid (QueryParamFloat8 _) = return #{const FLOAT8OID}
+getOid (QueryParamDate _) = return #{const DATEOID}
+getOid (QueryParamTime _) = return #{const TIMEOID}
+getOid (QueryParamTimeTZ _) = return #{const TIMETZOID}
+getOid (QueryParamTimestamp _) = return #{const TIMESTAMPOID}
+getOid (QueryParamTimestampTZ _) = return #{const TIMESTAMPTZOID}
+getOid (QueryParamInterval _) = return #{const INTERVALOID}
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
@@ -172,6 +184,30 @@ encode' pTypeInfo (QueryParamFloat8 value) = do
   oid <- getTypeOid pTypeInfo
   assert (oid == #{const FLOAT8OID}) $ expectedType #{const FLOAT8OID}
   encode pTypeInfo value
+encode' pTypeInfo (QueryParamDate value) = do
+  oid <- getTypeOid pTypeInfo
+  assert (oid == #{const DATEOID}) $ expectedType #{const DATEOID}
+  encode pTypeInfo value
+encode' pTypeInfo (QueryParamTime value) = do
+  oid <- getTypeOid pTypeInfo
+  assert (oid == #{const TIMEOID}) $ expectedType #{const TIMEOID}
+  encode pTypeInfo value
+encode' pTypeInfo (QueryParamTimeTZ value) = do
+  oid <- getTypeOid pTypeInfo
+  assert (oid == #{const TIMETZOID}) $ expectedType #{const TIMETZOID}
+  encode pTypeInfo value
+encode' pTypeInfo (QueryParamTimestamp value) = do
+  oid <- getTypeOid pTypeInfo
+  assert (oid == #{const TIMESTAMPOID}) $ expectedType #{const TIMESTAMPOID}
+  encode pTypeInfo value
+encode' pTypeInfo (QueryParamTimestampTZ value) = do
+  oid <- getTypeOid pTypeInfo
+  assert (oid == #{const TIMESTAMPTZOID}) $ expectedType #{const TIMESTAMPTZOID}
+  encode pTypeInfo value
+encode' pTypeInfo (QueryParamInterval value) = do
+  oid <- getTypeOid pTypeInfo
+  assert (oid == #{const INTERVALOID}) $ expectedType #{const INTERVALOID}
+  encode pTypeInfo value
 encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
   valueType <- getValueType pTypeInfo
   assert (valueType == #{const COMPOSITE_TYPE}) expectedComposite
@@ -204,9 +240,16 @@ data QueryResultValue
   | QueryResultValueInt8 (Maybe Int64)
   | QueryResultValueFloat4 (Maybe Float)
   | QueryResultValueFloat8 (Maybe Double)
+  | QueryResultValueDate (Maybe Date)
+  | QueryResultValueTime (Maybe Time)
+  | QueryResultValueTimeTZ (Maybe TimeTZ)
+  | QueryResultValueTimestamp (Maybe Timestamp)
+  | QueryResultValueTimestampTZ (Maybe TimestampTZ)
+  | QueryResultValueInterval (Maybe Interval)
   | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])
   | QueryResultValueArray (Text, Text) (Maybe (Array QueryResultValue))
-  deriving stock (Show)
+
+--  deriving stock (Show)
 
 -- Various query results
 data QueryResults
@@ -220,7 +263,8 @@ data QueryResults
   | UpdateReturningResults Word64 [Text] [[QueryResultValue]]
   | UtilityResults Word64
   | RewrittenResults Word64
-  deriving stock (Show)
+
+--  deriving stock (Show)
 
 foreign import capi safe "plhaskell.h get_header_field"
   cGetHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
@@ -278,6 +322,12 @@ decode' pTypeInfo mDatum = do
         #{const INT8OID} -> QueryResultValueInt8 <$> decode mDatum
         #{const FLOAT4OID} -> QueryResultValueFloat4 <$> decode mDatum
         #{const FLOAT8OID} -> QueryResultValueFloat8 <$> decode mDatum
+        #{const DATEOID} -> QueryResultValueDate <$> decode mDatum
+        #{const TIMEOID} -> QueryResultValueTime <$> decode mDatum
+        #{const TIMETZOID} -> QueryResultValueTimeTZ <$> decode mDatum
+        #{const TIMESTAMPOID} -> QueryResultValueTimestamp <$> decode mDatum
+        #{const TIMESTAMPTZOID} -> QueryResultValueTimestampTZ <$> decode mDatum
+        #{const INTERVALOID} -> QueryResultValueInterval <$> decode mDatum
         _ -> undefined
     #{const COMPOSITE_TYPE} -> do
       schemaType <- getSchemaType pTypeInfo

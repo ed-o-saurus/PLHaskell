@@ -56,7 +56,7 @@ src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs  -o src/PLHaskell.o  -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
-src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGcommon.hi src/plhaskell.h
+src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs    -o src/PGutils.o    -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
