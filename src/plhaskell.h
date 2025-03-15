@@ -30,9 +30,13 @@
 #include "funcapi.h"
 #include "utils/array.h"
 #include "utils/date.h"
+#include "utils/datetime.h"
 #include "utils/timestamp.h"
 
 #include "HsFFI.h"
+
+#define USE_ISO_DATES 1
+#define INTSTYLE_POSTGRES 0
 
 #define VOID_TYPE 0
 #define BASE_TYPE 1
@@ -135,5 +139,12 @@ void higher_dim_arrays();
 void unknown_compiler_error();
 void error_func_sig(char *func_sig);
 void language_error(int elevel, char *msg);
+
+void date_show(DateADT date, char *buf);
+void time_show(TimeADT time, char *buf);
+void timetz_show(TimeTzADT *timetz, char *buf);
+void timestamp_show(Timestamp timestamp, char *buf);
+void timestamptz_show(TimestampTz timestamptz, char *buf);
+void interval_show(Interval *interval, char *buf);
 
 #endif

@@ -1278,3 +1278,61 @@ void language_error(int elevel, char *msg) {
                               filename_location + filename_length));
   }
 }
+
+void date_show(DateADT date, char *buf) {
+  struct pg_tm tt, *tm = &tt;
+
+  j2date(date + POSTGRES_EPOCH_JDATE, &(tm->tm_year), &(tm->tm_mon),
+         &(tm->tm_mday));
+
+  EncodeDateOnly(tm, USE_ISO_DATES, buf);
+}
+
+void time_show(TimeADT time, char *buf) {
+  struct pg_tm tt, *tm = &tt;
+  fsec_t fsec;
+
+  time2tm(time, tm, &fsec);
+  EncodeTimeOnly(tm, fsec, false, 0, USE_ISO_DATES, buf);
+}
+
+void timetz_show(TimeTzADT *timetz, char *buf) {
+  struct pg_tm tt, *tm = &tt;
+  fsec_t fsec;
+  int tz;
+
+  timetz2tm(timetz, tm, &fsec, &tz);
+  EncodeTimeOnly(tm, fsec, true, tz, USE_ISO_DATES, buf);
+}
+
+void timestamp_show(Timestamp timestamp, char *buf) {
+  struct pg_tm tt, *tm = &tt;
+  fsec_t fsec;
+
+  if (timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL) == 0)
+    EncodeDateTime(tm, fsec, false, 0, NULL, USE_ISO_DATES, buf);
+  else
+    ereport(ERROR, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+                    errmsg("timestamp out of range")));
+}
+
+void timestamptz_show(TimestampTz timestamptz, char *buf) {
+  int tz;
+  struct pg_tm tt, *tm = &tt;
+  fsec_t fsec;
+  const char *tzn;
+  pg_tz *attimezone = pg_tzset("GMT");
+
+  if (timestamp2tm(timestamptz, &tz, tm, &fsec, &tzn, attimezone) == 0)
+    EncodeDateTime(tm, fsec, true, tz, tzn, USE_ISO_DATES, buf);
+  else
+    ereport(ERROR, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+                    errmsg("timestamp out of range")));
+}
+
+void interval_show(Interval *interval, char *buf) {
+  struct pg_itm tt, *itm = &tt;
+
+  interval2itm(*interval, itm);
+  EncodeInterval(itm, INTSTYLE_POSTGRES, buf);
+}

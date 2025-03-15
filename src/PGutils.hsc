@@ -248,8 +248,7 @@ data QueryResultValue
   | QueryResultValueInterval (Maybe Interval)
   | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])
   | QueryResultValueArray (Text, Text) (Maybe (Array QueryResultValue))
-
---  deriving stock (Show)
+  deriving stock (Show)
 
 -- Various query results
 data QueryResults
@@ -263,8 +262,7 @@ data QueryResults
   | UpdateReturningResults Word64 [Text] [[QueryResultValue]]
   | UtilityResults Word64
   | RewrittenResults Word64
-
---  deriving stock (Show)
+  deriving stock (Show)
 
 foreign import capi safe "plhaskell.h get_header_field"
   cGetHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()

@@ -30,7 +30,7 @@
 
 #{include "plhaskell.h"}
 
-module PGcommon (Datum (Datum), ErrorLevel (ErrorLevel), NullableDatum, Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, pallocArray, plhaskellReport, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon (Datum (Datum), ErrorLevel (ErrorLevel), NullableDatum, Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, palloca, pallocArray, plhaskellReport, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
 import Control.Exception (SomeException)
 import Data.ByteString (ByteString, useAsCStringLen)
@@ -111,6 +111,9 @@ foreign import capi safe "plhaskell.h palloc0"
 -- Free memory using postgres' mechanism
 foreign import capi safe "plhaskell.h pfree"
   pfree :: Ptr a -> IO ()
+
+palloca :: (Storable a) => (Ptr a -> IO b) -> IO b
+palloca = pallocArray 1
 
 pallocArray :: forall a b. (Storable a) => Int -> (Ptr a -> IO b) -> IO b
 pallocArray size action = do

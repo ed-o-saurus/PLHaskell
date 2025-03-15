@@ -27,11 +27,15 @@
 
 module PGdatetime (Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval) where
 
+import Data.Functor ((<&>))
 import Data.Int (Int32, Int64)
+import Foreign.C.String (CString, peekCString)
 import Foreign.Ptr (Ptr, WordPtr (WordPtr))
-import Foreign.Storable (peekByteOff, pokeByteOff)
-import PGcommon (Datum (Datum), palloc)
+import Foreign.Storable (Storable (alignment, peek, poke, sizeOf), peekByteOff, pokeByteOff)
+import PGcommon (Datum (Datum), palloc, pallocArray, palloca)
 import PGsupport (BaseType (read, write))
+import System.IO.Unsafe (unsafePerformIO)
+import Prelude (IO, Show (show), maxBound, minBound, otherwise, return, ($), (&&), (+), (==))
 
 foreign import capi safe "plhaskell.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
@@ -39,82 +43,249 @@ foreign import capi safe "plhaskell.h DatumGetPointer"
 foreign import capi safe "plhaskell.h PointerGetDatum"
   pointerGetDatum :: Ptr a -> IO Datum
 
-newtype Date = Date Int32
+data Date
+  = DateNInfinity
+  | Date Int32
+  | DatePInfinity
 
 foreign import capi safe "plhaskell.h DatumGetDateADT"
-  datumGetDateADT :: Datum -> IO Date
+  datumGetDateADT :: Datum -> IO Int32
 
 foreign import capi safe "plhaskell.h DateADTGetDatum"
-  dateADTGetDatum :: Date -> IO Datum
+  dateADTGetDatum :: Int32 -> IO Datum
 
 instance BaseType Date where
-  read = datumGetDateADT
-  write = dateADTGetDatum
+  read datum = do
+    date <- datumGetDateADT datum
+    let result
+          | date == minBound = DateNInfinity
+          | date == maxBound = DatePInfinity
+          | otherwise = Date date
+    return result
 
-newtype Time = Time Int64
+  write DateNInfinity = dateADTGetDatum minBound
+  write (Date date) = dateADTGetDatum date
+  write DatePInfinity = dateADTGetDatum maxBound
+
+foreign import capi safe "plhaskell.h date_show"
+  dateShow :: Int32 -> CString -> IO ()
+
+instance Show Date where
+  show DateNInfinity = "-infinity"
+  show DatePInfinity = "infinity"
+  show (Date date) = unsafePerformIO $
+    pallocArray (#{const MAXDATELEN} + 1) $
+      \buf -> do
+        dateShow date buf
+        peekCString buf
+
+data Time = Time Int64
 
 foreign import capi safe "plhaskell.h DatumGetTimeADT"
-  datumGetTimeADT :: Datum -> IO Time
+  datumGetTimeADT :: Datum -> IO Int64
 
 foreign import capi safe "plhaskell.h TimeADTGetDatum"
-  timeADTGetDatum :: Time -> IO Datum
+  timeADTGetDatum :: Int64 -> IO Datum
 
 instance BaseType Time where
-  read = datumGetTimeADT
-  write = timeADTGetDatum
+  read datum = datumGetTimeADT datum <&> Time
+  write (Time time) = timeADTGetDatum time
+
+foreign import capi safe "plhaskell.h time_show"
+  timeShow :: Int64 -> CString -> IO ()
+
+instance Show Time where
+  show (Time time) = unsafePerformIO $
+    pallocArray (#{const MAXDATELEN} + 1) $
+      \buf -> do
+        timeShow time buf
+        peekCString buf
 
 data TimeTZ = TimeTZ Int64 Int32
 
 instance BaseType TimeTZ where
   read datum = do
-    ptr <- datumGetPointer datum
-    time <- #{peek TimeTzADT, time} ptr
-    zone <- #{peek TimeTzADT, zone} ptr
+    pTimeTZ <- datumGetPointer datum
+    time <- #{peek TimeTzADT, time} pTimeTZ
+    zone <- #{peek TimeTzADT, zone} pTimeTZ
     return $ TimeTZ time zone
 
   write (TimeTZ time zone) = do
-    ptr <- palloc #{size TimeTzADT}
-    #{poke TimeTzADT, time} ptr time
-    #{poke TimeTzADT, zone} ptr zone
-    pointerGetDatum ptr
+    pTimeTZ <- palloc #{size TimeTzADT}
+    #{poke TimeTzADT, time} pTimeTZ time
+    #{poke TimeTzADT, zone} pTimeTZ zone
+    pointerGetDatum pTimeTZ
 
-newtype Timestamp = Timestamp Int64
+instance Storable TimeTZ where
+  sizeOf _ = #{size TimeTzADT}
+  alignment _ = #{alignment TimeTzADT}
+
+  peek pTimeTZ = do
+    time <- #{peek TimeTzADT, time} pTimeTZ
+    zone <- #{peek TimeTzADT, zone} pTimeTZ
+    return $ TimeTZ time zone
+
+  poke pTimeTZ (TimeTZ time zone) = do
+    #{poke TimeTzADT, time} pTimeTZ time
+    #{poke TimeTzADT, zone} pTimeTZ zone
+
+foreign import capi safe "plhaskell.h timetz_show"
+  timeTZShow :: Ptr TimeTZ -> CString -> IO ()
+
+instance Show TimeTZ where
+  show timeTZ = unsafePerformIO $
+    palloca $
+      \pTimeTZ -> pallocArray (#{const MAXDATELEN} + 1) $
+        \buf -> do
+          poke pTimeTZ timeTZ
+          timeTZShow pTimeTZ buf
+          peekCString buf
+
+data Timestamp
+  = TimestampNInfinity
+  | Timestamp Int64
+  | TimestampPInfinity
 
 foreign import capi safe "plhaskell.h DatumGetTimestamp"
-  datumGetTimestamp :: Datum -> IO Timestamp
+  datumGetTimestamp :: Datum -> IO Int64
 
 foreign import capi safe "plhaskell.h TimestampGetDatum"
-  timestampGetDatum :: Timestamp -> IO Datum
+  timestampGetDatum :: Int64 -> IO Datum
 
 instance BaseType Timestamp where
-  read = datumGetTimestamp
-  write = timestampGetDatum
+  read datum = do
+    timestamp <- datumGetTimestamp datum
+    let result
+          | timestamp == minBound = TimestampNInfinity
+          | timestamp == maxBound = TimestampPInfinity
+          | otherwise = Timestamp timestamp
+    return result
 
-newtype TimestampTZ = TimestampTZ Int64
+  write TimestampNInfinity = timestampGetDatum minBound
+  write (Timestamp timestamp) = timestampGetDatum timestamp
+  write TimestampPInfinity = timestampGetDatum maxBound
+
+foreign import capi safe "plhaskell.h timestamp_show"
+  timestampShow :: Int64 -> CString -> IO ()
+
+instance Show Timestamp where
+  show TimestampNInfinity = "-infinity"
+  show TimestampPInfinity = "infinity"
+  show (Timestamp timestamp) = unsafePerformIO $
+    pallocArray (#{const MAXDATELEN} + 1) $
+      \buf -> do
+        timestampShow timestamp buf
+        peekCString buf
+
+data TimestampTZ
+  = TimestampTZNInfinity
+  | TimestampTZ Int64
+  | TimestampTZPInfinity
 
 foreign import capi safe "plhaskell.h DatumGetTimestampTz"
-  datumGetTimestampTz :: Datum -> IO TimestampTZ
+  datumGetTimestampTZ :: Datum -> IO Int64
 
 foreign import capi safe "plhaskell.h TimestampTzGetDatum"
-  timestampTzGetDatum :: TimestampTZ -> IO Datum
+  timestampTZGetDatum :: Int64 -> IO Datum
 
 instance BaseType TimestampTZ where
-  read = datumGetTimestampTz
-  write = timestampTzGetDatum
+  read datum = do
+    timestamptz <- datumGetTimestampTZ datum
+    let result
+          | timestamptz == minBound = TimestampTZNInfinity
+          | timestamptz == maxBound = TimestampTZPInfinity
+          | otherwise = TimestampTZ timestamptz
+    return result
 
-data Interval = Interval Int64 Int32 Int32
+  write TimestampTZNInfinity = timestampTZGetDatum minBound
+  write (TimestampTZ timestamptz) = timestampTZGetDatum timestamptz
+  write TimestampTZPInfinity = timestampTZGetDatum maxBound
+
+foreign import capi safe "plhaskell.h timestamptz_show"
+  timestampTZShow :: Int64 -> CString -> IO ()
+
+instance Show TimestampTZ where
+  show TimestampTZNInfinity = "-infinity"
+  show TimestampTZPInfinity = "infinity"
+  show (TimestampTZ timestamptz) = unsafePerformIO $
+    pallocArray (#{const MAXDATELEN} + 1) $
+      \buf -> do
+        timestampTZShow timestamptz buf
+        peekCString buf
+
+data Interval
+  = IntervalNInfinity
+  | Interval Int64 Int32 Int32
+  | IntervalPInfinity
 
 instance BaseType Interval where
   read datum = do
-    ptr <- datumGetPointer datum
-    time <- #{peek Interval, time} ptr
-    day <- #{peek Interval, day} ptr
-    month <- #{peek Interval, month} ptr
-    return $ Interval time day month
+    pInterval <- datumGetPointer datum
+    time <- #{peek Interval, time} pInterval
+    day <- #{peek Interval, day} pInterval
+    month <- #{peek Interval, month} pInterval
+    let result
+          | time == minBound && day == minBound && month == minBound = IntervalNInfinity
+          | time == maxBound && day == maxBound && month == maxBound = IntervalPInfinity
+          | otherwise = Interval time day month
+    return result
 
+  write IntervalNInfinity = do
+    pInterval <- palloc #{size Interval}
+    #{poke Interval, time} pInterval (minBound :: Int64)
+    #{poke Interval, day} pInterval (minBound :: Int32)
+    #{poke Interval, month} pInterval (minBound :: Int32)
+    pointerGetDatum pInterval
   write (Interval time day month) = do
-    ptr <- palloc #{size TimeTzADT}
-    #{poke Interval, time} ptr time
-    #{poke Interval, day} ptr day
-    #{poke Interval, month} ptr month
-    pointerGetDatum ptr
+    pInterval <- palloc #{size Interval}
+    #{poke Interval, time} pInterval time
+    #{poke Interval, day} pInterval day
+    #{poke Interval, month} pInterval month
+    pointerGetDatum pInterval
+  write IntervalPInfinity = do
+    pInterval <- palloc #{size Interval}
+    #{poke Interval, time} pInterval (maxBound :: Int64)
+    #{poke Interval, day} pInterval (maxBound :: Int32)
+    #{poke Interval, month} pInterval (maxBound :: Int32)
+    pointerGetDatum pInterval
+
+instance Storable Interval where
+  sizeOf _ = #{size Interval}
+  alignment _ = #{alignment Interval}
+
+  peek pInterval = do
+    time <- #{peek Interval, time} pInterval
+    day <- #{peek Interval, day} pInterval
+    month <- #{peek Interval, month} pInterval
+    let result
+          | time == minBound && day == minBound && month == minBound = IntervalNInfinity
+          | time == maxBound && day == maxBound && month == maxBound = IntervalPInfinity
+          | otherwise = Interval time day month
+    return result
+
+  poke pInterval IntervalNInfinity = do
+    #{poke Interval, time} pInterval (minBound :: Int64)
+    #{poke Interval, day} pInterval (minBound :: Int32)
+    #{poke Interval, month} pInterval (minBound :: Int32)
+  poke pInterval (Interval time day month) = do
+    #{poke Interval, time} pInterval time
+    #{poke Interval, day} pInterval day
+    #{poke Interval, month} pInterval month
+  poke pInterval IntervalPInfinity = do
+    #{poke Interval, time} pInterval (maxBound :: Int64)
+    #{poke Interval, day} pInterval (maxBound :: Int32)
+    #{poke Interval, month} pInterval (maxBound :: Int32)
+
+foreign import capi safe "plhaskell.h interval_show"
+  intervalShow :: Ptr Interval -> CString -> IO ()
+
+instance Show Interval where
+  show IntervalNInfinity = "-infinity"
+  show IntervalPInfinity = "infinity"
+  show interval = unsafePerformIO $
+    palloca $
+      \pInterval -> pallocArray (#{const MAXDATELEN} + 1) $
+        \buf -> do
+          poke pInterval interval
+          intervalShow pInterval buf
+          peekCString buf
