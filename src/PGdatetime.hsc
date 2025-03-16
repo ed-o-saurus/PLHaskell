@@ -107,7 +107,7 @@ instance BaseType TimeTZ where
   read datum = datumGetPointer datum >>= peek
   write timeTZ = do
     pTimeTZ <- palloc #{size TimeTzADT}
-    poke pTimeTZ timeTz
+    poke pTimeTZ timeTZ
     pointerGetDatum pTimeTZ
 
 instance Storable TimeTZ where
