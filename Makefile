@@ -65,7 +65,7 @@ src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskel
 src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGarray.hs    -o src/PGarray.o    -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
-src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/plhaskell.h
+src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/plhaskell.h
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGdatetime.hs -o src/PGdatetime.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
 
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/plhaskell.h
