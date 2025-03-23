@@ -1604,18 +1604,8 @@ bool interval_read(Interval *interval, char *buf) {
     break;
 
   case DTK_LATE:
-    interval->time = PG_INT64_MAX;
-    interval->day = PG_INT32_MAX;
-    interval->month = PG_INT32_MAX;
-
-    break;
-
   case DTK_EARLY:
-    interval->time = PG_INT64_MIN;
-    interval->day = PG_INT32_MIN;
-    interval->month = PG_INT32_MIN;
-
-    break;
+    return false;
 
   default:
     return false;

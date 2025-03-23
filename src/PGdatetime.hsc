@@ -39,7 +39,7 @@ import PGsupport (BaseType (read, write))
 import System.IO.Unsafe (unsafePerformIO)
 import Text.ParserCombinators.ReadPrec (ReadPrec, readS_to_Prec)
 import Text.Read (parens, readPrec)
-import Prelude (IO, Read, Show (show), const, id, maxBound, minBound, otherwise, return, ($), (&&), (+), (==), (>>=))
+import Prelude (IO, Read, Show (show), const, id, maxBound, minBound, otherwise, return, ($), (+), (==), (>>=))
 
 foreign import capi safe "plhaskell.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
@@ -266,10 +266,7 @@ instance Show TimestampTZ where
         timestampTZShow timestamptz buf
         peekCString buf
 
-data Interval
-  = IntervalNInfinity
-  | Interval Int64 Int32 Int32
-  | IntervalPInfinity
+data Interval = Interval Int64 Int32 Int32
 
 instance BaseType Interval where
   read datum = datumGetPointer datum >>= peek
@@ -286,24 +283,12 @@ instance Storable Interval where
     time <- #{peek Interval, time} pInterval
     day <- #{peek Interval, day} pInterval
     month <- #{peek Interval, month} pInterval
-    let result
-          | time == minBound && day == minBound && month == minBound = IntervalNInfinity
-          | time == maxBound && day == maxBound && month == maxBound = IntervalPInfinity
-          | otherwise = Interval time day month
-    return result
+    return $ Interval time day month
 
-  poke pInterval IntervalNInfinity = do
-    #{poke Interval, time} pInterval (minBound :: Int64)
-    #{poke Interval, day} pInterval (minBound :: Int32)
-    #{poke Interval, month} pInterval (minBound :: Int32)
   poke pInterval (Interval time day month) = do
     #{poke Interval, time} pInterval time
     #{poke Interval, day} pInterval day
     #{poke Interval, month} pInterval month
-  poke pInterval IntervalPInfinity = do
-    #{poke Interval, time} pInterval (maxBound :: Int64)
-    #{poke Interval, day} pInterval (maxBound :: Int32)
-    #{poke Interval, month} pInterval (maxBound :: Int32)
 
 foreign import capi safe "plhaskell.h interval_read"
   intervalRead :: Ptr Interval -> CString -> IO CBool
@@ -315,8 +300,6 @@ foreign import capi safe "plhaskell.h interval_show"
   intervalShow :: Ptr Interval -> CString -> IO ()
 
 instance Show Interval where
-  show IntervalNInfinity = "-infinity"
-  show IntervalPInfinity = "infinity"
   show interval = unsafePerformIO $
     palloca $
       \pInterval -> pallocArray (#{const MAXDATELEN} + 1) $
