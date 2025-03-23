@@ -30,12 +30,16 @@ module PGdatetime (Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval) where
 import Data.Functor ((<&>))
 import Data.Int (Int32, Int64)
 import Foreign.C.String (CString, peekCString)
+import Foreign.C.Types (CBool (CBool))
+import Foreign.Marshal.Utils (toBool)
 import Foreign.Ptr (Ptr, WordPtr (WordPtr))
 import Foreign.Storable (Storable (alignment, peek, poke, sizeOf), peekByteOff, pokeByteOff)
-import PGcommon (Datum (Datum), palloc, pallocArray, palloca)
+import PGcommon (Datum (Datum), pWithCString, palloc, pallocArray, palloca)
 import PGsupport (BaseType (read, write))
 import System.IO.Unsafe (unsafePerformIO)
-import Prelude (IO, Show (show), maxBound, minBound, otherwise, return, ($), (&&), (+), (==), (>>=))
+import Text.ParserCombinators.ReadPrec (ReadPrec, readS_to_Prec)
+import Text.Read (parens, readPrec)
+import Prelude (IO, Read, Show (show), const, id, maxBound, minBound, otherwise, return, ($), (&&), (+), (==), (>>=))
 
 foreign import capi safe "plhaskell.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
@@ -43,10 +47,41 @@ foreign import capi safe "plhaskell.h DatumGetPointer"
 foreign import capi safe "plhaskell.h PointerGetDatum"
   pointerGetDatum :: Ptr a -> IO Datum
 
+mkReadPrec :: (Storable a) => (Ptr a -> CString -> IO CBool) -> (a -> b) -> ReadPrec b
+mkReadPrec readFunc convert = parens $ readS_to_Prec $ const parse
+  where
+    parse "" = []
+    parse ('(' : _) = []
+    parse ('[' : _) = []
+    parse s = unsafePerformIO $ do
+      palloca $
+        \pObj -> do
+          pWithCString (beforeClose s) $ \buf -> do
+            resp <- readFunc pObj buf
+            if (toBool resp)
+              then do
+                obj <- peek pObj
+                return [(convert obj, afterClose s)]
+              else return []
+    beforeClose "" = ""
+    beforeClose (')' : _) = ""
+    beforeClose (']' : _) = ""
+    beforeClose (x : xs) = x : beforeClose xs
+    afterClose "" = ""
+    afterClose x@(')' : _) = x
+    afterClose x@(']' : _) = x
+    afterClose (_ : xs) = afterClose xs
+
 data Date
   = DateNInfinity
   | Date Int32
   | DatePInfinity
+
+numToDate :: Int32 -> Date
+numToDate date
+  | date == minBound = DateNInfinity
+  | date == maxBound = DatePInfinity
+  | otherwise = Date date
 
 foreign import capi safe "plhaskell.h DatumGetDateADT"
   datumGetDateADT :: Datum -> IO Int32
@@ -55,17 +90,17 @@ foreign import capi safe "plhaskell.h DateADTGetDatum"
   dateADTGetDatum :: Int32 -> IO Datum
 
 instance BaseType Date where
-  read datum = do
-    date <- datumGetDateADT datum
-    let result
-          | date == minBound = DateNInfinity
-          | date == maxBound = DatePInfinity
-          | otherwise = Date date
-    return result
+  read datum = datumGetDateADT datum <&> numToDate
 
   write DateNInfinity = dateADTGetDatum minBound
   write (Date date) = dateADTGetDatum date
   write DatePInfinity = dateADTGetDatum maxBound
+
+foreign import capi safe "plhaskell.h date_read"
+  dateRead :: Ptr Int32 -> CString -> IO CBool
+
+instance Read Date where
+  readPrec = mkReadPrec dateRead numToDate
 
 foreign import capi safe "plhaskell.h date_show"
   dateShow :: Int32 -> CString -> IO ()
@@ -90,6 +125,12 @@ foreign import capi safe "plhaskell.h TimeADTGetDatum"
 instance BaseType Time where
   read datum = datumGetTimeADT datum <&> Time
   write (Time time) = timeADTGetDatum time
+
+foreign import capi safe "plhaskell.h time_read"
+  timeRead :: Ptr Int64 -> CString -> IO CBool
+
+instance Read Time where
+  readPrec = mkReadPrec timeRead Time
 
 foreign import capi safe "plhaskell.h time_show"
   timeShow :: Int64 -> CString -> IO ()
@@ -123,6 +164,12 @@ instance Storable TimeTZ where
     #{poke TimeTzADT, time} pTimeTZ time
     #{poke TimeTzADT, zone} pTimeTZ zone
 
+foreign import capi safe "plhaskell.h timetz_read"
+  timeTZRead :: Ptr TimeTZ -> CString -> IO CBool
+
+instance Read TimeTZ where
+  readPrec = mkReadPrec timeTZRead id
+
 foreign import capi safe "plhaskell.h timetz_show"
   timeTZShow :: Ptr TimeTZ -> CString -> IO ()
 
@@ -140,6 +187,12 @@ data Timestamp
   | Timestamp Int64
   | TimestampPInfinity
 
+numToTimestamp :: Int64 -> Timestamp
+numToTimestamp timestamp
+  | timestamp == minBound = TimestampNInfinity
+  | timestamp == maxBound = TimestampPInfinity
+  | otherwise = Timestamp timestamp
+
 foreign import capi safe "plhaskell.h DatumGetTimestamp"
   datumGetTimestamp :: Datum -> IO Int64
 
@@ -147,17 +200,17 @@ foreign import capi safe "plhaskell.h TimestampGetDatum"
   timestampGetDatum :: Int64 -> IO Datum
 
 instance BaseType Timestamp where
-  read datum = do
-    timestamp <- datumGetTimestamp datum
-    let result
-          | timestamp == minBound = TimestampNInfinity
-          | timestamp == maxBound = TimestampPInfinity
-          | otherwise = Timestamp timestamp
-    return result
+  read datum = datumGetTimestamp datum <&> numToTimestamp
 
   write TimestampNInfinity = timestampGetDatum minBound
   write (Timestamp timestamp) = timestampGetDatum timestamp
   write TimestampPInfinity = timestampGetDatum maxBound
+
+foreign import capi safe "plhaskell.h timestamp_read"
+  timestampRead :: Ptr Int64 -> CString -> IO CBool
+
+instance Read Timestamp where
+  readPrec = mkReadPrec timestampRead numToTimestamp
 
 foreign import capi safe "plhaskell.h timestamp_show"
   timestampShow :: Int64 -> CString -> IO ()
@@ -176,6 +229,12 @@ data TimestampTZ
   | TimestampTZ Int64
   | TimestampTZPInfinity
 
+numToTimestampTZ :: Int64 -> TimestampTZ
+numToTimestampTZ timestamptz
+  | timestamptz == minBound = TimestampTZNInfinity
+  | timestamptz == maxBound = TimestampTZPInfinity
+  | otherwise = TimestampTZ timestamptz
+
 foreign import capi safe "plhaskell.h DatumGetTimestampTz"
   datumGetTimestampTZ :: Datum -> IO Int64
 
@@ -183,17 +242,17 @@ foreign import capi safe "plhaskell.h TimestampTzGetDatum"
   timestampTZGetDatum :: Int64 -> IO Datum
 
 instance BaseType TimestampTZ where
-  read datum = do
-    timestamptz <- datumGetTimestampTZ datum
-    let result
-          | timestamptz == minBound = TimestampTZNInfinity
-          | timestamptz == maxBound = TimestampTZPInfinity
-          | otherwise = TimestampTZ timestamptz
-    return result
+  read datum = datumGetTimestampTZ datum <&> numToTimestampTZ
 
   write TimestampTZNInfinity = timestampTZGetDatum minBound
   write (TimestampTZ timestamptz) = timestampTZGetDatum timestamptz
   write TimestampTZPInfinity = timestampTZGetDatum maxBound
+
+foreign import capi safe "plhaskell.h timestamptz_read"
+  timestampTZRead :: Ptr Int64 -> CString -> IO CBool
+
+instance Read TimestampTZ where
+  readPrec = mkReadPrec timestampTZRead numToTimestampTZ
 
 foreign import capi safe "plhaskell.h timestamptz_show"
   timestampTZShow :: Int64 -> CString -> IO ()
@@ -245,6 +304,12 @@ instance Storable Interval where
     #{poke Interval, time} pInterval (maxBound :: Int64)
     #{poke Interval, day} pInterval (maxBound :: Int32)
     #{poke Interval, month} pInterval (maxBound :: Int32)
+
+foreign import capi safe "plhaskell.h interval_read"
+  intervalRead :: Ptr Interval -> CString -> IO CBool
+
+instance Read Interval where
+  readPrec = mkReadPrec intervalRead id
 
 foreign import capi safe "plhaskell.h interval_show"
   intervalShow :: Ptr Interval -> CString -> IO ()

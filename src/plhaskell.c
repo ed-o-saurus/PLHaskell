@@ -1279,6 +1279,59 @@ void language_error(int elevel, char *msg) {
   }
 }
 
+bool date_read(DateADT *date, char *buf) {
+  fsec_t fsec;
+  struct pg_tm tt, *tm = &tt;
+  int tzp;
+  int dtype;
+  int nf;
+  int dterr;
+  char *field[MAXDATEFIELDS];
+  int ftype[MAXDATEFIELDS];
+  char workbuf[MAXDATELEN + 1];
+  DateTimeErrorExtra extra;
+
+  dterr = ParseDateTime(buf, workbuf, sizeof(workbuf), field, ftype,
+                        MAXDATEFIELDS, &nf);
+  if (dterr == 0)
+    dterr = DecodeDateTime(field, ftype, nf, &dtype, tm, &fsec, &tzp, &extra);
+
+  if (dterr != 0)
+    return false;
+
+  switch (dtype) {
+  case DTK_DATE:
+    break;
+
+  case DTK_EPOCH:
+    GetEpochTime(tm);
+    break;
+
+  case DTK_LATE:
+    DATE_NOEND(*date);
+    return true;
+
+  case DTK_EARLY:
+    DATE_NOBEGIN(*date);
+    return true;
+
+  default:
+    return false;
+  }
+
+  /* Prevent overflow in Julian-day routines */
+  if (!IS_VALID_JULIAN(tm->tm_year, tm->tm_mon, tm->tm_mday))
+    return false;
+
+  *date = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) - POSTGRES_EPOCH_JDATE;
+
+  /* Now check for just-out-of-range dates */
+  if (!IS_VALID_DATE(*date))
+    return false;
+
+  return true;
+}
+
 void date_show(DateADT date, char *buf) {
   struct pg_tm tt, *tm = &tt;
 
@@ -1288,12 +1341,81 @@ void date_show(DateADT date, char *buf) {
   EncodeDateOnly(tm, USE_ISO_DATES, buf);
 }
 
+bool time_read(TimeADT *time, char *buf) {
+  fsec_t fsec;
+  struct pg_tm tt, *tm = &tt;
+  int nf;
+  int dterr;
+  char workbuf[MAXDATELEN + 1];
+  char *field[MAXDATEFIELDS];
+  int dtype;
+  int ftype[MAXDATEFIELDS];
+  DateTimeErrorExtra extra;
+  bool has_tz = false;
+
+  dterr = ParseDateTime(buf, workbuf, sizeof(workbuf), field, ftype,
+                        MAXDATEFIELDS, &nf);
+
+  if (dterr == 0)
+    dterr = DecodeTimeOnly(field, ftype, nf, &dtype, tm, &fsec, NULL, &extra);
+  if (dterr != 0)
+    return false;
+
+  for (int i = 0; i < nf; i++)
+    if (ftype[i] == DTK_TZ) {
+      has_tz = true;
+      break;
+    }
+
+  if (has_tz)
+    return false;
+
+  tm2time(tm, fsec, time);
+
+  return true;
+}
+
 void time_show(TimeADT time, char *buf) {
   struct pg_tm tt, *tm = &tt;
   fsec_t fsec;
 
   time2tm(time, tm, &fsec);
   EncodeTimeOnly(tm, fsec, false, 0, USE_ISO_DATES, buf);
+}
+
+bool timetz_read(TimeTzADT *timetz, char *buf) {
+  fsec_t fsec;
+  struct pg_tm tt, *tm = &tt;
+  int tz;
+  int nf;
+  int dterr;
+  char workbuf[MAXDATELEN + 1];
+  char *field[MAXDATEFIELDS];
+  int dtype;
+  int ftype[MAXDATEFIELDS];
+  DateTimeErrorExtra extra;
+  bool has_tz = false;
+
+  dterr = ParseDateTime(buf, workbuf, sizeof(workbuf), field, ftype,
+                        MAXDATEFIELDS, &nf);
+
+  for (int i = 0; i < nf; i++)
+    if (ftype[i] == DTK_TZ) {
+      has_tz = true;
+      break;
+    }
+
+  if (!has_tz)
+    return false;
+
+  if (dterr == 0)
+    dterr = DecodeTimeOnly(field, ftype, nf, &dtype, tm, &fsec, &tz, &extra);
+  if (dterr != 0)
+    return false;
+
+  tm2timetz(tm, fsec, tz, timetz);
+
+  return true;
 }
 
 void timetz_show(TimeTzADT *timetz, char *buf) {
@@ -1305,6 +1427,63 @@ void timetz_show(TimeTzADT *timetz, char *buf) {
   EncodeTimeOnly(tm, fsec, true, tz, USE_ISO_DATES, buf);
 }
 
+bool timestamp_read(Timestamp *timestamp, char *buf) {
+  fsec_t fsec;
+  struct pg_tm tt, *tm = &tt;
+  int tz;
+  int dtype;
+  int nf;
+  int dterr;
+  char *field[MAXDATEFIELDS];
+  int ftype[MAXDATEFIELDS];
+  char workbuf[MAXDATELEN + MAXDATEFIELDS];
+  DateTimeErrorExtra extra;
+  bool has_tz = false;
+
+  dterr = ParseDateTime(buf, workbuf, sizeof(workbuf), field, ftype,
+                        MAXDATEFIELDS, &nf);
+
+  if (dterr == 0)
+    dterr = DecodeDateTime(field, ftype, nf, &dtype, tm, &fsec, &tz, &extra);
+  if (dterr != 0)
+    return false;
+
+  switch (dtype) {
+  case DTK_DATE:
+    for (int i = 0; i < nf; i++)
+      if (ftype[i] == DTK_TZ) {
+        has_tz = true;
+        break;
+      }
+
+    if (has_tz)
+      return false;
+
+    if (tm2timestamp(tm, fsec, NULL, timestamp) != 0)
+      return false;
+
+    break;
+
+  case DTK_EPOCH:
+    GetEpochTime(tm);
+    tm2timestamp(tm, 0, NULL, timestamp);
+    break;
+
+  case DTK_LATE:
+    TIMESTAMP_NOEND(*timestamp);
+    break;
+
+  case DTK_EARLY:
+    TIMESTAMP_NOBEGIN(*timestamp);
+    break;
+
+  default:
+    return false;
+  }
+
+  return true;
+}
+
 void timestamp_show(Timestamp timestamp, char *buf) {
   struct pg_tm tt, *tm = &tt;
   fsec_t fsec;
@@ -1314,6 +1493,64 @@ void timestamp_show(Timestamp timestamp, char *buf) {
   else
     ereport(ERROR, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
                     errmsg("timestamp out of range")));
+}
+
+bool timestamptz_read(TimestampTz *timestamptz, char *buf) {
+  fsec_t fsec;
+  struct pg_tm tt, *tm = &tt;
+  int tz;
+  int dtype;
+  int nf;
+  int dterr;
+  char *field[MAXDATEFIELDS];
+  int ftype[MAXDATEFIELDS];
+  char workbuf[MAXDATELEN + MAXDATEFIELDS];
+  DateTimeErrorExtra extra;
+  bool has_tz = false;
+
+  dterr = ParseDateTime(buf, workbuf, sizeof(workbuf), field, ftype,
+                        MAXDATEFIELDS, &nf);
+  if (dterr == 0)
+    dterr = DecodeDateTime(field, ftype, nf, &dtype, tm, &fsec, &tz, &extra);
+
+  if (dterr != 0) {
+    return false;
+  }
+
+  switch (dtype) {
+  case DTK_DATE:
+    for (int i = 0; i < nf; i++)
+      if (ftype[i] == DTK_TZ) {
+        has_tz = true;
+        break;
+      }
+
+    if (!has_tz)
+      return false;
+
+    if (tm2timestamp(tm, fsec, &tz, timestamptz) != 0)
+      return false;
+
+    break;
+
+  case DTK_EPOCH:
+    GetEpochTime(tm);
+    tm2timestamp(tm, 0, NULL, timestamptz);
+    break;
+
+  case DTK_LATE:
+    TIMESTAMP_NOEND(*timestamptz);
+    break;
+
+  case DTK_EARLY:
+    TIMESTAMP_NOBEGIN(*timestamptz);
+    break;
+
+  default:
+    return false;
+  }
+
+  return true;
 }
 
 void timestamptz_show(TimestampTz timestamptz, char *buf) {
@@ -1328,6 +1565,63 @@ void timestamptz_show(TimestampTz timestamptz, char *buf) {
   else
     ereport(ERROR, (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
                     errmsg("timestamp out of range")));
+}
+
+bool interval_read(Interval *interval, char *buf) {
+  struct pg_itm_in tt, *itm_in = &tt;
+  int dtype;
+  int nf;
+  int range;
+  int dterr;
+  char *field[MAXDATEFIELDS];
+  int ftype[MAXDATEFIELDS];
+  char workbuf[256];
+
+  itm_in->tm_year = 0;
+  itm_in->tm_mon = 0;
+  itm_in->tm_mday = 0;
+  itm_in->tm_usec = 0;
+
+  range = INTERVAL_FULL_RANGE;
+
+  dterr = ParseDateTime(buf, workbuf, sizeof(workbuf), field, ftype,
+                        MAXDATEFIELDS, &nf);
+  if (dterr == 0)
+    dterr = DecodeInterval(field, ftype, nf, range, &dtype, itm_in);
+
+  /* if those functions think it's a bad format, try ISO8601 style */
+  if (dterr == DTERR_BAD_FORMAT)
+    dterr = DecodeISO8601Interval(buf, &dtype, itm_in);
+
+  if (dterr != 0)
+    return false;
+
+  switch (dtype) {
+  case DTK_DELTA:
+    if (itmin2interval(itm_in, interval) != 0)
+      return false;
+
+    break;
+
+  case DTK_LATE:
+    interval->time = PG_INT64_MAX;
+    interval->day = PG_INT32_MAX;
+    interval->month = PG_INT32_MAX;
+
+    break;
+
+  case DTK_EARLY:
+    interval->time = PG_INT64_MIN;
+    interval->day = PG_INT32_MIN;
+    interval->month = PG_INT32_MIN;
+
+    break;
+
+  default:
+    return false;
+  }
+
+  return true;
 }
 
 void interval_show(Interval *interval, char *buf) {
