@@ -40,6 +40,12 @@ RTS_INCLUDE_DIR = $(shell ghc-pkg --simple-output field rts include-dirs)
 
 .PHONY: all install clean distclean uninstall
 
+# touch is to force update of .hi file
+define HS_COMPILE =
+ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c $< -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+touch $@
+endef
+
 all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp
 
 clean :
@@ -51,25 +57,25 @@ src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -L$(BYTESTRING_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -l$(BYTESTRING_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR):$(BYTESTRING_DYN_LIB_DIR)
 
 src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c src/plhaskell.c -o $@ -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
+	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c $< -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PLHaskell.hs  -o src/PLHaskell.o  -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+	$(call HS_COMPILE)
 
 src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGutils.hs    -o src/PGutils.o    -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+	$(call HS_COMPILE)
 
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGsupport.hs  -o src/PGsupport.o  -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+	$(call HS_COMPILE)
 
 src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGarray.hs    -o src/PGarray.o    -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+	$(call HS_COMPILE)
 
 src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGdatetime.hs -o src/PGdatetime.o -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+	$(call HS_COMPILE)
 
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c src/PGcommon.hs   -o src/PGcommon.o   -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-4.0
+	$(call HS_COMPILE)
 
 %.hs : %.hsc src/plhaskell.h
 	hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
