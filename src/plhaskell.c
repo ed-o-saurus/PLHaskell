@@ -1279,6 +1279,7 @@ void language_error(int elevel, char *msg) {
   }
 }
 
+Datum handler(char *msg) __attribute__((visibility("hidden")));
 Datum handler(char *msg) {
   ereport(ERROR,
           errmsg("PL/Haskell: %s: %s", current_p_call_info->func_name, msg));
@@ -1286,6 +1287,7 @@ Datum handler(char *msg) {
   PG_RETURN_VOID();
 }
 
+bool date_read(DateADT *date, char *buf) __attribute__((visibility("hidden")));
 bool date_read(DateADT *date, char *buf) {
   fsec_t fsec;
   struct pg_tm tt, *tm = &tt;
@@ -1339,6 +1341,7 @@ bool date_read(DateADT *date, char *buf) {
   return true;
 }
 
+void date_show(DateADT date, char *buf) __attribute__((visibility("hidden")));
 void date_show(DateADT date, char *buf) {
   struct pg_tm tt, *tm = &tt;
 
@@ -1348,6 +1351,7 @@ void date_show(DateADT date, char *buf) {
   EncodeDateOnly(tm, USE_ISO_DATES, buf);
 }
 
+bool time_read(TimeADT *time, char *buf) __attribute__((visibility("hidden")));
 bool time_read(TimeADT *time, char *buf) {
   fsec_t fsec;
   struct pg_tm tt, *tm = &tt;
@@ -1382,6 +1386,7 @@ bool time_read(TimeADT *time, char *buf) {
   return true;
 }
 
+void time_show(TimeADT time, char *buf) __attribute__((visibility("hidden")));
 void time_show(TimeADT time, char *buf) {
   struct pg_tm tt, *tm = &tt;
   fsec_t fsec;
@@ -1390,6 +1395,8 @@ void time_show(TimeADT time, char *buf) {
   EncodeTimeOnly(tm, fsec, false, 0, USE_ISO_DATES, buf);
 }
 
+bool timetz_read(TimeTzADT *timetz, char *buf)
+    __attribute__((visibility("hidden")));
 bool timetz_read(TimeTzADT *timetz, char *buf) {
   fsec_t fsec;
   struct pg_tm tt, *tm = &tt;
@@ -1425,6 +1432,8 @@ bool timetz_read(TimeTzADT *timetz, char *buf) {
   return true;
 }
 
+void timetz_show(TimeTzADT *timetz, char *buf)
+    __attribute__((visibility("hidden")));
 void timetz_show(TimeTzADT *timetz, char *buf) {
   struct pg_tm tt, *tm = &tt;
   fsec_t fsec;
@@ -1434,6 +1443,8 @@ void timetz_show(TimeTzADT *timetz, char *buf) {
   EncodeTimeOnly(tm, fsec, true, tz, USE_ISO_DATES, buf);
 }
 
+bool timestamp_read(Timestamp *timestamp, char *buf)
+    __attribute__((visibility("hidden")));
 bool timestamp_read(Timestamp *timestamp, char *buf) {
   fsec_t fsec;
   struct pg_tm tt, *tm = &tt;
@@ -1491,6 +1502,8 @@ bool timestamp_read(Timestamp *timestamp, char *buf) {
   return true;
 }
 
+void timestamp_show(Timestamp timestamp, char *buf)
+    __attribute__((visibility("hidden")));
 void timestamp_show(Timestamp timestamp, char *buf) {
   struct pg_tm tt, *tm = &tt;
   fsec_t fsec;
@@ -1502,6 +1515,8 @@ void timestamp_show(Timestamp timestamp, char *buf) {
                     errmsg("timestamp out of range")));
 }
 
+bool timestamptz_read(TimestampTz *timestamptz, char *buf)
+    __attribute__((visibility("hidden")));
 bool timestamptz_read(TimestampTz *timestamptz, char *buf) {
   fsec_t fsec;
   struct pg_tm tt, *tm = &tt;
@@ -1560,6 +1575,8 @@ bool timestamptz_read(TimestampTz *timestamptz, char *buf) {
   return true;
 }
 
+void timestamptz_show(TimestampTz timestamptz, char *buf)
+    __attribute__((visibility("hidden")));
 void timestamptz_show(TimestampTz timestamptz, char *buf) {
   int tz;
   struct pg_tm tt, *tm = &tt;
@@ -1574,6 +1591,8 @@ void timestamptz_show(TimestampTz timestamptz, char *buf) {
                     errmsg("timestamp out of range")));
 }
 
+bool interval_read(Interval *interval, char *buf)
+    __attribute__((visibility("hidden")));
 bool interval_read(Interval *interval, char *buf) {
   struct pg_itm_in tt, *itm_in = &tt;
   int dtype;
@@ -1621,6 +1640,8 @@ bool interval_read(Interval *interval, char *buf) {
   return true;
 }
 
+void interval_show(Interval *interval, char *buf)
+    __attribute__((visibility("hidden")));
 void interval_show(Interval *interval, char *buf) {
   struct pg_itm tt, *itm = &tt;
 
