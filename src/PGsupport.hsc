@@ -29,7 +29,7 @@ module PGsupport (Datum (Datum), BaseType (read, write, decode, encode), encodeV
 
 import Control.Monad ((>=>))
 import Data.ByteString (ByteString, packCStringLen, useAsCStringLen)
-import Data.Functor ((<$>), (<&>))
+import Data.Functor ((<$>))
 import Data.Int (Int16, Int32, Int64)
 import Data.Maybe (fromMaybe, isNothing)
 import Data.Text (Text, head, singleton)
@@ -75,7 +75,7 @@ foreign import capi safe "plhaskell.h read_composite"
 
 readComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
 readComposite pTypeInfo datum = do
-  count <- getCount pTypeInfo <&> fromIntegral
+  count <- fromIntegral <$> getCount pTypeInfo
   pallocArray count $ \pDatums -> pallocArray count $ \pIsNulls -> do
     cReadComposite pTypeInfo datum pDatums pIsNulls
     datums <- peekArray count pDatums
@@ -120,7 +120,7 @@ instance BaseType ByteString where
     useAsCStringLen
       result
       ( \(src, len) -> do
-          value <- palloc (fromIntegral (len + #{const VARHDRSZ})) <&> Datum . ptrToWordPtr
+          value <- Datum . ptrToWordPtr <$> palloc (fromIntegral (len + #{const VARHDRSZ}))
           setVarSize value (fromIntegral len)
           pData <- getVarData value
           copyBytes pData src len

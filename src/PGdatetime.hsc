@@ -27,7 +27,7 @@
 
 module PGdatetime (Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval) where
 
-import Data.Functor ((<&>))
+import Data.Functor ((<$>))
 import Data.Int (Int32, Int64)
 import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CBool (CBool))
@@ -90,7 +90,7 @@ foreign import capi safe "plhaskell.h DateADTGetDatum"
   dateADTGetDatum :: Int32 -> IO Datum
 
 instance BaseType Date where
-  read datum = datumGetDateADT datum <&> numToDate
+  read datum = numToDate <$> datumGetDateADT datum
 
   write DateNInfinity = dateADTGetDatum minBound
   write (Date date) = dateADTGetDatum date
@@ -123,7 +123,7 @@ foreign import capi safe "plhaskell.h TimeADTGetDatum"
   timeADTGetDatum :: Int64 -> IO Datum
 
 instance BaseType Time where
-  read datum = datumGetTimeADT datum <&> Time
+  read datum = Time <$> datumGetTimeADT datum
   write (Time time) = timeADTGetDatum time
 
 foreign import capi safe "plhaskell.h time_read"
@@ -200,7 +200,7 @@ foreign import capi safe "plhaskell.h TimestampGetDatum"
   timestampGetDatum :: Int64 -> IO Datum
 
 instance BaseType Timestamp where
-  read datum = datumGetTimestamp datum <&> numToTimestamp
+  read datum = numToTimestamp <$> datumGetTimestamp datum
 
   write TimestampNInfinity = timestampGetDatum minBound
   write (Timestamp timestamp) = timestampGetDatum timestamp
@@ -242,7 +242,7 @@ foreign import capi safe "plhaskell.h TimestampTzGetDatum"
   timestampTZGetDatum :: Int64 -> IO Datum
 
 instance BaseType TimestampTZ where
-  read datum = datumGetTimestampTZ datum <&> numToTimestampTZ
+  read datum = numToTimestampTZ <$> datumGetTimestampTZ datum
 
   write TimestampTZNInfinity = timestampTZGetDatum minBound
   write (TimestampTZ timestamptz) = timestampTZGetDatum timestamptz
