@@ -366,10 +366,9 @@ iterate pCallInfo pResultIsNull = handle handler $ do
   spList <- peek pList
   returnResultList <- deRefStablePtr spList
   freeStablePtr spList
+  poke pList $ castPtrToStablePtr nullPtr
   case returnResultList of
-    [] -> do
-      poke pList (castPtrToStablePtr nullPtr)
-      return voidDatum
+    [] -> return voidDatum
     (returnResult : tail) -> do
       (newStablePtr tail) >>= (poke pList)
       returnResult pResultIsNull

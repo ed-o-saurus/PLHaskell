@@ -140,6 +140,8 @@ void unknown_compiler_error();
 void error_func_sig(char *func_sig);
 void language_error(int elevel, char *msg);
 
+Datum handler(char *msg);
+
 bool date_read(DateADT *date, char *buf);
 void date_show(DateADT date, char *buf);
 

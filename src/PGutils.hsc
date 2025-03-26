@@ -45,7 +45,7 @@ import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr (Ptr, WordPtr (WordPtr))
 import Foreign.Storable (peek, peekByteOff, peekElemOff)
 import PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray)
-import PGcommon (ErrorLevel (..), Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, plhaskellReport, range, voidDatum)
+import PGcommon (Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
 import PGdatetime (Date, Interval, Time, TimeTZ, Timestamp, TimestampTZ)
 import PGsupport (BaseType (decode, encode), Datum (Datum), maybeWrap, readComposite, writeComposite)
 import System.IO.Unsafe (unsafePerformIO)
@@ -54,6 +54,8 @@ import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, I
 data TupleTable
 
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
+
+newtype ErrorLevel = ErrorLevel CInt
 
 #{enum ErrorLevel, ErrorLevel,
     debug5    = DEBUG5,
@@ -68,6 +70,9 @@ newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Mona
     exception = ERROR,
     fatal     = FATAL
 }
+
+foreign import capi safe "plhaskell.h plhaskell_report"
+  plhaskellReport :: ErrorLevel -> CString -> IO ()
 
 report :: ErrorLevel -> Text -> PGm ()
 report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) (plhaskellReport elevel)

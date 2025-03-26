@@ -1279,6 +1279,13 @@ void language_error(int elevel, char *msg) {
   }
 }
 
+Datum handler(char *msg) {
+  ereport(ERROR,
+          errmsg("PL/Haskell: %s: %s", current_p_call_info->func_name, msg));
+
+  PG_RETURN_VOID();
+}
+
 bool date_read(DateADT *date, char *buf) {
   fsec_t fsec;
   struct pg_tm tt, *tm = &tt;
