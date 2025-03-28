@@ -36,7 +36,7 @@ import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CBool (CBool), CInt (CInt), CUInt (CUInt))
 import Foreign.Marshal.Utils (fromBool, toBool)
 import Foreign.Ptr (Ptr, WordPtr (WordPtr), nullPtr, plusPtr, ptrToWordPtr)
-import Foreign.StablePtr (castPtrToStablePtr, deRefStablePtr, freeStablePtr, newStablePtr)
+import Foreign.StablePtr (deRefStablePtr, freeStablePtr, newStablePtr)
 import Foreign.Storable (peek, peekByteOff, peekElemOff, poke)
 import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runStmt, set, setImportsF, typeChecks)
 import Language.Haskell.Interpreter.Unsafe (unsafeRunInterpreterWithArgs)
@@ -366,7 +366,7 @@ iterate pCallInfo pResultIsNull = handle handler $ do
   spList <- peek pList
   returnResultList <- deRefStablePtr spList
   freeStablePtr spList
-  poke pList $ castPtrToStablePtr nullPtr
+  poke pList nullPtr
   case returnResultList of
     [] -> return voidDatum
     (returnResult : tail) -> do
