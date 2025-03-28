@@ -1,5 +1,4 @@
 {-# LANGUAGE CApiFFI #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE Trustworthy #-}
 
 {- HLINT ignore "Redundant bracket" -}

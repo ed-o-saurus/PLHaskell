@@ -1,5 +1,5 @@
 {-# LANGUAGE CApiFFI #-}
-{-# LANGUAGE Unsafe #-}
+{-# LANGUAGE Trustworthy #-}
 
 {- HLINT ignore "Redundant bracket" -}
 {- HLINT ignore "Avoid lambda using `infix`" -}
