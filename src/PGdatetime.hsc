@@ -38,7 +38,7 @@ import PGsupport (BaseType (read, write))
 import System.IO.Unsafe (unsafePerformIO)
 import Text.ParserCombinators.ReadPrec (ReadPrec, readS_to_Prec)
 import Text.Read (parens, readPrec)
-import Prelude (IO, Read, Show (show), const, id, maxBound, minBound, otherwise, return, ($), (+), (==), (>>=))
+import Prelude (Bool (False, True), Eq, IO, Integer, Ord, Read, Show (show), const, fromIntegral, id, maxBound, minBound, otherwise, return, ($), (&&), (*), (+), (<=), (==), (>>=))
 
 foreign import capi safe "plhaskell.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
@@ -113,6 +113,19 @@ instance Show Date where
         dateShow date buf
         peekCString buf
 
+instance Eq Date where
+  DateNInfinity == DateNInfinity = True
+  DatePInfinity == DatePInfinity = True
+  (Date date1) == (Date date2) = (date1 == date2)
+  _date1 == _date2 = False
+
+instance Ord Date where
+  DateNInfinity <= DatePInfinity = True
+  (Date _date) <= DatePInfinity = True
+  DateNInfinity <= (Date _date) = True
+  (Date date1) <= (Date date2) = (date1 <= date2)
+  _date1 <= _date2 = False
+
 data Time = Time Int64
 
 foreign import capi safe "plhaskell.h DatumGetTimeADT"
@@ -140,6 +153,12 @@ instance Show Time where
       \buf -> do
         timeShow time buf
         peekCString buf
+
+instance Eq Time where
+  (Time time1) == (Time time2) = time1 == time2
+
+instance Ord Time where
+  (Time time1) <= (Time time2) = time1 <= time2
 
 data TimeTZ = TimeTZ Int64 Int32
 
@@ -180,6 +199,12 @@ instance Show TimeTZ where
           poke pTimeTZ timeTZ
           timeTZShow pTimeTZ buf
           peekCString buf
+
+instance Eq TimeTZ where
+  TimeTZ time1 zone1 == TimeTZ time2 zone2 = (time1 == time2) && (zone1 == zone2)
+
+instance Ord TimeTZ where
+  TimeTZ time1 zone1 <= TimeTZ time2 zone2 = (time1 + 1_000_000 * (fromIntegral zone1), zone1) <= (time2 + 1_000_000 * (fromIntegral zone2), zone2)
 
 data Timestamp
   = TimestampNInfinity
@@ -223,6 +248,19 @@ instance Show Timestamp where
         timestampShow timestamp buf
         peekCString buf
 
+instance Eq Timestamp where
+  TimestampNInfinity == TimestampNInfinity = True
+  TimestampPInfinity == TimestampPInfinity = True
+  (Timestamp timestamp1) == (Timestamp timestamp2) = (timestamp1 == timestamp2)
+  _timestamp1 == _timestamp2 = False
+
+instance Ord Timestamp where
+  TimestampNInfinity <= TimestampPInfinity = True
+  (Timestamp _timestamp) <= TimestampPInfinity = True
+  TimestampNInfinity <= (Timestamp _timestamp) = True
+  (Timestamp timestamp1) <= (Timestamp timestamp2) = (timestamp1 <= timestamp2)
+  _timestamp1 <= _timestamp2 = False
+
 data TimestampTZ
   = TimestampTZNInfinity
   | TimestampTZ Int64
@@ -265,6 +303,19 @@ instance Show TimestampTZ where
         timestampTZShow timestamptz buf
         peekCString buf
 
+instance Eq TimestampTZ where
+  TimestampTZNInfinity == TimestampTZNInfinity = True
+  TimestampTZPInfinity == TimestampTZPInfinity = True
+  (TimestampTZ timestamptz1) == (TimestampTZ timestamptz2) = (timestamptz1 == timestamptz2)
+  _timestamptz1 == _timestamptz2 = False
+
+instance Ord TimestampTZ where
+  TimestampTZNInfinity <= TimestampTZPInfinity = True
+  (TimestampTZ _timestamptz) <= TimestampTZPInfinity = True
+  TimestampTZNInfinity <= (TimestampTZ _timestamptz) = True
+  (TimestampTZ timestamptz1) <= (TimestampTZ timestamptz2) = (timestamptz1 <= timestamptz2)
+  _timestamptz1 <= _timestamptz2 = False
+
 data Interval = Interval Int64 Int32 Int32
 
 instance BaseType Interval where
@@ -306,3 +357,12 @@ instance Show Interval where
           poke pInterval interval
           intervalShow pInterval buf
           peekCString buf
+
+duration :: Interval -> Integer
+duration (Interval time day month) = (fromIntegral time) + 86_400_000_000 * ((fromIntegral day) + 30 * (fromIntegral month))
+
+instance Eq Interval where
+  interval1 == interval2 = (duration interval1) == (duration interval2)
+
+instance Ord Interval where
+  interval1 <= interval2 = (duration interval1) <= (duration interval2)
