@@ -24,6 +24,8 @@
 
 #{include "plhaskell.h"}
 
+#{include "catalog/pg_type_d.h"}
+
 module PLHaskell () where
 
 import Control.Exception (handle)
@@ -261,10 +263,10 @@ setUpEvalInt pCallInfo = do
       decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
       runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
-foreign import capi safe "plhaskell.h unknown_compiler_error"
+foreign import capi safe "error.h unknown_compiler_error"
   unknownComilerError :: IO ()
 
-foreign import capi safe "plhaskell.h language_error"
+foreign import capi safe "error.h language_error"
   cLanguageError :: CInt -> CString -> IO ()
 
 languageError :: String -> IO ()

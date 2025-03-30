@@ -48,7 +48,7 @@ maybeWrap :: (a -> IO b) -> Maybe a -> IO (Maybe b)
 maybeWrap _ Nothing = return Nothing
 maybeWrap func (Just value) = Just <$> func value
 
-foreign import capi safe "plhaskell.h datum_SPI_copy"
+foreign import capi safe "spi.h datum_SPI_copy"
   datumSPICopy :: Ptr TypeInfo -> Datum -> IO Datum
 
 class BaseType a where

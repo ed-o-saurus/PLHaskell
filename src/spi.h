@@ -1,0 +1,39 @@
+// This is a "procedural language" extension of PostgreSQL
+// allowing the execution of code in Haskell within SQL code.
+//
+// Copyright (C) 2024 Edward F. Behn, Jr.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+#ifndef __PLH_SPI_H
+#define __PLH_SPI_H
+
+#include "plhaskell.h"
+
+#include "executor/spi.h"
+
+int run_query(const char *command, int nargs, Oid *argtypes, Datum *values,
+              bool *is_nulls);
+void get_header_field(struct SPITupleTable *tuptable, char *header,
+                      int fnumber);
+void get_oids(struct SPITupleTable *tuptable, Oid *oids);
+Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number,
+                      int fnumber, bool *is_null);
+void free_tuptable(struct SPITupleTable *tuptable);
+
+Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
+
+void commit_rollback(bool commit, bool chain);
+
+#endif // __PLH_SPI_H

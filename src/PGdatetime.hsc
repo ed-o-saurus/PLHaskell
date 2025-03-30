@@ -23,6 +23,7 @@
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #{include "plhaskell.h"}
+#{include "datetime.h"}
 
 module PGdatetime (Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval) where
 
@@ -82,10 +83,10 @@ numToDate date
   | date == maxBound = DatePInfinity
   | otherwise = Date date
 
-foreign import capi safe "plhaskell.h DatumGetDateADT"
+foreign import capi safe "datetime.h DatumGetDateADT"
   datumGetDateADT :: Datum -> IO Int32
 
-foreign import capi safe "plhaskell.h DateADTGetDatum"
+foreign import capi safe "datetime.h DateADTGetDatum"
   dateADTGetDatum :: Int32 -> IO Datum
 
 instance BaseType Date where
@@ -95,13 +96,13 @@ instance BaseType Date where
   write (Date date) = dateADTGetDatum date
   write DatePInfinity = dateADTGetDatum maxBound
 
-foreign import capi safe "plhaskell.h date_read"
+foreign import capi safe "datetime.h date_read"
   dateRead :: Ptr Int32 -> CString -> IO CBool
 
 instance Read Date where
   readPrec = mkReadPrec dateRead numToDate
 
-foreign import capi safe "plhaskell.h date_show"
+foreign import capi safe "datetime.h date_show"
   dateShow :: Int32 -> CString -> IO ()
 
 instance Show Date where
@@ -128,23 +129,23 @@ instance Ord Date where
 
 data Time = Time Int64
 
-foreign import capi safe "plhaskell.h DatumGetTimeADT"
+foreign import capi safe "datetime.h DatumGetTimeADT"
   datumGetTimeADT :: Datum -> IO Int64
 
-foreign import capi safe "plhaskell.h TimeADTGetDatum"
+foreign import capi safe "datetime.h TimeADTGetDatum"
   timeADTGetDatum :: Int64 -> IO Datum
 
 instance BaseType Time where
   read datum = Time <$> datumGetTimeADT datum
   write (Time time) = timeADTGetDatum time
 
-foreign import capi safe "plhaskell.h time_read"
+foreign import capi safe "datetime.h time_read"
   timeRead :: Ptr Int64 -> CString -> IO CBool
 
 instance Read Time where
   readPrec = mkReadPrec timeRead Time
 
-foreign import capi safe "plhaskell.h time_show"
+foreign import capi safe "datetime.h time_show"
   timeShow :: Int64 -> CString -> IO ()
 
 instance Show Time where
@@ -182,13 +183,13 @@ instance Storable TimeTZ where
     #{poke TimeTzADT, time} pTimeTZ time
     #{poke TimeTzADT, zone} pTimeTZ zone
 
-foreign import capi safe "plhaskell.h timetz_read"
+foreign import capi safe "datetime.h timetz_read"
   timeTZRead :: Ptr TimeTZ -> CString -> IO CBool
 
 instance Read TimeTZ where
   readPrec = mkReadPrec timeTZRead id
 
-foreign import capi safe "plhaskell.h timetz_show"
+foreign import capi safe "datetime.h timetz_show"
   timeTZShow :: Ptr TimeTZ -> CString -> IO ()
 
 instance Show TimeTZ where
@@ -217,10 +218,10 @@ numToTimestamp timestamp
   | timestamp == maxBound = TimestampPInfinity
   | otherwise = Timestamp timestamp
 
-foreign import capi safe "plhaskell.h DatumGetTimestamp"
+foreign import capi safe "datetime.h DatumGetTimestamp"
   datumGetTimestamp :: Datum -> IO Int64
 
-foreign import capi safe "plhaskell.h TimestampGetDatum"
+foreign import capi safe "datetime.h TimestampGetDatum"
   timestampGetDatum :: Int64 -> IO Datum
 
 instance BaseType Timestamp where
@@ -230,13 +231,13 @@ instance BaseType Timestamp where
   write (Timestamp timestamp) = timestampGetDatum timestamp
   write TimestampPInfinity = timestampGetDatum maxBound
 
-foreign import capi safe "plhaskell.h timestamp_read"
+foreign import capi safe "datetime.h timestamp_read"
   timestampRead :: Ptr Int64 -> CString -> IO CBool
 
 instance Read Timestamp where
   readPrec = mkReadPrec timestampRead numToTimestamp
 
-foreign import capi safe "plhaskell.h timestamp_show"
+foreign import capi safe "datetime.h timestamp_show"
   timestampShow :: Int64 -> CString -> IO ()
 
 instance Show Timestamp where
@@ -272,10 +273,10 @@ numToTimestampTZ timestamptz
   | timestamptz == maxBound = TimestampTZPInfinity
   | otherwise = TimestampTZ timestamptz
 
-foreign import capi safe "plhaskell.h DatumGetTimestampTz"
+foreign import capi safe "datetime.h DatumGetTimestampTz"
   datumGetTimestampTZ :: Datum -> IO Int64
 
-foreign import capi safe "plhaskell.h TimestampTzGetDatum"
+foreign import capi safe "datetime.h TimestampTzGetDatum"
   timestampTZGetDatum :: Int64 -> IO Datum
 
 instance BaseType TimestampTZ where
@@ -285,13 +286,13 @@ instance BaseType TimestampTZ where
   write (TimestampTZ timestamptz) = timestampTZGetDatum timestamptz
   write TimestampTZPInfinity = timestampTZGetDatum maxBound
 
-foreign import capi safe "plhaskell.h timestamptz_read"
+foreign import capi safe "datetime.h timestamptz_read"
   timestampTZRead :: Ptr Int64 -> CString -> IO CBool
 
 instance Read TimestampTZ where
   readPrec = mkReadPrec timestampTZRead numToTimestampTZ
 
-foreign import capi safe "plhaskell.h timestamptz_show"
+foreign import capi safe "datetime.h timestamptz_show"
   timestampTZShow :: Int64 -> CString -> IO ()
 
 instance Show TimestampTZ where
@@ -340,13 +341,13 @@ instance Storable Interval where
     #{poke Interval, day} pInterval day
     #{poke Interval, month} pInterval month
 
-foreign import capi safe "plhaskell.h interval_read"
+foreign import capi safe "datetime.h interval_read"
   intervalRead :: Ptr Interval -> CString -> IO CBool
 
 instance Read Interval where
   readPrec = mkReadPrec intervalRead id
 
-foreign import capi safe "plhaskell.h interval_show"
+foreign import capi safe "datetime.h interval_show"
   intervalShow :: Ptr Interval -> CString -> IO ()
 
 instance Show Interval where

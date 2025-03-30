@@ -16,22 +16,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef __PLHASKELL
-#define __PLHASKELL
-
-#include "postgres.h"
+#ifndef __PLHASKELL_H
+#define __PLHASKELL_H
 
 // If version 16 of higher
 #if PG_VERSION_NUM >= 160000
 #include "varatt.h"
 #endif
 
-#include "executor/spi.h"
+#include "access/tupdesc.h"
 #include "funcapi.h"
-#include "utils/array.h"
-#include "utils/date.h"
-#include "utils/datetime.h"
-#include "utils/timestamp.h"
+#include "postgres.h"
 
 #include "HsFFI.h"
 
@@ -92,9 +87,6 @@ struct CallInfo {
   struct CallInfo *next;
 };
 
-// Report a message or error
-void plhaskell_report(int elevel, char *msg);
-
 struct TypeInfo *new_type_info(Oid type_oid);
 void delete_type_info(struct TypeInfo *p_type_info);
 
@@ -103,61 +95,11 @@ void read_composite(struct TypeInfo *p_type_info, Datum composite_datum,
 Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values,
                       bool *field_is_nulls);
 
-Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
-                  int ndims, int *dims, int *lbs);
-ArrayType *get_array_type(Datum datum);
-int get_ndim(ArrayType *array);
-int *get_lbs_ptr(ArrayType *array);
-int *get_dims_ptr(ArrayType *array);
-void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems,
-                     Datum *elems, bool *nulls);
-
-// Functions for SPI queries
-int run_query(const char *command, int nargs, Oid *argtypes, Datum *values,
-              bool *is_nulls);
-void get_header_field(struct SPITupleTable *tuptable, char *header,
-                      int fnumber);
-void get_oids(struct SPITupleTable *tuptable, Oid *oids);
-Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number,
-                      int fnumber, bool *is_null);
-void free_tuptable(struct SPITupleTable *tuptable);
 Oid get_oid(bool array, char *nspname, char *typname);
 Oid find_oid(bool array, char *typname);
 
 Datum detoast_datum(Datum datum);
-Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
 
-void commit_rollback(bool commit, bool chain);
+struct CallInfo *get_current_p_call_info(void);
 
-void bad_multi_dim_array();
-void expected_type(Oid type_oid);
-void expected_composite();
-void expected_array();
-void expected_type_in_query(struct TypeInfo *p_type_info);
-void incorrect_length(struct TypeInfo *p_type_info);
-void higher_dim_arrays();
-void unknown_compiler_error();
-void error_func_sig(char *func_sig);
-void language_error(int elevel, char *msg);
-
-Datum handler(char *msg);
-
-bool date_read(DateADT *date, char *buf);
-void date_show(DateADT date, char *buf);
-
-bool time_read(TimeADT *time, char *buf);
-void time_show(TimeADT time, char *buf);
-
-bool timetz_read(TimeTzADT *timetz, char *buf);
-void timetz_show(TimeTzADT *timetz, char *buf);
-
-bool timestamp_read(Timestamp *timestamp, char *buf);
-void timestamp_show(Timestamp timestamp, char *buf);
-
-bool timestamptz_read(TimestampTz *timestamptz, char *buf);
-void timestamptz_show(TimestampTz timestamptz, char *buf);
-
-bool interval_read(Interval *interval, char *buf);
-void interval_show(Interval *interval, char *buf);
-
-#endif
+#endif // __PLHASKELL_H

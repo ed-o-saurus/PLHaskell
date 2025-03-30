@@ -46,6 +46,14 @@ ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc
 touch $@
 endef
 
+define C_COMPILE =
+ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c $< -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
+endef
+
+define HS_BUILD =
+hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
+endef
+
 all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/plhaskell.so src/pgutils-4.0.conf selinux/plhaskell.pp
 
 clean :
@@ -53,11 +61,23 @@ clean :
 
 distclean: clean
 
-src/plhaskell.so : src/plhaskell.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGdatetime.o src/PGcommon.o
+src/plhaskell.so : src/plhaskell.o src/array.o src/datetime.o src/error.o src/spi.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGdatetime.o src/PGcommon.o
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -L$(BYTESTRING_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -l$(BYTESTRING_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR):$(BYTESTRING_DYN_LIB_DIR)
 
-src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h
-	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c $< -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
+src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h src/spi.h src/error.h
+	$(call C_COMPILE)
+
+src/array.o : src/array.c src/array.h src/plhaskell.h src/spi.h
+	$(call C_COMPILE)
+
+src/datetime.o : src/datetime.c src/datetime.h src/plhaskell.h
+	$(call C_COMPILE)
+
+src/error.o : src/error.c src/error.h src/plhaskell.h
+	$(call C_COMPILE)
+
+src/spi.o : src/spi.c src/spi.h src/plhaskell.h
+	$(call C_COMPILE)
 
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
 	$(call HS_COMPILE)
@@ -77,8 +97,11 @@ src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/plhas
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/plhaskell.h
 	$(call HS_COMPILE)
 
+src/PGdatetime.hs : src/PGdatetime.hsc src/plhaskell.h src/datetime.h
+	$(call HS_BUILD)
+
 %.hs : %.hsc src/plhaskell.h
-	hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
+	$(call HS_BUILD)
 
 %.dyn_hi : %.hi
 	cp $^ $@
