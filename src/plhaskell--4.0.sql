@@ -44,7 +44,7 @@ CREATE FUNCTION plhaskell_validator(oid)
 
 CREATE FUNCTION plhaskell_inline_handler(internal)
   RETURNS void
-  LANGUAGE C AS 'MODULE_PATHNAME';
+  LANGUAGE c AS 'MODULE_PATHNAME';
 
 CREATE TRUSTED LANGUAGE plhaskell
   HANDLER   plhaskell_call_handler
