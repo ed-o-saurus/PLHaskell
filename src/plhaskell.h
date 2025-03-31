@@ -19,6 +19,8 @@
 #ifndef __PLHASKELL_H
 #define __PLHASKELL_H
 
+#include "postgres.h"
+
 // If version 16 of higher
 #if PG_VERSION_NUM >= 160000
 #include "varatt.h"
@@ -26,7 +28,6 @@
 
 #include "access/tupdesc.h"
 #include "funcapi.h"
-#include "postgres.h"
 
 #include "HsFFI.h"
 
