@@ -22,7 +22,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#{include "plhaskell.h"}
+#{include "postgres.h"}
 
 module PGsupport (Datum (Datum), BaseType (read, write, decode, encode), encodeVoid, maybeWrap, mkResultList, readComposite, wrapFunction, writeComposite, writeResult) where
 
@@ -91,18 +91,18 @@ writeComposite pTypeInfo fields = do
   pWithArray datums $ pWithArray isNulls . cWriteComposite pTypeInfo
 
 -- Get the size of a variable length array
-foreign import capi safe "plhaskell.h VARSIZE_ANY_EXHDR"
+foreign import capi safe "postgres.h VARSIZE_ANY_EXHDR"
   getVarSize :: Datum -> IO CSize
 
 -- Set the size of a variable length array
-foreign import capi safe "plhaskell.h SET_VARSIZE"
+foreign import capi safe "postgres.h SET_VARSIZE"
   cSetVarSize :: Datum -> CSize -> IO ()
 
 setVarSize :: Datum -> CSize -> IO ()
 setVarSize datum len = cSetVarSize datum $ #{const VARHDRSZ} + len
 
 -- Get the start of a variable length array
-foreign import capi safe "plhaskell.h VARDATA_ANY"
+foreign import capi safe "postgres.h VARDATA_ANY"
   getVarData :: Datum -> IO (Ptr b)
 
 foreign import capi safe "plhaskell.h detoast_datum"
@@ -134,60 +134,60 @@ instance BaseType Char where
   read value = head <$> read value
   write = write . singleton
 
-foreign import capi safe "plhaskell.h DatumGetBool"
+foreign import capi safe "postgres.h DatumGetBool"
   datumGetBool :: Datum -> IO CBool
 
-foreign import capi safe "plhaskell.h BoolGetDatum"
+foreign import capi safe "postgres.h BoolGetDatum"
   boolGetDatum :: CBool -> IO Datum
 
 instance BaseType Bool where
   read value = toBool <$> datumGetBool value
   write = boolGetDatum . CBool . fromBool
 
-foreign import capi safe "plhaskell.h DatumGetInt16"
+foreign import capi safe "postgres.h DatumGetInt16"
   datumGetInt16 :: Datum -> IO Int16
 
-foreign import capi safe "plhaskell.h Int16GetDatum"
+foreign import capi safe "postgres.h Int16GetDatum"
   int16GetDatum :: Int16 -> IO Datum
 
 instance BaseType Int16 where
   read = datumGetInt16
   write = int16GetDatum
 
-foreign import capi safe "plhaskell.h DatumGetInt32"
+foreign import capi safe "postgres.h DatumGetInt32"
   datumGetInt32 :: Datum -> IO Int32
 
-foreign import capi safe "plhaskell.h Int32GetDatum"
+foreign import capi safe "postgres.h Int32GetDatum"
   int32GetDatum :: Int32 -> IO Datum
 
 instance BaseType Int32 where
   read = datumGetInt32
   write = int32GetDatum
 
-foreign import capi safe "plhaskell.h DatumGetInt64"
+foreign import capi safe "postgres.h DatumGetInt64"
   datumGetInt64 :: Datum -> IO Int64
 
-foreign import capi safe "plhaskell.h Int64GetDatum"
+foreign import capi safe "postgres.h Int64GetDatum"
   int64GetDatum :: Int64 -> IO Datum
 
 instance BaseType Int64 where
   read = datumGetInt64
   write = int64GetDatum
 
-foreign import capi safe "plhaskell.h DatumGetFloat4"
+foreign import capi safe "postgres.h DatumGetFloat4"
   datumGetFloat4 :: Datum -> IO Float
 
-foreign import capi safe "plhaskell.h Float4GetDatum"
+foreign import capi safe "postgres.h Float4GetDatum"
   float4GetDatum :: Float -> IO Datum
 
 instance BaseType Float where
   read = datumGetFloat4
   write = float4GetDatum
 
-foreign import capi safe "plhaskell.h DatumGetFloat8"
+foreign import capi safe "postgres.h DatumGetFloat8"
   datumGetFloat8 :: Datum -> IO Double
 
-foreign import capi safe "plhaskell.h Float8GetDatum"
+foreign import capi safe "postgres.h Float8GetDatum"
   float8GetDatum :: Double -> IO Datum
 
 instance BaseType Double where

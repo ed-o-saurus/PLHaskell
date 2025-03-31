@@ -79,28 +79,40 @@ src/error.o : src/error.c src/error.h src/plhaskell.h
 src/spi.o : src/spi.c src/spi.h src/plhaskell.h
 	$(call C_COMPILE)
 
-src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h
+src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h src/error.h
 	$(call HS_COMPILE)
 
-src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGcommon.hi src/plhaskell.h
+src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGcommon.hi src/plhaskell.h src/error.h src/spi.h
 	$(call HS_COMPILE)
 
-src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h
+src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h src/spi.h
 	$(call HS_COMPILE)
 
-src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/plhaskell.h
+src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/array.h src/error.h
 	$(call HS_COMPILE)
 
-src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/plhaskell.h
+src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/datetime.h
 	$(call HS_COMPILE)
 
-src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/plhaskell.h
+src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/error.h
 	$(call HS_COMPILE)
 
-src/PGdatetime.hs : src/PGdatetime.hsc src/plhaskell.h src/datetime.h
+src/PLHaskell.hs : src/PLHaskell.hsc src/plhaskell.h
 	$(call HS_BUILD)
 
-%.hs : %.hsc src/plhaskell.h
+src/PGarray.hs : src/PGarray.hsc
+	$(call HS_BUILD)
+
+src/PGdatetime.hs : src/PGdatetime.hsc
+	$(call HS_BUILD)
+
+src/PGcommon.hs : src/PGcommon.hsc src/plhaskell.h
+	$(call HS_BUILD)
+
+src/PGsupport.hs : src/PGsupport.hsc
+	$(call HS_BUILD)
+
+src/PGutils.hs : src/PGutils.hsc src/plhaskell.h
 	$(call HS_BUILD)
 
 %.dyn_hi : %.hi

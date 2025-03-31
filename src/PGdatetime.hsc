@@ -22,8 +22,9 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#{include "plhaskell.h"}
-#{include "datetime.h"}
+#{include "postgres.h"}
+#{include "utils/date.h"}
+#{include "utils/datetime.h"}
 
 module PGdatetime (Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval) where
 
@@ -41,10 +42,10 @@ import Text.ParserCombinators.ReadPrec (ReadPrec, readS_to_Prec)
 import Text.Read (parens, readPrec)
 import Prelude (Bool (False, True), Eq, IO, Integer, Ord, Read, Show (show), const, fromIntegral, id, maxBound, minBound, otherwise, return, ($), (&&), (*), (+), (<=), (==), (>>=))
 
-foreign import capi safe "plhaskell.h DatumGetPointer"
+foreign import capi safe "postgres.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
 
-foreign import capi safe "plhaskell.h PointerGetDatum"
+foreign import capi safe "postgres.h PointerGetDatum"
   pointerGetDatum :: Ptr a -> IO Datum
 
 mkReadPrec :: (Storable a) => (Ptr a -> CString -> IO CBool) -> (a -> b) -> ReadPrec b
@@ -129,10 +130,10 @@ instance Ord Date where
 
 data Time = Time Int64
 
-foreign import capi safe "datetime.h DatumGetTimeADT"
+foreign import capi safe "utils/date.h DatumGetTimeADT"
   datumGetTimeADT :: Datum -> IO Int64
 
-foreign import capi safe "datetime.h TimeADTGetDatum"
+foreign import capi safe "utils/date.h TimeADTGetDatum"
   timeADTGetDatum :: Int64 -> IO Datum
 
 instance BaseType Time where
@@ -218,10 +219,10 @@ numToTimestamp timestamp
   | timestamp == maxBound = TimestampPInfinity
   | otherwise = Timestamp timestamp
 
-foreign import capi safe "datetime.h DatumGetTimestamp"
+foreign import capi safe "utils/timestamp.h DatumGetTimestamp"
   datumGetTimestamp :: Datum -> IO Int64
 
-foreign import capi safe "datetime.h TimestampGetDatum"
+foreign import capi safe "utils/timestamp.h TimestampGetDatum"
   timestampGetDatum :: Int64 -> IO Datum
 
 instance BaseType Timestamp where
@@ -273,10 +274,10 @@ numToTimestampTZ timestamptz
   | timestamptz == maxBound = TimestampTZPInfinity
   | otherwise = TimestampTZ timestamptz
 
-foreign import capi safe "datetime.h DatumGetTimestampTz"
+foreign import capi safe "utils/timestamp.h DatumGetTimestampTz"
   datumGetTimestampTZ :: Datum -> IO Int64
 
-foreign import capi safe "datetime.h TimestampTzGetDatum"
+foreign import capi safe "utils/timestamp.h TimestampTzGetDatum"
   timestampTZGetDatum :: Int64 -> IO Datum
 
 instance BaseType TimestampTZ where
