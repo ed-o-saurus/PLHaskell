@@ -18,8 +18,8 @@
 
 #include "plhaskell.h"
 #include "PLHaskell_stub.h"
-#include "error.h"
-#include "spi.h"
+#include "error_plh.h"
+#include "spi_plh.h"
 
 #include "Rts.h"
 

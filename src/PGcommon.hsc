@@ -155,7 +155,7 @@ pWithArrayLen vals action = do
     pokeArray ptr vals
     action len ptr
 
-foreign import capi safe "error.h handler"
+foreign import capi safe "error_plh.h handler"
   cHandler :: CString -> IO (Datum)
 
 handler :: SomeException -> IO Datum

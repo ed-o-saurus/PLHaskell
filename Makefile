@@ -61,40 +61,40 @@ clean :
 
 distclean: clean
 
-src/plhaskell.so : src/plhaskell.o src/array.o src/datetime.o src/error.o src/spi.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGdatetime.o src/PGcommon.o
+src/plhaskell.so : src/plhaskell.o src/array_plh.o src/datetime_plh.o src/error_plh.o src/spi_plh.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGdatetime.o src/PGcommon.o
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -L$(BYTESTRING_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -l$(BYTESTRING_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR):$(BYTESTRING_DYN_LIB_DIR)
 
-src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h src/spi.h src/error.h
+src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h src/spi_plh.h src/error_plh.h
 	$(call C_COMPILE)
 
-src/array.o : src/array.c src/array.h src/plhaskell.h src/spi.h
+src/array_plh.o : src/array_plh.c src/array_plh.h src/plhaskell.h src/spi_plh.h
 	$(call C_COMPILE)
 
-src/datetime.o : src/datetime.c src/datetime.h src/plhaskell.h
+src/datetime_plh.o : src/datetime_plh.c src/datetime_plh.h src/plhaskell.h
 	$(call C_COMPILE)
 
-src/error.o : src/error.c src/error.h src/plhaskell.h
+src/error_plh.o : src/error_plh.c src/error_plh.h src/plhaskell.h
 	$(call C_COMPILE)
 
-src/spi.o : src/spi.c src/spi.h src/plhaskell.h
+src/spi_plh.o : src/spi_plh.c src/spi_plh.h src/plhaskell.h
 	$(call C_COMPILE)
 
-src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h src/error.h
+src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h src/error_plh.h
 	$(call HS_COMPILE)
 
-src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGcommon.hi src/plhaskell.h src/error.h src/spi.h
+src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGcommon.hi src/plhaskell.h src/error_plh.h src/spi_plh.h
 	$(call HS_COMPILE)
 
-src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h src/spi.h
+src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h src/spi_plh.h
 	$(call HS_COMPILE)
 
-src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/array.h src/error.h
+src/PGarray.o src/PGarray.hi : src/PGarray.hs src/PGcommon.hi src/array_plh.h src/error_plh.h
 	$(call HS_COMPILE)
 
-src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/datetime.h
+src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/datetime_plh.h
 	$(call HS_COMPILE)
 
-src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/error.h
+src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/error_plh.h
 	$(call HS_COMPILE)
 
 src/PLHaskell.hs : src/PLHaskell.hsc src/plhaskell.h

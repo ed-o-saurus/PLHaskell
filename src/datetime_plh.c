@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "datetime.h"
+#include "datetime_plh.h"
 
 bool date_read(DateADT *date, char *buf) __attribute__((visibility("hidden")));
 bool date_read(DateADT *date, char *buf) {

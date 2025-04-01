@@ -16,8 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "array.h"
-#include "spi.h"
+#include "array_plh.h"
+#include "spi_plh.h"
 
 Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
                   int ndims, int *dims, int *lbs)

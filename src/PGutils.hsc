@@ -136,19 +136,19 @@ getOid (QueryParamInterval _) = return #{const INTERVALOID}
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
-foreign import capi safe "error.h expected_type"
+foreign import capi safe "error_plh.h expected_type"
   expectedType :: Oid -> IO ()
 
-foreign import capi safe "error.h expected_composite"
+foreign import capi safe "error_plh.h expected_composite"
   expectedComposite :: IO ()
 
-foreign import capi safe "error.h expected_array"
+foreign import capi safe "error_plh.h expected_array"
   expectedArray :: IO ()
 
-foreign import capi safe "error.h expected_type_in_query"
+foreign import capi safe "error_plh.h expected_type_in_query"
   expectedTypeInQuery :: Ptr TypeInfo -> IO ()
 
-foreign import capi safe "error.h incorrect_length"
+foreign import capi safe "error_plh.h incorrect_length"
   incorrectLength :: Ptr TypeInfo -> IO ()
 
 -- Verify that the TypeInfo struct oid is expected
@@ -270,7 +270,7 @@ data QueryResults
   | RewrittenResults Word64
   deriving stock (Show)
 
-foreign import capi safe "spi.h get_header_field"
+foreign import capi safe "spi_plh.h get_header_field"
   cGetHeaderField :: Ptr TupleTable -> CString -> CInt -> IO ()
 
 getHeaderField :: Ptr TupleTable -> Int16 -> IO Text
@@ -283,7 +283,7 @@ getHeader pTupleTable = do
   natts <- getNatts pTupleTable
   mapM (getHeaderField pTupleTable) [1 .. natts]
 
-foreign import capi safe "spi.h get_oids"
+foreign import capi safe "spi_plh.h get_oids"
   cGetOids :: Ptr TupleTable -> Ptr Oid -> IO ()
 
 getOids :: Ptr TupleTable -> IO [Oid]
@@ -299,7 +299,7 @@ foreign import capi safe "plhaskell.h new_type_info"
 foreign import capi safe "plhaskell.h delete_type_info"
   deleteTypeInfo :: Ptr TypeInfo -> IO ()
 
-foreign import capi safe "spi.h get_tuple_datum"
+foreign import capi safe "spi_plh.h get_tuple_datum"
   cGetTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> Ptr CBool -> IO Datum
 
 getTupleDatum :: Ptr TupleTable -> Word64 -> CInt -> IO (Maybe Datum)
@@ -362,7 +362,7 @@ getRows pTupleTable processed = do
   mapM_ deleteTypeInfo pTypeInfos
   return rows
 
-foreign import capi safe "spi.h run_query"
+foreign import capi safe "spi_plh.h run_query"
   runQuery :: CString -> CInt -> Ptr Oid -> Ptr Datum -> Ptr CBool -> IO CInt
 
 foreign import ccall safe "executor/spi.h &SPI_processed"
@@ -371,7 +371,7 @@ foreign import ccall safe "executor/spi.h &SPI_processed"
 foreign import ccall safe "executor/spi.h &SPI_tuptable"
   pSPITupTable :: Ptr (Ptr TupleTable)
 
-foreign import capi safe "spi.h free_tuptable"
+foreign import capi safe "spi_plh.h free_tuptable"
   freeTupTable :: Ptr TupleTable -> IO ()
 
 getIsNull :: Maybe Datum -> CBool
@@ -444,7 +444,7 @@ getArrayOid :: (Maybe Text, Text) -> IO Oid
 getArrayOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid (fromBool True)
 getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid (fromBool True)
 
-foreign import capi safe "spi.h commit_rollback"
+foreign import capi safe "spi_plh.h commit_rollback"
   commitRollback :: CBool -> CBool -> PGm ()
 
 commit :: Bool -> PGm ()

@@ -113,7 +113,7 @@ arrayNDim (Array4D _lbs _elems) = 4
 arrayNDim (Array5D _lbs _elems) = 5
 arrayNDim (Array6D _lbs _elems) = 6
 
-foreign import capi safe "error.h bad_multi_dim_array"
+foreign import capi safe "error_plh.h bad_multi_dim_array"
   badMultiDimArray :: IO ()
 
 isRectangular1 :: Int -> [a] -> IO ()
@@ -223,16 +223,16 @@ listTo6Tuple _ = undefined
 foreign import capi safe "utils/array.h DatumGetArrayTypeP"
   getArrayType :: Datum -> Ptr ArrayType
 
-foreign import capi safe "array.h get_ndim"
+foreign import capi safe "array_plh.h get_ndim"
   getNdim :: Ptr ArrayType -> IO CInt
 
-foreign import capi safe "array.h get_lbs_ptr"
+foreign import capi safe "array_plh.h get_lbs_ptr"
   getLbsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
-foreign import capi safe "array.h get_dims_ptr"
+foreign import capi safe "array_plh.h get_dims_ptr"
   getDimsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
-foreign import capi safe "array.h get_array_elems"
+foreign import capi safe "array_plh.h get_array_elems"
   cGetArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> CInt -> Ptr Datum -> Ptr CBool -> IO ()
 
 getArrayElems :: Ptr TypeInfo -> Ptr ArrayType -> Int -> IO [Maybe Datum]
@@ -248,7 +248,7 @@ product' [] = 0 -- Wrong but it's what postgres needs
 product' dims = product dims
 
 -- TODO : safe / unsafe
-foreign import capi safe "error.h higher_dim_arrays"
+foreign import capi safe "error_plh.h higher_dim_arrays"
   higherDimArrays :: IO ()
 
 readArray :: Ptr TypeInfo -> Datum -> IO (Array (Maybe Datum))
@@ -281,7 +281,7 @@ readArray pTypeInfo datum = do
       higherDimArrays
       undefined -- Never called
 
-foreign import capi safe "array.h write_array"
+foreign import capi safe "array_plh.h write_array"
   cWriteArray :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> CInt -> Ptr CInt -> Ptr CInt -> IO Datum
 
 writeArray :: Ptr TypeInfo -> Array (Maybe Datum) -> IO Datum

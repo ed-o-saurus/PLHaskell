@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "spi.h"
+#include "spi_plh.h"
 
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values,
               bool *is_nulls) __attribute__((visibility("hidden")));
