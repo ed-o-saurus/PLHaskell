@@ -25,7 +25,7 @@
 
 Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
                   int ndims, int *dims, int *lbs);
-ArrayType *get_array_type(Datum datum);
+
 int get_ndim(ArrayType *array);
 int *get_lbs_ptr(ArrayType *array);
 int *get_dims_ptr(ArrayType *array);

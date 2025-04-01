@@ -220,7 +220,7 @@ listTo6Tuple :: [a] -> (a, a, a, a, a, a)
 listTo6Tuple [x0, x1, x2, x3, x4, x5] = (x0, x1, x2, x3, x4, x5)
 listTo6Tuple _ = undefined
 
-foreign import capi safe "array.h get_array_type"
+foreign import capi safe "utils/array.h DatumGetArrayTypeP"
   getArrayType :: Datum -> Ptr ArrayType
 
 foreign import capi safe "array.h get_ndim"
