@@ -113,7 +113,7 @@ arrayNDim (Array4D _lbs _elems) = 4
 arrayNDim (Array5D _lbs _elems) = 5
 arrayNDim (Array6D _lbs _elems) = 6
 
-foreign import capi safe "array.h bad_multi_dim_array"
+foreign import capi safe "error.h bad_multi_dim_array"
   badMultiDimArray :: IO ()
 
 isRectangular1 :: Int -> [a] -> IO ()
