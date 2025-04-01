@@ -36,7 +36,7 @@ import PGcommon (Datum (Datum), TypeInfo, assert, pWithArray, pallocArray, voidD
 import Prelude (IO, Int, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, splitAt, undefined, zipWith, ($), (.), (==), (>>=))
 
 -- Dummy type to make pointers
-data ArrayType
+data {-# CTYPE "utils/array.h" "ArrayType" #-} ArrayType
 
 data Array a
   = ArrayEmpty
@@ -223,13 +223,13 @@ listTo6Tuple _ = undefined
 foreign import capi safe "utils/array.h DatumGetArrayTypeP"
   getArrayType :: Datum -> Ptr ArrayType
 
-foreign import capi safe "array_plh.h get_ndim"
+foreign import capi safe "utils/array.h ARR_NDIM"
   getNdim :: Ptr ArrayType -> IO CInt
 
-foreign import capi safe "array_plh.h get_lbs_ptr"
+foreign import capi safe "utils/array.h ARR_LBOUND"
   getLbsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
-foreign import capi safe "array_plh.h get_dims_ptr"
+foreign import capi safe "utils/array.h ARR_DIMS"
   getDimsPtr :: Ptr ArrayType -> IO (Ptr CInt)
 
 foreign import capi safe "array_plh.h get_array_elems"

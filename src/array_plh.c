@@ -39,15 +39,6 @@ Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
   return PointerGetDatum(dest);
 }
 
-int get_ndim(ArrayType *array) __attribute__((visibility("hidden")));
-int get_ndim(ArrayType *array) { return ARR_NDIM(array); }
-
-int *get_lbs_ptr(ArrayType *array) __attribute__((visibility("hidden")));
-int *get_lbs_ptr(ArrayType *array) { return ARR_LBOUND(array); }
-
-int *get_dims_ptr(ArrayType *array) __attribute__((visibility("hidden")));
-int *get_dims_ptr(ArrayType *array) { return ARR_DIMS(array); }
-
 void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems,
                      Datum *elems, bool *nulls)
     __attribute__((visibility("hidden")));
