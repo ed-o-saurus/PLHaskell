@@ -30,7 +30,6 @@ void get_header_field(struct SPITupleTable *tuptable, char *header,
 void get_oids(struct SPITupleTable *tuptable, Oid *oids);
 Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number,
                       int fnumber, bool *is_null);
-void free_tuptable(struct SPITupleTable *tuptable);
 
 Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
 

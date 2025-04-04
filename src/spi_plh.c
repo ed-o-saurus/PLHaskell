@@ -65,12 +65,6 @@ Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number,
                        is_null);
 }
 
-void free_tuptable(struct SPITupleTable *tuptable)
-    __attribute__((visibility("hidden")));
-void free_tuptable(struct SPITupleTable *tuptable) {
-  SPI_freetuptable(tuptable);
-}
-
 Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum)
     __attribute__((visibility("hidden")));
 Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum) {

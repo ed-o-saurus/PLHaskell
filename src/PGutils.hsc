@@ -371,7 +371,7 @@ foreign import ccall safe "executor/spi.h &SPI_processed"
 foreign import ccall safe "executor/spi.h &SPI_tuptable"
   pSPITupTable :: Ptr (Ptr TupleTable)
 
-foreign import capi safe "spi_plh.h free_tuptable"
+foreign import capi safe "executor/spi.h SPI_freetuptable"
   freeTupTable :: Ptr TupleTable -> IO ()
 
 getIsNull :: Maybe Datum -> CBool
