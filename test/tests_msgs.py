@@ -106,18 +106,16 @@ class TestMsgs(TestCase):
             self.assertEqual(self.notices[0][0], "INFO")
             self.assertEqual(self.notices[0][1], "Test")
 
-    @skip
     def test_log(self):
         with self.conn.cursor() as cur:
+            cur.execute("SET client_min_messages = LOG")
+
             with open("sql/msg_log.sql", "rt") as file:
                 cur.execute(file.read())
 
             cur.execute("SELECT msg_log();")
 
-            self.assertEqual(len(self.notices), 1)
-
-            self.assertEqual(self.notices[0][0], "LOG")
-            self.assertEqual(self.notices[0][1], "Test")
+            self.assertIn(("LOG", "Test"), self.notices)
 
     def test_debug1(self):
         with self.conn.cursor() as cur:

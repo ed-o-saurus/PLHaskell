@@ -254,7 +254,7 @@ exception |
 warning   |
 notice    |
 info      |
-log       |
+log'      |
 debug1    |
 debug2    |
 debug3    |

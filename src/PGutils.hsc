@@ -29,7 +29,7 @@
 #{include "plhaskell.h"}
 #{include "executor/spi.h"}
 
-module PGutils (PGm, ErrorLevel, Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log, info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils (PGm, ErrorLevel, Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log', info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
 
 import Control.Monad (zipWithM, (>=>))
 import Control.Monad.Fail (MonadFail (fail))
@@ -58,19 +58,38 @@ newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Mona
 
 newtype ErrorLevel = ErrorLevel CInt
 
-#{enum ErrorLevel, ErrorLevel,
-    debug5    = DEBUG5,
-    debug4    = DEBUG4,
-    debug3    = DEBUG3,
-    debug2    = DEBUG2,
-    debug1    = DEBUG1,
-    log       = LOG,
-    info      = INFO,
-    notice    = NOTICE,
-    warning   = WARNING,
-    exception = ERROR,
-    fatal     = FATAL
-}
+debug5 :: ErrorLevel
+debug5 = ErrorLevel #{const DEBUG5}
+
+debug4 :: ErrorLevel
+debug4 = ErrorLevel #{const DEBUG4}
+
+debug3 :: ErrorLevel
+debug3 = ErrorLevel #{const DEBUG3}
+
+debug2 :: ErrorLevel
+debug2 = ErrorLevel #{const DEBUG2}
+
+debug1 :: ErrorLevel
+debug1 = ErrorLevel #{const DEBUG1}
+
+log' :: ErrorLevel
+log' = ErrorLevel #{const LOG}
+
+info :: ErrorLevel
+info = ErrorLevel #{const INFO}
+
+notice :: ErrorLevel
+notice = ErrorLevel #{const NOTICE}
+
+warning :: ErrorLevel
+warning = ErrorLevel #{const WARNING}
+
+exception :: ErrorLevel
+exception = ErrorLevel #{const ERROR}
+
+fatal :: ErrorLevel
+fatal = ErrorLevel #{const FATAL}
 
 foreign import capi safe "plhaskell.h plhaskell_report"
   plhaskellReport :: ErrorLevel -> CString -> IO ()
