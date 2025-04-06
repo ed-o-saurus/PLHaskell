@@ -164,14 +164,6 @@ Systems that use Security Enhanced Linux (SELinux) may encounter problems runnin
 
 A policy file designed to accommodate Red Hat based systems can be built by running `make SELINUX=1`. Upon installation, this file is saved to `/usr/share/selinux/packages/plhaskell.pp`. It is the user's responsibility to install the policy.
 
-### Testing
-
-A test battery is provided in the `tests.sql` file in the root directory. It can be run with the command
-
-**`$>`** `psql -f tests.sql`
-
-If successful, it will terminate with the notice `All tests passed`.
-
 ## Trust
 
 ### Trusted
