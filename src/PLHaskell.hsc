@@ -272,7 +272,7 @@ foreign import capi safe "error_plh.h language_error"
 languageError :: String -> IO ()
 languageError msg = (pWithCString msg) (cLanguageError #{const ERROR})
 
-foreign import ccall safe "utils/global.h &pkglib_path"
+foreign import ccall safe "&pkglib_path"
   pPkgLibPath :: CString
 
 -- Execute an interpreter monad and handle the result
