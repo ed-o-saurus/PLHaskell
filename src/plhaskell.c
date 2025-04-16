@@ -59,7 +59,7 @@ static void mod_exit(int code, Datum arg);
 
 Oid get_function_id(char *procname, int nargs, Oid *args);
 
-static CallInfo *current_p_call_info = NULL;
+CallInfo *current_p_call_info = NULL;
 static CallInfo *first_p_call_info =
     NULL; // Points to list of all active CallInfos
 
@@ -1033,9 +1033,6 @@ Oid get_function_id(char *procname, int nargs, Oid *args) {
 
   return functionId;
 }
-
-CallInfo *get_current_p_call_info(void) __attribute__((visibility("hidden")));
-CallInfo *get_current_p_call_info(void) { return current_p_call_info; }
 
 Datum call_func(Oid functionId, int16 nargs, NullableDatum *args, bool *isnull)
     __attribute__((visibility("hidden")));

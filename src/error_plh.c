@@ -91,7 +91,7 @@ void language_error(int elevel, char *msg)
     __attribute__((visibility("hidden")));
 void language_error(int elevel, char *msg) {
   char *filename_location;
-  CallInfo *current_p_call_info = get_current_p_call_info();
+  extern CallInfo *current_p_call_info;
 
   // Strip trailing new-line if necessary
   if (strlen(msg) > 1 && msg[strlen(msg) - 1] == '\n')
@@ -125,8 +125,10 @@ void language_error(int elevel, char *msg) {
 
 Datum handler(char *msg) __attribute__((visibility("hidden")));
 Datum handler(char *msg) {
-  ereport(ERROR, errmsg("PL/Haskell: %s: %s",
-                        get_current_p_call_info()->func_name, msg));
+  extern CallInfo *current_p_call_info;
+
+  ereport(ERROR,
+          errmsg("PL/Haskell: %s: %s", current_p_call_info->func_name, msg));
 
   PG_RETURN_VOID();
 }

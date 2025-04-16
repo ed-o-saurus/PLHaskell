@@ -22,6 +22,7 @@ int run_query(const char *command, int nargs, Oid *argtypes, Datum *values,
               bool *is_nulls) __attribute__((visibility("hidden")));
 int run_query(const char *command, int nargs, Oid *argtypes, Datum *values,
               bool *is_nulls) {
+  extern CallInfo *current_p_call_info;
   int spi_code;
   char nulls[nargs + 1];
 
@@ -32,7 +33,7 @@ int run_query(const char *command, int nargs, Oid *argtypes, Datum *values,
   nulls[nargs] = '\0';
 
   spi_code = SPI_execute_with_args(command, nargs, argtypes, values, nulls,
-                                   get_current_p_call_info()->spi_read_only, 0);
+                                   current_p_call_info->spi_read_only, 0);
   if (spi_code < 0)
     ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
