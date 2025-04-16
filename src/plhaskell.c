@@ -57,6 +57,8 @@ static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void mod_exit(int code, Datum arg);
 
+Oid get_function_id(char *procname, int nargs, Oid *args);
+
 static struct CallInfo *current_p_call_info = NULL;
 static struct CallInfo *first_p_call_info =
     NULL; // Points to list of all active CallInfos
@@ -766,11 +768,6 @@ Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values,
 // Called when the module is loaded
 static void enter(void) __attribute__((constructor));
 static void enter(void) {
-  Oid arg_oid = INTERNALOID;
-  oidvector *parameterTypes;
-  HeapTuple proctup;
-  Datum procoid;
-  bool is_null;
   static int argc = 3;
   static char *argv[] = {
       "PLHaskell", "+RTS", // Configuration for the RTS
@@ -782,33 +779,9 @@ static void enter(void) {
 
   on_proc_exit(mod_exit, (Datum)0);
 
-  parameterTypes =
-      (oidvector *)palloc0(offsetof(oidvector, values) + sizeof(Oid));
-  SET_VARSIZE(parameterTypes, offsetof(oidvector, values) + sizeof(Oid));
-  parameterTypes->ndim = 1;
-  parameterTypes->dataoffset = 0;
-  parameterTypes->elemtype = OIDOID;
-  parameterTypes->dim1 = 1;
-  parameterTypes->lbound1 = 0;
-  memcpy(parameterTypes->values, &arg_oid, sizeof(Oid));
-
-  proctup = SearchSysCache3(
-      PROCNAMEARGSNSP, CStringGetDatum(ARRAY_SUBSCRIPT_HANDLER_NAME),
-      PointerGetDatum(parameterTypes), ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
-
-  if (!HeapTupleIsValid(proctup))
-    ereport(ERROR, errmsg_internal("cache lookup failed for proc %s",
-                                   ARRAY_SUBSCRIPT_HANDLER_NAME));
-
-  procoid =
-      SysCacheGetAttr(PROCNAMEARGSNSP, proctup, Anum_pg_proc_oid, &is_null);
-  if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.oid is NULL"));
-
-  array_subscript_handler_oid = DatumGetObjectId(procoid);
-
-  ReleaseSysCache(proctup);
-  pfree(parameterTypes);
+  Oid array_subscript_handler_args[] = {INTERNALOID};
+  array_subscript_handler_oid = get_function_id(ARRAY_SUBSCRIPT_HANDLER_NAME, 1,
+                                                array_subscript_handler_args);
 
   TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
   MakePGDirectory(tempdirpath);
@@ -1027,6 +1000,70 @@ Datum detoast_datum(Datum datum) {
   return (Datum)pg_detoast_datum((struct varlena *)((Pointer)datum));
 }
 
+Oid get_function_id(char *procname, int nargs, Oid *args)
+    __attribute__((visibility("hidden")));
+Oid get_function_id(char *procname, int nargs, Oid *args) {
+  bool is_null;
+
+  oidvector *parameterTypes =
+      (oidvector *)palloc0(offsetof(oidvector, values) + nargs * sizeof(Oid));
+  SET_VARSIZE(parameterTypes,
+              offsetof(oidvector, values) + nargs * sizeof(Oid));
+  parameterTypes->ndim = 1;
+  parameterTypes->dataoffset = 0;
+  parameterTypes->elemtype = OIDOID;
+  parameterTypes->dim1 = nargs;
+  parameterTypes->lbound1 = 0;
+  memcpy(parameterTypes->values, args, nargs * sizeof(Oid));
+
+  HeapTuple proctup = SearchSysCache3(
+      PROCNAMEARGSNSP, CStringGetDatum(procname),
+      PointerGetDatum(parameterTypes), ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
+
+  if (!HeapTupleIsValid(proctup))
+    ereport(ERROR,
+            errmsg_internal("cache lookup failed for proc %s", procname));
+
+  Datum procoid =
+      SysCacheGetAttr(PROCNAMEARGSNSP, proctup, Anum_pg_proc_oid, &is_null);
+  if (is_null)
+    ereport(ERROR, errmsg_internal("pg_proc.oid is NULL"));
+
+  Oid functionId = DatumGetObjectId(procoid);
+
+  ReleaseSysCache(proctup);
+  pfree(parameterTypes);
+
+  return functionId;
+}
+
 struct CallInfo *get_current_p_call_info(void)
     __attribute__((visibility("hidden")));
 struct CallInfo *get_current_p_call_info(void) { return current_p_call_info; }
+
+Datum call_func(Oid functionId, int16 nargs, NullableDatum *args, bool *isnull)
+    __attribute__((visibility("hidden")));
+Datum call_func(Oid functionId, int16 nargs, NullableDatum *args,
+                bool *isnull) {
+  FmgrInfo flinfo;
+  fmgr_info(functionId, &flinfo);
+
+  LOCAL_FCINFO(fcinfo, nargs);
+
+  fcinfo->flinfo = &flinfo;
+  fcinfo->context = NULL;
+  fcinfo->resultinfo = NULL;
+  fcinfo->fncollation = VOIDOID;
+  fcinfo->isnull = false;
+  fcinfo->nargs = nargs;
+
+  memcpy(fcinfo->args, args, nargs * sizeof(NullableDatum));
+
+  Datum result = FunctionCallInvoke(fcinfo);
+  *isnull = fcinfo->isnull;
+  return result;
+}
+
+MemoryContext alloc_set_context_create_small_temp(MemoryContext parent) {
+  return AllocSetContextCreate(parent, "PL/Haskell temp", ALLOCSET_SMALL_SIZES);
+}

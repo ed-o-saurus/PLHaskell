@@ -101,6 +101,9 @@ Oid find_oid(bool array, char *typname);
 
 Datum detoast_datum(Datum datum);
 
+Datum call_func(Oid functionId, int16 nargs, NullableDatum *args, bool *isnull);
+MemoryContext alloc_set_context_create_small_temp(MemoryContext parent);
+
 struct CallInfo *get_current_p_call_info(void);
 
 #endif // __PLHASKELL_H

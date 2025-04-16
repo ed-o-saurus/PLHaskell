@@ -29,7 +29,7 @@
 
 #{include "plhaskell.h"}
 
-module PGcommon (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, palloca, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon (Datum (Datum), NullableDatum (NullableDatum), Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, palloca, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
 
 import Control.Exception (SomeException)
 import Data.ByteString (ByteString, useAsCStringLen)
@@ -38,9 +38,9 @@ import Data.Word (Word16)
 import Foreign.C.String (CString, CStringLen, withCStringLen)
 import Foreign.C.Types (CBool (CBool), CSize (CSize), CUInt (CUInt))
 import Foreign.Marshal.Array (pokeArray)
-import Foreign.Marshal.Utils (copyBytes, toBool)
+import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
 import Foreign.Ptr (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
-import Foreign.Storable (Storable, alignment, peek, peekByteOff, peekElemOff, poke, sizeOf)
+import Foreign.Storable (Storable, alignment, peek, peekByteOff, peekElemOff, poke, pokeByteOff, sizeOf)
 import Prelude (Bool (False, True), Eq, IO, Int, Integral, Maybe (Just, Nothing), Num, String, const, flip, fromIntegral, length, mapM, return, show, undefined, ($), (*), (+), (-), (.), (>>=))
 
 -- Dummy type to make pointers
@@ -83,7 +83,12 @@ instance Storable NullableDatum where
         datum <- #{peek NullableDatum, value} pNullableDatum
         return $ NullableDatum $ Just datum
 
-  poke = undefined -- Never used
+  poke pNullableDatum nullableDatum =
+    case unNullableDatum nullableDatum of
+      Nothing -> #{poke NullableDatum, isnull} pNullableDatum ((fromBool True) :: CBool)
+      Just datum -> do
+        #{poke NullableDatum, isnull} pNullableDatum ((fromBool False) :: CBool)
+        #{poke NullableDatum, value} pNullableDatum datum
 
 -- Get fields of TypeInfo struct
 getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
