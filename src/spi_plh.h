@@ -31,7 +31,7 @@ void get_oids(struct SPITupleTable *tuptable, Oid *oids);
 Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number,
                       int fnumber, bool *is_null);
 
-Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum);
+Datum datum_SPI_copy(TypeInfo *p_type_info, Datum datum);
 
 void commit_rollback(bool commit, bool chain);
 

@@ -57,17 +57,17 @@ assert False action = action
 voidDatum :: Datum
 voidDatum = Datum $ ptrToWordPtr nullPtr
 
--- Extract the value type from TypeInfo struct
+-- Extract the value type from TypeInfo
 getValueType :: Ptr TypeInfo -> IO Word16
-getValueType = #{peek struct TypeInfo, value_type}
+getValueType = #{peek TypeInfo, value_type}
 
--- Extract type_oid from TypeInfo struct
+-- Extract type_oid from TypeInfo
 getTypeOid :: Ptr TypeInfo -> IO Oid
-getTypeOid = #{peek struct TypeInfo, type_oid}
+getTypeOid = #{peek TypeInfo, type_oid}
 
--- Extract count of sub-fields from TypeInfo struct
+-- Extract count of sub-fields from TypeInfo
 getCount :: Ptr TypeInfo -> IO Int16
-getCount = #{peek struct TypeInfo, count}
+getCount = #{peek TypeInfo, count}
 
 newtype NullableDatum = NullableDatum {unNullableDatum :: Maybe Datum}
 
@@ -90,14 +90,14 @@ instance Storable NullableDatum where
         #{poke NullableDatum, isnull} pNullableDatum ((fromBool False) :: CBool)
         #{poke NullableDatum, value} pNullableDatum datum
 
--- Get fields of TypeInfo struct
+-- Get fields of TypeInfo
 getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
 getFields pTypeInfo = do
   count <- getCount pTypeInfo
-  mapM (\j -> #{peek struct TypeInfo, fields} pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
+  mapM (\j -> #{peek TypeInfo, fields} pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
 
 getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
-getElement = #{peek struct TypeInfo, element}
+getElement = #{peek TypeInfo, element}
 
 -- Allocate memory using postgres' mechanism
 foreign import capi safe "postgres.h palloc"

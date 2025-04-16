@@ -57,16 +57,16 @@ void expected_composite() { ereport(ERROR, errmsg("Expected composite type")); }
 void expected_array() __attribute__((visibility("hidden")));
 void expected_array() { ereport(ERROR, errmsg("Expected array type")); }
 
-void expected_type_in_query(struct TypeInfo *p_type_info)
+void expected_type_in_query(TypeInfo *p_type_info)
     __attribute__((visibility("hidden")));
-void expected_type_in_query(struct TypeInfo *p_type_info) {
+void expected_type_in_query(TypeInfo *p_type_info) {
   ereport(ERROR, errmsg("Expected type \"%s.%s\" in query",
                         p_type_info->nspname, p_type_info->typname));
 }
 
-void incorrect_length(struct TypeInfo *p_type_info)
+void incorrect_length(TypeInfo *p_type_info)
     __attribute__((visibility("hidden")));
-void incorrect_length(struct TypeInfo *p_type_info) {
+void incorrect_length(TypeInfo *p_type_info) {
   ereport(ERROR, errmsg("Type \"%s.%s\" incorrect length", p_type_info->nspname,
                         p_type_info->typname));
 }
@@ -91,7 +91,7 @@ void language_error(int elevel, char *msg)
     __attribute__((visibility("hidden")));
 void language_error(int elevel, char *msg) {
   char *filename_location;
-  struct CallInfo *current_p_call_info = get_current_p_call_info();
+  CallInfo *current_p_call_info = get_current_p_call_info();
 
   // Strip trailing new-line if necessary
   if (strlen(msg) > 1 && msg[strlen(msg) - 1] == '\n')

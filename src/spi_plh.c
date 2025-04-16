@@ -65,9 +65,9 @@ Datum get_tuple_datum(struct SPITupleTable *tuptable, uint64 row_number,
                        is_null);
 }
 
-Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum)
+Datum datum_SPI_copy(TypeInfo *p_type_info, Datum datum)
     __attribute__((visibility("hidden")));
-Datum datum_SPI_copy(struct TypeInfo *p_type_info, Datum datum) {
+Datum datum_SPI_copy(TypeInfo *p_type_info, Datum datum) {
   if (p_type_info->type_byval)
     return datum;
 

@@ -132,7 +132,7 @@ data QueryParam
   | QueryParamArray (Maybe Text, Text) (Maybe (Array QueryParam))
 
 getNatts :: Ptr TupleTable -> IO Int16
-getNatts = #{peek struct SPITupleTable, tupdesc} >=> #{peek struct TupleDescData, natts}
+getNatts = #{peek SPITupleTable, tupdesc} >=> #{peek TupleDescData, natts}
 
 -- Get Oid base on the constructor or stated type
 -- Does not verify contents comply with the Oid
@@ -170,7 +170,7 @@ foreign import capi safe "error_plh.h expected_type_in_query"
 foreign import capi safe "error_plh.h incorrect_length"
   incorrectLength :: Ptr TypeInfo -> IO ()
 
--- Verify that the TypeInfo struct oid is expected
+-- Verify that the TypeInfo oid is expected
 -- return encoded Maybe Datum
 encode' :: Ptr TypeInfo -> QueryParam -> IO (Maybe Datum)
 encode' pTypeInfo (QueryParamByteA value) = do
@@ -445,8 +445,8 @@ query q params = PGm $ do
 
 getSchemaType :: Ptr TypeInfo -> IO (Text, Text)
 getSchemaType pTypeInfo = do
-  nspname <- #{peek struct TypeInfo, nspname} pTypeInfo >>= peekCString
-  typname <- #{peek struct TypeInfo, typname} pTypeInfo >>= peekCString
+  nspname <- #{peek TypeInfo, nspname} pTypeInfo >>= peekCString
+  typname <- #{peek TypeInfo, typname} pTypeInfo >>= peekCString
   return (pack nspname, pack typname)
 
 foreign import capi safe "plhaskell.h get_oid"

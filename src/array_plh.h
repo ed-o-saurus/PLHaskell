@@ -23,10 +23,10 @@
 
 #include "utils/array.h"
 
-Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
-                  int ndims, int *dims, int *lbs);
+Datum write_array(TypeInfo *pTypeInfo, Datum *elems, bool *nulls, int ndims,
+                  int *dims, int *lbs);
 
-void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems,
+void get_array_elems(TypeInfo *pTypeInfo, ArrayType *array, int nelems,
                      Datum *elems, bool *nulls);
 
 #endif // __PLH_ARRAY_H

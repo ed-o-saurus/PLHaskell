@@ -86,32 +86,32 @@ cTypeAvailable oid = CBool $ fromBool $ typeAvailable oid
 baseName :: Oid -> String
 baseName oid = fromMaybe undefined (getDataType oid)
 
--- Extract module file name from CallInfo struct
+-- Extract module file name from CallInfo
 getModFileName :: Ptr CallInfo -> Interpreter String
-getModFileName pCallInfo = liftIO $ #{peek struct CallInfo, mod_file_name} pCallInfo >>= peekCString
+getModFileName pCallInfo = liftIO $ #{peek CallInfo, mod_file_name} pCallInfo >>= peekCString
 
--- Extract function name from CallInfo struct
+-- Extract function name from CallInfo
 getFuncName :: Ptr CallInfo -> Interpreter String
-getFuncName pCallInfo = liftIO $ #{peek struct CallInfo, func_name} pCallInfo >>= peekCString
+getFuncName pCallInfo = liftIO $ #{peek CallInfo, func_name} pCallInfo >>= peekCString
 
 setPtr :: String -> Ptr a -> Interpreter ()
 setPtr name ptr = runStmt $ "let " ++ name ++ " = wordPtrToPtr " ++ show (ptrToWordPtr ptr)
 
--- Get argument TypeInfo struct from CallInfo struct
+-- Get argument TypeInfo from CallInfo
 getArgTypeInfo :: Ptr CallInfo -> Int16 -> IO (Ptr TypeInfo)
 getArgTypeInfo pCallInfo i = do
-  pArgs <- #{peek struct CallInfo, args} pCallInfo
+  pArgs <- #{peek CallInfo, args} pCallInfo
   peekElemOff pArgs (fromIntegral i)
 
--- Get type signature of function needed based on CallInfo struct
+-- Get type signature of function needed based on CallInfo
 getSignature :: Ptr CallInfo -> Interpreter String
 getSignature pCallInfo = liftIO $ do
-  nargs <- #{peek struct CallInfo, nargs} pCallInfo
+  nargs <- #{peek CallInfo, nargs} pCallInfo
   argTypeNames <- mapM (getArgTypeInfo pCallInfo >=> getTypeName) $ range nargs
-  resultTypeName <- #{peek struct CallInfo, result} pCallInfo >>= getTypeName
+  resultTypeName <- #{peek CallInfo, result} pCallInfo >>= getTypeName
 
-  CBool trusted <- #{peek struct CallInfo, trusted} pCallInfo
-  CBool returnSet <- #{peek struct CallInfo, return_set} pCallInfo
+  CBool trusted <- #{peek CallInfo, trusted} pCallInfo
+  CBool returnSet <- #{peek CallInfo, return_set} pCallInfo
   if toBool trusted
     then
       if toBool returnSet
@@ -122,7 +122,7 @@ getSignature pCallInfo = liftIO $ do
         then return $ intercalate " -> " (argTypeNames ++ ["IO [" ++ resultTypeName ++ "]"])
         else return $ intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"])
   where
-    -- Get Haskell type name based on TypeInfo struct
+    -- Get Haskell type name based on TypeInfo
     getTypeName :: Ptr TypeInfo -> IO String
     getTypeName pTypeInfo = do
       valueType <- getValueType pTypeInfo
@@ -172,7 +172,7 @@ setUpEvalInt pCallInfo = do
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 
-  CBool trusted <- liftIO $ #{peek struct CallInfo, trusted} pCallInfo
+  CBool trusted <- liftIO $ #{peek CallInfo, trusted} pCallInfo
 
   -- Check signature
   signature <- getSignature pCallInfo
@@ -180,14 +180,14 @@ setUpEvalInt pCallInfo = do
   liftIO $ assert r $ errorFuncSig $ funcName ++ " :: " ++ signature
 
   -- Number of arguments
-  nargs <- liftIO $ #{peek struct CallInfo, nargs} pCallInfo
+  nargs <- liftIO $ #{peek CallInfo, nargs} pCallInfo
   let argIndexes = range nargs
 
   -- Fill all decodeArg? values with functions to decode arguments
   mapM_ defineDecodeArg argIndexes
 
   -- Fill encodeResult value with function to return Maybe Datum
-  pResultTypeInfo <- liftIO $ #{peek struct CallInfo, result} pCallInfo
+  pResultTypeInfo <- liftIO $ #{peek CallInfo, result} pCallInfo
   encodeResultDef <- liftIO $ makeEncodeResultDef pResultTypeInfo
   runStmt $ "let encodeResult = " ++ encodeResultDef
 
@@ -314,7 +314,7 @@ checkSignature pCallInfo = execute $ do
   r <- typeChecks $ "PGmodule." ++ funcName ++ "::" ++ signature
   liftIO $ assert r $ errorFuncSig $ funcName ++ " :: " ++ signature
 
--- Set the Function field of the CallInfo struct to a function that
+-- Set the Function field of the CallInfo to a function that
 -- will read the arguments, call the function, and write the result
 foreign export capi "mk_function" mkFunction :: Ptr CallInfo -> IO ()
 
@@ -332,11 +332,11 @@ mkFunction pCallInfo = execute $ do
   let prog_encode_result = "encodeResult result >>= writeResult pResultIsNull"
   runStmt $ "function <- wrapFunction $ (\\pArgs pResultIsNull -> handle handler $ do {" ++ prog_decode_args ++ prog_call ++ prog_encode_result ++ "})"
 
-  -- Poke the value of the pointer into the Function field of the CallInfo struct
-  setPtr "pFunction" $ #{ptr struct CallInfo, function} pCallInfo
+  -- Poke the value of the pointer into the Function field of the CallInfo
+  setPtr "pFunction" $ #{ptr CallInfo, function} pCallInfo
   runStmt "poke pFunction function"
 
--- Set the List field of the CallInfo struct to the list returns by the function
+-- Set the List field of the CallInfo to the list returns by the function
 foreign export capi "mk_list" mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
 
 mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
@@ -347,7 +347,7 @@ mkList pCallInfo pArgs = execute $ do
   setPtr "pArgs" pArgs
   mapM_ (runStmt . (interpolate "arg? <- peekElemOff pArgs ? >>= return . unNullableDatum >>= decodeArg?")) argIndexes
 
-  -- Set returnResultList to be a list of actions each of which loads a result into the result TypeInfo struct
+  -- Set returnResultList to be a list of actions each of which loads a result into the result TypeInfo
   let argsNames = concatMap (interpolate " arg?") argIndexes
   if trusted
     then runStmt $ "results <- unPGm $ PGmodule." ++ funcName ++ argsNames
@@ -355,16 +355,16 @@ mkList pCallInfo pArgs = execute $ do
 
   runStmt "let returnResultList = mkResultList encodeResult results"
 
-  -- poke the stable pointer value into the List field of the CallInfo struct
+  -- poke the stable pointer value into the List field of the CallInfo
   runStmt "spList <- newStablePtr returnResultList"
-  setPtr "pList" $ #{ptr struct CallInfo, list} pCallInfo
+  setPtr "pList" $ #{ptr CallInfo, list} pCallInfo
   runStmt "poke pList spList"
 
 foreign export capi "iterate" iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
 
 iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
 iterate pCallInfo pResultIsNull = handle handler $ do
-  let pList = #{ptr struct CallInfo, list} pCallInfo
+  let pList = #{ptr CallInfo, list} pCallInfo
   spList <- peek pList
   returnResultList <- deRefStablePtr spList
   freeStablePtr spList

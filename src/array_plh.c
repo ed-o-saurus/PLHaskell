@@ -19,11 +19,10 @@
 #include "array_plh.h"
 #include "spi_plh.h"
 
-Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
-                  int ndims, int *dims, int *lbs)
-    __attribute__((visibility("hidden")));
-Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
-                  int ndims, int *dims, int *lbs) {
+Datum write_array(TypeInfo *pTypeInfo, Datum *elems, bool *nulls, int ndims,
+                  int *dims, int *lbs) __attribute__((visibility("hidden")));
+Datum write_array(TypeInfo *pTypeInfo, Datum *elems, bool *nulls, int ndims,
+                  int *dims, int *lbs) {
   Pointer dest, src;
 
   src = (Pointer)construct_md_array(
@@ -39,10 +38,10 @@ Datum write_array(struct TypeInfo *pTypeInfo, Datum *elems, bool *nulls,
   return PointerGetDatum(dest);
 }
 
-void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems,
+void get_array_elems(TypeInfo *pTypeInfo, ArrayType *array, int nelems,
                      Datum *elems, bool *nulls)
     __attribute__((visibility("hidden")));
-void get_array_elems(struct TypeInfo *pTypeInfo, ArrayType *array, int nelems,
+void get_array_elems(TypeInfo *pTypeInfo, ArrayType *array, int nelems,
                      Datum *elems, bool *nulls) {
   Datum *elems_;
   bool *nulls_;

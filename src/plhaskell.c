@@ -35,9 +35,9 @@
 
 #define ARRAY_SUBSCRIPT_HANDLER_NAME "array_subscript_handler"
 
-static void build_call_info(struct CallInfo *p_call_info, Oid func_oid,
+static void build_call_info(CallInfo *p_call_info, Oid func_oid,
                             bool return_set, bool atomic);
-static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid,
+static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
                             bool set_schema_name);
 
 static void destroy_call_info(void *arg);
@@ -59,8 +59,8 @@ static void mod_exit(int code, Datum arg);
 
 Oid get_function_id(char *procname, int nargs, Oid *args);
 
-static struct CallInfo *current_p_call_info = NULL;
-static struct CallInfo *first_p_call_info =
+static CallInfo *current_p_call_info = NULL;
+static CallInfo *first_p_call_info =
     NULL; // Points to list of all active CallInfos
 
 static int plhaskell_max_memory;
@@ -71,14 +71,14 @@ PG_MODULE_MAGIC;
 // Main handler
 PG_FUNCTION_INFO_V1(plhaskell_call_handler);
 Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
-  struct CallInfo *p_call_info;
+  CallInfo *p_call_info;
   Oid func_oid = fcinfo->flinfo->fn_oid; // OID of the function being handled
   HeapTuple proctup;
   Datum proretset;
   bool is_null;
   int spi_code;
   bool nonatomic;
-  struct CallInfo *prev_p_call_info;
+  CallInfo *prev_p_call_info;
   Datum ret_val;
 
   proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
@@ -117,7 +117,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       cb = palloc(sizeof(MemoryContextCallback));
 
       // Allocate, setup, and Build CallInfo
-      p_call_info = funcctx->user_fctx = palloc0(sizeof(struct CallInfo));
+      p_call_info = funcctx->user_fctx = palloc0(sizeof(CallInfo));
 
       // Register callback to free List and Iterator and delete temp module file
       cb->func = destroy_call_info;
@@ -175,7 +175,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       MemoryContextCallback *cb = palloc(sizeof(MemoryContextCallback));
 
       // Allocate, setup, and Build CallInfo
-      p_call_info = fcinfo->flinfo->fn_extra = palloc0(sizeof(struct CallInfo));
+      p_call_info = fcinfo->flinfo->fn_extra = palloc0(sizeof(CallInfo));
 
       // Register callback to free function and delete temp module file
       cb->func = destroy_call_info;
@@ -216,13 +216,13 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 // Called when PL/Haskell function is created
 PG_FUNCTION_INFO_V1(plhaskell_validator);
 Datum plhaskell_validator(PG_FUNCTION_ARGS) {
-  struct CallInfo *p_call_info;
+  CallInfo *p_call_info;
   Oid func_oid = PG_GETARG_OID(0);
   MemoryContextCallback *cb;
   HeapTuple proctup;
   Datum proretset;
   bool is_null;
-  struct CallInfo *prev_p_call_info;
+  CallInfo *prev_p_call_info;
 
   if (!CheckFunctionValidatorAccess(fcinfo->flinfo->fn_oid, func_oid))
     PG_RETURN_VOID();
@@ -245,7 +245,7 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS) {
   cb = palloc(sizeof(MemoryContextCallback));
 
   // Allocate, setup, and Build CallInfo
-  p_call_info = palloc0(sizeof(struct CallInfo));
+  p_call_info = palloc0(sizeof(CallInfo));
 
   // Register callback to delete temp module file
   cb->func = destroy_call_info;
@@ -268,11 +268,11 @@ PG_FUNCTION_INFO_V1(plhaskell_inline_handler);
 Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
   InlineCodeBlock *codeblock = (InlineCodeBlock *)PG_GETARG_POINTER(0);
   MemoryContextCallback *cb = palloc(sizeof(MemoryContextCallback));
-  struct CallInfo *p_call_info = palloc0(sizeof(struct CallInfo));
+  CallInfo *p_call_info = palloc0(sizeof(CallInfo));
   char tempdirpath[MAXPGPATH];
   FILE *modfile;
   int spi_code;
-  struct CallInfo *prev_p_call_info;
+  CallInfo *prev_p_call_info;
   bool is_null; // dummy variable
 
   // Register callback to free List and Iterator and delete temp module file
@@ -286,7 +286,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
   p_call_info->spi_read_only = false;
   p_call_info->nargs = 0;
 
-  p_call_info->result = palloc0(sizeof(struct TypeInfo));
+  p_call_info->result = palloc0(sizeof(TypeInfo));
   build_type_info(p_call_info->result, VOIDOID, false);
 
   p_call_info->func_name = palloc(3);
@@ -332,8 +332,8 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
   PG_RETURN_VOID();
 }
 
-// Fill CallInfo struct
-static void build_call_info(struct CallInfo *p_call_info, Oid func_oid,
+// Fill CallInfo
+static void build_call_info(CallInfo *p_call_info, Oid func_oid,
                             bool return_set, bool atomic) {
   HeapTuple proctup, lantup;
   Datum provariadic, prokind, prorettype, proargtypes, prosrc, proname,
@@ -398,7 +398,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid,
   if (is_null)
     ereport(ERROR, errmsg_internal("pg_proc.pronargs is NULL"));
 
-  p_call_info->args = palloc(p_call_info->nargs * sizeof(struct TypeInfo *));
+  p_call_info->args = palloc(p_call_info->nargs * sizeof(TypeInfo *));
 
   SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargmodes, &is_null);
   if (!is_null)
@@ -419,7 +419,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid,
     ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
             errmsg("PL/Haksell : Function must be parallel unsafe"));
 
-  p_call_info->result = palloc0(sizeof(struct TypeInfo));
+  p_call_info->result = palloc0(sizeof(TypeInfo));
   build_type_info(p_call_info->result, prorettype, false);
 
   proargtypes =
@@ -442,7 +442,7 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid,
 
   argtypes = (Oid *)ARR_DATA_PTR(proargtypes_arr);
   for (int16 i = 0; i < p_call_info->nargs; i++) {
-    p_call_info->args[i] = palloc0(sizeof(struct TypeInfo));
+    p_call_info->args[i] = palloc0(sizeof(TypeInfo));
     build_type_info(p_call_info->args[i], argtypes[i], false);
   }
 
@@ -484,8 +484,8 @@ static void build_call_info(struct CallInfo *p_call_info, Oid func_oid,
   first_p_call_info = p_call_info;
 }
 
-// Fill TypeInfo struct
-static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid,
+// Fill TypeInfo
+static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
                             bool set_schema_name) {
   HeapTuple typtup, reltup, atttup, nsptup;
   Datum typtype, typname, typlen, typbyval, typalign, typbasetype, typrelid,
@@ -552,7 +552,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid,
       if (is_null)
         ereport(ERROR, errmsg_internal("pg_type.typelem is NULL"));
 
-      p_type_info->element = palloc0(sizeof(struct TypeInfo));
+      p_type_info->element = palloc0(sizeof(TypeInfo));
       build_type_info(p_type_info->element, DatumGetObjectId(typelem),
                       set_schema_name);
     } else {
@@ -614,11 +614,9 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid,
             repalloc(p_type_info->attnums, p_type_info->count * sizeof(int16));
         p_type_info->attnums[p_type_info->count - 1] = j + 1;
 
-        p_type_info->fields =
-            repalloc(p_type_info->fields,
-                     p_type_info->count * sizeof(struct TypeInfo *));
-        p_type_info->fields[p_type_info->count - 1] =
-            palloc0(sizeof(struct TypeInfo));
+        p_type_info->fields = repalloc(p_type_info->fields,
+                                       p_type_info->count * sizeof(TypeInfo *));
+        p_type_info->fields[p_type_info->count - 1] = palloc0(sizeof(TypeInfo));
         build_type_info(p_type_info->fields[p_type_info->count - 1], attr_oid,
                         set_schema_name);
       }
@@ -691,7 +689,7 @@ static void build_type_info(struct TypeInfo *p_type_info, Oid type_oid,
 
 // Delete temp module file and free function and List if necessary
 static void destroy_call_info(void *arg) {
-  struct CallInfo *p_call_info = arg;
+  CallInfo *p_call_info = arg;
 
   if (p_call_info->return_set) {
     if (p_call_info->list) {
@@ -722,10 +720,10 @@ static void destroy_call_info(void *arg) {
 }
 
 // Get the datums that represent a composie values
-void read_composite(struct TypeInfo *p_type_info, Datum composite_datum,
+void read_composite(TypeInfo *p_type_info, Datum composite_datum,
                     Datum *field_values, bool *field_is_nulls)
     __attribute__((visibility("hidden")));
-void read_composite(struct TypeInfo *p_type_info, Datum composite_datum,
+void read_composite(TypeInfo *p_type_info, Datum composite_datum,
                     Datum *field_values, bool *field_is_nulls) {
   HeapTupleHeader tuple = DatumGetHeapTupleHeader(composite_datum);
   HeapTupleData tmptup;
@@ -741,10 +739,10 @@ void read_composite(struct TypeInfo *p_type_info, Datum composite_datum,
 }
 
 // Get the datum that represents a composite value
-Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values,
+Datum write_composite(TypeInfo *p_type_info, Datum *field_values,
                       bool *field_is_nulls)
     __attribute__((visibility("hidden")));
-Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values,
+Datum write_composite(TypeInfo *p_type_info, Datum *field_values,
                       bool *field_is_nulls) {
   Datum *values = palloc(p_type_info->natts * sizeof(Datum));
   bool *is_nulls = palloc(p_type_info->natts * sizeof(bool));
@@ -845,18 +843,17 @@ static void rts_fatal_msg_fn(const char *s, va_list ap) {
 }
 
 // Functions to handle TypeInfo for SPI querying
-struct TypeInfo *new_type_info(Oid type_oid)
-    __attribute__((visibility("hidden")));
-struct TypeInfo *new_type_info(Oid type_oid) {
-  struct TypeInfo *p_type_info = palloc0(sizeof(struct TypeInfo));
+TypeInfo *new_type_info(Oid type_oid) __attribute__((visibility("hidden")));
+TypeInfo *new_type_info(Oid type_oid) {
+  TypeInfo *p_type_info = palloc0(sizeof(TypeInfo));
   build_type_info(p_type_info, type_oid, true);
   return p_type_info;
 }
 
 // Recusively free TypeInfo
-void delete_type_info(struct TypeInfo *p_type_info)
+void delete_type_info(TypeInfo *p_type_info)
     __attribute__((visibility("hidden")));
-void delete_type_info(struct TypeInfo *p_type_info) {
+void delete_type_info(TypeInfo *p_type_info) {
   switch (p_type_info->value_type) {
   case COMPOSITE_TYPE:
     pfree(p_type_info->attnums);
@@ -885,7 +882,7 @@ void delete_type_info(struct TypeInfo *p_type_info) {
 
 // Delete temp files from all active CallInfos
 static void mod_exit(int _code, Datum arg) {
-  for (struct CallInfo *p_call_info = first_p_call_info; p_call_info;
+  for (CallInfo *p_call_info = first_p_call_info; p_call_info;
        p_call_info = p_call_info->next)
     if (p_call_info->return_set) {
       if (p_call_info->list) {
@@ -901,7 +898,7 @@ static void mod_exit(int _code, Datum arg) {
 
   hs_exit();
 
-  for (struct CallInfo *p_call_info = first_p_call_info; p_call_info;
+  for (CallInfo *p_call_info = first_p_call_info; p_call_info;
        p_call_info = p_call_info->next)
     if (p_call_info->mod_file_name) {
       unlink(p_call_info->mod_file_name);
@@ -1037,9 +1034,8 @@ Oid get_function_id(char *procname, int nargs, Oid *args) {
   return functionId;
 }
 
-struct CallInfo *get_current_p_call_info(void)
-    __attribute__((visibility("hidden")));
-struct CallInfo *get_current_p_call_info(void) { return current_p_call_info; }
+CallInfo *get_current_p_call_info(void) __attribute__((visibility("hidden")));
+CallInfo *get_current_p_call_info(void) { return current_p_call_info; }
 
 Datum call_func(Oid functionId, int16 nargs, NullableDatum *args, bool *isnull)
     __attribute__((visibility("hidden")));

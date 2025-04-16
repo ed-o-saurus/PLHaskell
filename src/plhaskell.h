@@ -40,7 +40,7 @@
 #define ARRAY_TYPE 3
 
 // Represents a value passed or returned by a function
-struct TypeInfo {
+typedef struct TypeInfo {
   uint16 value_type; // VOID_TYPE, BASE_TYPE, COMPOSITE_TYPE, or ARRAY_TYPE
   Oid type_oid;      // OID of the type
   int16 type_len;
@@ -63,19 +63,19 @@ struct TypeInfo {
 
   char *nspname; // Schema and type name of composite or element of array
   char *typname;
-};
+} TypeInfo;
 
 // Represents the information about a function call
-struct CallInfo {
-  char *func_name;         // Name of function
-  char *mod_file_name;     // Temporary file where code is stored
-  bool trusted;            // Is the language the trusted version?
-  int16 nargs;             // Number of arguments
-  struct TypeInfo **args;  // Arguments
-  struct TypeInfo *result; // Returned result
-  bool return_set;         // Does the function return a set of values?
-  bool spi_read_only;      // Use read-only mode on internal queries
-  bool atomic;             // Is this an atomic transaction?
+typedef struct CallInfo {
+  char *func_name;     // Name of function
+  char *mod_file_name; // Temporary file where code is stored
+  bool trusted;        // Is the language the trusted version?
+  int16 nargs;         // Number of arguments
+  TypeInfo **args;     // Arguments
+  TypeInfo *result;    // Returned result
+  bool return_set;     // Does the function return a set of values?
+  bool spi_read_only;  // Use read-only mode on internal queries
+  bool atomic;         // Is this an atomic transaction?
 
   union {
     Datum (*function)(
@@ -86,14 +86,14 @@ struct CallInfo {
 
   struct CallInfo *prev; // Used to link list of all active CallInfos
   struct CallInfo *next;
-};
+} CallInfo;
 
-struct TypeInfo *new_type_info(Oid type_oid);
-void delete_type_info(struct TypeInfo *p_type_info);
+TypeInfo *new_type_info(Oid type_oid);
+void delete_type_info(TypeInfo *p_type_info);
 
-void read_composite(struct TypeInfo *p_type_info, Datum composite_datum,
+void read_composite(TypeInfo *p_type_info, Datum composite_datum,
                     Datum *field_values, bool *field_is_nulls);
-Datum write_composite(struct TypeInfo *p_type_info, Datum *field_values,
+Datum write_composite(TypeInfo *p_type_info, Datum *field_values,
                       bool *field_is_nulls);
 
 Oid get_oid(bool array, char *nspname, char *typname);
@@ -104,6 +104,6 @@ Datum detoast_datum(Datum datum);
 Datum call_func(Oid functionId, int16 nargs, NullableDatum *args, bool *isnull);
 MemoryContext alloc_set_context_create_small_temp(MemoryContext parent);
 
-struct CallInfo *get_current_p_call_info(void);
+CallInfo *get_current_p_call_info(void);
 
 #endif // __PLHASKELL_H
