@@ -1,5 +1,3 @@
-#!./bin/python3
-
 # This is a "procedural language" extension of PostgreSQL
 # allowing the execution of code in Haskell within SQL code.
 #
@@ -18,41 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from unittest import TestCase
 from math import isnan
-from psycopg import connect
-from psycopg.rows import dict_row
+from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestBaseTypes(TestCase):
-    def setUp(self):
-        self.conn = connect(row_factory=dict_row)
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA IF EXISTS plhaskell_test CASCADE")
-            cur.execute("CREATE SCHEMA plhaskell_test")
-            cur.execute("SET search_path TO plhaskell_test")
-
-        self.conn.commit()
-
-    def tearDown(self):
-        if self.conn.closed:
-            self.conn = connect(row_factory=dict_row)
-
-        self.conn.rollback()
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA plhaskell_test CASCADE")
-
-        self.conn.commit()
-
-        self.conn.close()
-
+class TestBaseTypes(PLHaskellTestBase):
     def test_echo_bytea(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_bytea.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_bytea.sql")
 
+        with self.conn.cursor() as cur:
             data = b"\xab\xcd\xef"
             cur.execute("SELECT echo(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -61,10 +33,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_text(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_text.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_text.sql")
 
+        with self.conn.cursor() as cur:
             data = "ABCDEF"
             cur.execute("SELECT echo(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -73,10 +44,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_char(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_char.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_char.sql")
 
+        with self.conn.cursor() as cur:
             data = "A"
             cur.execute("SELECT echo(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -85,10 +55,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_bool(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_bool.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_bool.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT echo(%(data)s)", {"data": True})
             self.assertTrue(cur.fetchone()["echo"])
 
@@ -99,10 +68,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_smallint(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_smallint.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_smallint.sql")
 
+        with self.conn.cursor() as cur:
             data = 20488
             cur.execute("SELECT echo(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -115,10 +83,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_int(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_int.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_int.sql")
 
+        with self.conn.cursor() as cur:
             data = 1372801355
             cur.execute("SELECT echo(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -131,10 +98,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_bigint(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_bigint.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_bigint.sql")
 
+        with self.conn.cursor() as cur:
             data = 2263727920641201613
             cur.execute("SELECT echo(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -147,10 +113,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_real(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_real.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_real.sql")
 
+        with self.conn.cursor() as cur:
             data = 42.0
             cur.execute("SELECT echo(%(data)s::real)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -159,10 +124,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_float(self):
-        with self.conn.cursor() as cur:
-            with open("sql/echo_float.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/echo_float.sql")
 
+        with self.conn.cursor() as cur:
             data = 42.0
             cur.execute("SELECT echo(%(data)s::float)", {"data": data})
             self.assertEqual(cur.fetchone()["echo"], data)
@@ -171,34 +135,30 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_nan(self):
-        with self.conn.cursor() as cur:
-            with open("sql/nan.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/nan.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT nan()")
             self.assertTrue(isnan(cur.fetchone()["nan"]))
 
     def test_poop(self):
-        with self.conn.cursor() as cur:
-            with open("sql/poop.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/poop.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT poop()")
             self.assertEqual(cur.fetchone()["poop"], "💩")
 
     def test_shrug(self):
-        with self.conn.cursor() as cur:
-            with open("sql/shrug.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/shrug.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT shrug()")
             self.assertEqual(cur.fetchone()["shrug"], "¯\\_(ツ)_/¯")
 
     def test_length_bytea(self):
-        with self.conn.cursor() as cur:
-            with open("sql/length_bytea.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/length_bytea.sql")
 
+        with self.conn.cursor() as cur:
             data = b"\xab\xcd\xef"
             cur.execute("SELECT length_bytea(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["length_bytea"], len(data))
@@ -207,10 +167,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["length_bytea"])
 
     def test_length_text(self):
-        with self.conn.cursor() as cur:
-            with open("sql/length_text.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/length_text.sql")
 
+        with self.conn.cursor() as cur:
             data = "          "
             cur.execute("SELECT length_text(%(data)s)", {"data": data})
             self.assertEqual(cur.fetchone()["length_text"], len(data))
@@ -219,10 +178,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["length_text"])
 
     def test_make_length_bytea(self):
-        with self.conn.cursor() as cur:
-            with open("sql/make_length_bytea.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/make_length_bytea.sql")
 
+        with self.conn.cursor() as cur:
             length = 0
             cur.execute(
                 "SELECT make_length_bytea(%(length)s)",
@@ -241,10 +199,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["make_length_bytea"])
 
     def test_make_length_text(self):
-        with self.conn.cursor() as cur:
-            with open("sql/make_length_text.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/make_length_text.sql")
 
+        with self.conn.cursor() as cur:
             length = 0
             cur.execute(
                 "SELECT make_length_text(%(length)s)",
@@ -263,10 +220,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["make_length_text"])
 
     def test_inv(self):
-        with self.conn.cursor() as cur:
-            with open("sql/inv.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/inv.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT inv(%(val)s)", {"val": True})
             self.assertFalse(cur.fetchone()["inv"])
 
@@ -277,10 +233,9 @@ class TestBaseTypes(TestCase):
             self.assertIsNone(cur.fetchone()["inv"])
 
     def test_add(self):
-        with self.conn.cursor() as cur:
-            with open("sql/add.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/add.sql")
 
+        with self.conn.cursor() as cur:
             a = 3
             b = 4
 

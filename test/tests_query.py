@@ -1,5 +1,3 @@
-#!./bin/python3
-
 # This is a "procedural language" extension of PostgreSQL
 # allowing the execution of code in Haskell within SQL code.
 #
@@ -18,61 +16,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from unittest import TestCase
-from psycopg import connect
-from psycopg.rows import dict_row
+from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestQuery(TestCase):
-    def setUp(self):
-        self.conn = connect(row_factory=dict_row)
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA IF EXISTS plhaskell_test CASCADE")
-            cur.execute("CREATE SCHEMA plhaskell_test")
-            cur.execute("SET search_path TO plhaskell_test")
-
-            cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")
-            cur.execute("CREATE TYPE bravo AS (d alpha, e int)")
-            cur.execute("CREATE TYPE charlie AS ()")
-            cur.execute("CREATE TYPE delta AS (f bravo, g charlie)")
-            cur.execute("CREATE TYPE n_p AS (n int, p int)")
-
-        self.conn.commit()
-
-    def tearDown(self):
-        if self.conn.closed:
-            self.conn = connect(row_factory=dict_row)
-
-        self.conn.rollback()
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA plhaskell_test CASCADE")
-
-        self.conn.commit()
-
-        self.conn.close()
+class TestQuery(PLHaskellTestBase):
+    @staticmethod
+    def type_setup(cur):
+        cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")
+        cur.execute("CREATE TYPE bravo AS (d alpha, e int)")
+        cur.execute("CREATE TYPE charlie AS ()")
+        cur.execute("CREATE TYPE delta AS (f bravo, g charlie)")
+        cur.execute("CREATE TYPE n_p AS (n int, p int)")
 
     def test_query(self):
+        self.execute_file("sql/query_create.sql")
+        self.execute_file("sql/query_insert.sql")
+        self.execute_file("sql/query_insert_returning.sql")
+        self.execute_file("sql/query_select.sql")
+        self.execute_file("sql/query_delete.sql")
+        self.execute_file("sql/query_drop.sql")
+
         with self.conn.cursor() as cur:
-            with open("sql/query_create.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_insert.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_insert_returning.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_select.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_delete.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_drop.sql", "rt") as file:
-                cur.execute(file.read())
-
             cur.execute("SELECT query_create()")
 
             cur.execute("SELECT query_insert(%(i)s, %(l)s)", {"i": None, "l": None})
@@ -89,13 +53,10 @@ class TestQuery(TestCase):
             cur.execute("SELECT query_drop()")
 
     def test_query_composite(self):
+        self.execute_file("sql/query_composite.sql")
+        self.execute_file("sql/query_pass_composite.sql")
+
         with self.conn.cursor() as cur:
-            with open("sql/query_composite.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_pass_composite.sql", "rt") as file:
-                cur.execute(file.read())
-
             cur.execute("CREATE TABLE deltas(i int, d delta)")
             cur.execute(
                 "INSERT INTO deltas(i, d) VALUES (1, ((('Hello', 12, 3.4)::alpha, 76)::bravo, '()'::charlie)::delta)"
@@ -113,19 +74,13 @@ class TestQuery(TestCase):
             cur.execute("SELECT query_pass_composite()")
 
     def test_query_array(self):
+        self.execute_file("sql/query_array_insert.sql")
+        self.execute_file("sql/query_array_select.sql")
+        self.execute_file("sql/mk_array.sql")
+
         with self.conn.cursor() as cur:
-            with open("sql/query_array_insert.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/query_array_select.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/mk_array.sql", "rt") as file:
-                cur.execute(file.read())
-
             cur.execute("CREATE TABLE query_arrays(a int[])")
 
             cur.execute("SELECT query_array_insert()")
 
-            with open("sql/query_array_select_test.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/query_array_select_test.sql")

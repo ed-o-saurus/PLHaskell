@@ -1,5 +1,3 @@
-#!./bin/python3
-
 # This is a "procedural language" extension of PostgreSQL
 # allowing the execution of code in Haskell within SQL code.
 #
@@ -18,43 +16,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from unittest import TestCase
-from math import isnan
-from psycopg import connect
-from psycopg.rows import dict_row
+from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestInline(TestCase):
-    def setUp(self):
-        self.conn = connect(row_factory=dict_row)
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA IF EXISTS plhaskell_test CASCADE")
-            cur.execute("CREATE SCHEMA plhaskell_test")
-            cur.execute("SET search_path TO plhaskell_test")
-
-            cur.execute("CREATE TABLE inline_test(i int, i_sq int)")
-
-        self.conn.commit()
-
-    def tearDown(self):
-        if self.conn.closed:
-            self.conn = connect(row_factory=dict_row)
-
-        self.conn.rollback()
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA plhaskell_test CASCADE")
-
-        self.conn.commit()
-
-        self.conn.close()
+class TestInline(PLHaskellTestBase):
+    @staticmethod
+    def type_setup(cur):
+        cur.execute("CREATE TABLE inline_test(i int, i_sq int)")
 
     def test_inline(self):
-        with self.conn.cursor() as cur:
-            with open("sql/inline.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/inline.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT i, i_sq FROM inline_test")
 
             row = cur.fetchone()

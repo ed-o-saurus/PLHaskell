@@ -1,5 +1,3 @@
-#!./bin/python3
-
 # This is a "procedural language" extension of PostgreSQL
 # allowing the execution of code in Haskell within SQL code.
 #
@@ -18,55 +16,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from unittest import TestCase
-from psycopg import connect
-from psycopg.rows import dict_row
+from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestArray(TestCase):
-    def setUp(self):
-        self.conn = connect(row_factory=dict_row)
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA IF EXISTS plhaskell_test CASCADE")
-            cur.execute("CREATE SCHEMA plhaskell_test")
-            cur.execute("SET search_path TO plhaskell_test")
-
-            cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")
-
-        self.conn.commit()
-
-    def tearDown(self):
-        if self.conn.closed:
-            self.conn = connect(row_factory=dict_row)
-
-        self.conn.rollback()
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA plhaskell_test CASCADE")
-
-        self.conn.commit()
-
-        self.conn.close()
+class TestArray(PLHaskellTestBase):
+    @staticmethod
+    def type_setup(cur):
+        cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")
 
     def test_array(self):
-        with self.conn.cursor() as cur:
-            with open("sql/mk_array.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/echo_int_array.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/array_test.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/mk_array.sql")
+        self.execute_file("sql/echo_int_array.sql")
+        self.execute_file("sql/array_test.sql")
 
     def test_array_alpha(self):
-        with self.conn.cursor() as cur:
-            with open("sql/alpha_func.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/echo_alpha_array.sql", "rt") as file:
-                cur.execute(file.read())
-
-            with open("sql/array_alpha_test.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/alpha_func.sql")
+        self.execute_file("sql/echo_alpha_array.sql")
+        self.execute_file("sql/array_alpha_test.sql")

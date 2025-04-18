@@ -1,5 +1,3 @@
-#!./bin/python3
-
 # This is a "procedural language" extension of PostgreSQL
 # allowing the execution of code in Haskell within SQL code.
 #
@@ -18,56 +16,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from unittest import TestCase
-from psycopg import connect
-from psycopg.rows import dict_row
+from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestUntrusted(TestCase):
-    def setUp(self):
-        self.conn = connect(row_factory=dict_row)
+class TestUntrusted(PLHaskellTestBase):
+    @staticmethod
+    def type_setup(cur):
+        cur.execute("CREATE TYPE n_p AS (n int, p int)")
 
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA IF EXISTS plhaskell_test CASCADE")
-            cur.execute("CREATE SCHEMA plhaskell_test")
-            cur.execute("SET search_path TO plhaskell_test")
+        cur.execute("CREATE TABLE primes(n int, p int)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 1,  2)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 2,  3)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 3,  5)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 4,  7)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 5, 11)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 6, 13)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 7, 17)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 8, 19)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 9, 23)")
+        cur.execute("INSERT INTO PRIMES(n, p) VALUES (10, 29)")
 
-            cur.execute("CREATE TYPE n_p AS (n int, p int)")
-
-            cur.execute("CREATE TABLE primes(n int, p int)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 1,  2)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 2,  3)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 3,  5)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 4,  7)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 5, 11)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 6, 13)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 7, 17)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 8, 19)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES ( 9, 23)")
-            cur.execute("INSERT INTO PRIMES(n, p) VALUES (10, 29)")
-
-            cur.execute("CREATE TABLE primes_upper(n int, p int)")
-
-        self.conn.commit()
-
-    def tearDown(self):
-        if self.conn.closed:
-            self.conn = connect(row_factory=dict_row)
-
-        self.conn.rollback()
-
-        with self.conn.cursor() as cur:
-            cur.execute("DROP SCHEMA plhaskell_test CASCADE")
-
-        self.conn.commit()
-
-        self.conn.close()
+        cur.execute("CREATE TABLE primes_upper(n int, p int)")
 
     def test_primes_upper(self):
-        with self.conn.cursor() as cur:
-            with open("sql/primes_upper.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/primes_upper.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO primes_upper(n, p) SELECT n, p FROM primes_upper(13)"
             )
@@ -97,9 +71,8 @@ class TestUntrusted(TestCase):
             self.assertIsNone(cur.fetchone())
 
     def test_forty_two(self):
-        with self.conn.cursor() as cur:
-            with open("sql/forty_two.sql", "rt") as file:
-                cur.execute(file.read())
+        self.execute_file("sql/forty_two.sql")
 
+        with self.conn.cursor() as cur:
             cur.execute("SELECT forty_two()")
             self.assertEqual(cur.fetchone()["forty_two"], 42)
