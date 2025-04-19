@@ -153,7 +153,7 @@ class TestBaseTypes(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT shrug()")
-            self.assertEqual(cur.fetchone()["shrug"], "¯\\_(ツ)_/¯")
+            self.assertEqual(cur.fetchone()["shrug"], r"¯\_(ツ)_/¯")
 
     def test_length_bytea(self):
         self.execute_file("sql/length_bytea.sql")
