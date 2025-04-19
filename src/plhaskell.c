@@ -57,7 +57,7 @@ static void rts_fatal_msg_fn(const char *s, va_list ap);
 
 static void mod_exit(int code, Datum arg);
 
-Oid get_function_id(char *procname, int nargs, Oid *args);
+Oid get_function_id(char *procname, Oid *args);
 
 CallInfo *current_p_call_info = NULL;
 static CallInfo *first_p_call_info =
@@ -777,8 +777,8 @@ static void enter(void) {
 
   on_proc_exit(mod_exit, (Datum)0);
 
-  Oid array_subscript_handler_args[] = {INTERNALOID};
-  array_subscript_handler_oid = get_function_id(ARRAY_SUBSCRIPT_HANDLER_NAME, 1,
+  Oid array_subscript_handler_args[] = {INTERNALOID, VOIDOID};
+  array_subscript_handler_oid = get_function_id(ARRAY_SUBSCRIPT_HANDLER_NAME,
                                                 array_subscript_handler_args);
 
   TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
@@ -997,10 +997,14 @@ Datum detoast_datum(Datum datum) {
   return (Datum)pg_detoast_datum((struct varlena *)((Pointer)datum));
 }
 
-Oid get_function_id(char *procname, int nargs, Oid *args)
+Oid get_function_id(char *procname, Oid *args)
     __attribute__((visibility("hidden")));
-Oid get_function_id(char *procname, int nargs, Oid *args) {
+Oid get_function_id(char *procname, Oid *args) {
   bool is_null;
+  int nargs;
+
+  for (nargs = 0; args[nargs] != VOIDOID; nargs++)
+    ;
 
   oidvector *parameterTypes =
       (oidvector *)palloc0(offsetof(oidvector, values) + nargs * sizeof(Oid));
