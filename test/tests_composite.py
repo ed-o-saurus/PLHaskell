@@ -54,7 +54,7 @@ class TestComposite(PLHaskellTestBase):
         self.execute_file("sql/composite/primes.sql")
 
         with self.conn.cursor() as cur:
-            cur.execute("SELECT n, p FROM primes(10)")
+            cur.execute("SELECT n, p FROM primes(10) ORDER BY n")
 
             row = cur.fetchone()
             self.assertEqual(row["n"], 1)

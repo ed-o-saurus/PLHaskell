@@ -28,7 +28,7 @@ class TestInline(PLHaskellTestBase):
         self.execute_file("sql/inline/inline.sql")
 
         with self.conn.cursor() as cur:
-            cur.execute("SELECT i, i_sq FROM inline_test")
+            cur.execute("SELECT i, i_sq FROM inline_test ORDER BY i")
 
             row = cur.fetchone()
             self.assertEqual(row["i"], 0)

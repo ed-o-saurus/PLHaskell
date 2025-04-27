@@ -46,7 +46,7 @@ class TestUntrusted(PLHaskellTestBase):
                 "INSERT INTO primes_upper(n, p) SELECT n, p FROM primes_upper(13)"
             )
 
-            cur.execute("SELECT n, p FROM primes_upper")
+            cur.execute("SELECT n, p FROM primes_upper ORDER BY n")
 
             row = cur.fetchone()
             self.assertEqual(row["n"], 6)
