@@ -25,7 +25,7 @@ class TestInline(PLHaskellTestBase):
         cur.execute("CREATE TABLE inline_test(i int, i_sq int)")
 
     def test_inline(self):
-        self.execute_file("sql/inline.sql")
+        self.execute_file("sql/inline/inline.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT i, i_sq FROM inline_test")

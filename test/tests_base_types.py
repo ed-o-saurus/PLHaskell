@@ -22,7 +22,7 @@ from plhaskell_test_base import PLHaskellTestBase
 
 class TestBaseTypes(PLHaskellTestBase):
     def test_echo_bytea(self):
-        self.execute_file("sql/echo_bytea.sql")
+        self.execute_file("sql/base_types/echo_bytea.sql")
 
         with self.conn.cursor() as cur:
             data = b"\xab\xcd\xef"
@@ -33,7 +33,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_text(self):
-        self.execute_file("sql/echo_text.sql")
+        self.execute_file("sql/base_types/echo_text.sql")
 
         with self.conn.cursor() as cur:
             data = "ABCDEF"
@@ -44,7 +44,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_char(self):
-        self.execute_file("sql/echo_char.sql")
+        self.execute_file("sql/base_types/echo_char.sql")
 
         with self.conn.cursor() as cur:
             data = "A"
@@ -55,7 +55,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_bool(self):
-        self.execute_file("sql/echo_bool.sql")
+        self.execute_file("sql/base_types/echo_bool.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT echo(%(data)s)", {"data": True})
@@ -68,7 +68,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_smallint(self):
-        self.execute_file("sql/echo_smallint.sql")
+        self.execute_file("sql/base_types/echo_smallint.sql")
 
         with self.conn.cursor() as cur:
             data = 20488
@@ -83,7 +83,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_int(self):
-        self.execute_file("sql/echo_int.sql")
+        self.execute_file("sql/base_types/echo_int.sql")
 
         with self.conn.cursor() as cur:
             data = 1372801355
@@ -98,7 +98,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_bigint(self):
-        self.execute_file("sql/echo_bigint.sql")
+        self.execute_file("sql/base_types/echo_bigint.sql")
 
         with self.conn.cursor() as cur:
             data = 2263727920641201613
@@ -113,7 +113,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_real(self):
-        self.execute_file("sql/echo_real.sql")
+        self.execute_file("sql/base_types/echo_real.sql")
 
         with self.conn.cursor() as cur:
             data = 42.0
@@ -124,7 +124,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_echo_float(self):
-        self.execute_file("sql/echo_float.sql")
+        self.execute_file("sql/base_types/echo_float.sql")
 
         with self.conn.cursor() as cur:
             data = 42.0
@@ -135,28 +135,28 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_nan(self):
-        self.execute_file("sql/nan.sql")
+        self.execute_file("sql/base_types/nan.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT nan()")
             self.assertTrue(isnan(cur.fetchone()["nan"]))
 
     def test_poop(self):
-        self.execute_file("sql/poop.sql")
+        self.execute_file("sql/base_types/poop.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT poop()")
             self.assertEqual(cur.fetchone()["poop"], "💩")
 
     def test_shrug(self):
-        self.execute_file("sql/shrug.sql")
+        self.execute_file("sql/base_types/shrug.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT shrug()")
             self.assertEqual(cur.fetchone()["shrug"], r"¯\_(ツ)_/¯")
 
     def test_length_bytea(self):
-        self.execute_file("sql/length_bytea.sql")
+        self.execute_file("sql/base_types/length_bytea.sql")
 
         with self.conn.cursor() as cur:
             data = b"\xab\xcd\xef"
@@ -167,7 +167,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["length_bytea"])
 
     def test_length_text(self):
-        self.execute_file("sql/length_text.sql")
+        self.execute_file("sql/base_types/length_text.sql")
 
         with self.conn.cursor() as cur:
             data = "          "
@@ -178,7 +178,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["length_text"])
 
     def test_make_length_bytea(self):
-        self.execute_file("sql/make_length_bytea.sql")
+        self.execute_file("sql/base_types/make_length_bytea.sql")
 
         with self.conn.cursor() as cur:
             length = 0
@@ -199,7 +199,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["make_length_bytea"])
 
     def test_make_length_text(self):
-        self.execute_file("sql/make_length_text.sql")
+        self.execute_file("sql/base_types/make_length_text.sql")
 
         with self.conn.cursor() as cur:
             length = 0
@@ -220,7 +220,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["make_length_text"])
 
     def test_inv(self):
-        self.execute_file("sql/inv.sql")
+        self.execute_file("sql/base_types/inv.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT inv(%(val)s)", {"val": True})
@@ -233,7 +233,7 @@ class TestBaseTypes(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone()["inv"])
 
     def test_add(self):
-        self.execute_file("sql/add.sql")
+        self.execute_file("sql/base_types/add.sql")
 
         with self.conn.cursor() as cur:
             a = 3

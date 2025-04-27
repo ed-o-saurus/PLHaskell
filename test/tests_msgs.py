@@ -22,21 +22,21 @@ from plhaskell_test_base import PLHaskellTestBase
 
 class TestMsgs(PLHaskellTestBase):
     def test_fatal(self):
-        self.execute_file("sql/msg_fatal.sql")
+        self.execute_file("sql/msgs/msg_fatal.sql")
 
         with self.conn.cursor() as cur:
             with self.assertRaisesRegex(InternalError, "Test"):
                 cur.execute("SELECT msg_fatal();")
 
     def test_exception(self):
-        self.execute_file("sql/msg_exception.sql")
+        self.execute_file("sql/msgs/msg_exception.sql")
 
         with self.conn.cursor() as cur:
             with self.assertRaisesRegex(InternalError, "Test"):
                 cur.execute("SELECT msg_exception();")
 
     def test_warning(self):
-        self.execute_file("sql/msg_warning.sql")
+        self.execute_file("sql/msgs/msg_warning.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT msg_warning();")
@@ -46,7 +46,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertEqual(self.notices[0], ("WARNING", "Test"))
 
     def test_notice(self):
-        self.execute_file("sql/msg_notice.sql")
+        self.execute_file("sql/msgs/msg_notice.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT msg_notice();")
@@ -56,7 +56,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertEqual(self.notices[0], ("NOTICE", "Test"))
 
     def test_info(self):
-        self.execute_file("sql/msg_info.sql")
+        self.execute_file("sql/msgs/msg_info.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT msg_info();")
@@ -66,7 +66,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertEqual(self.notices[0], ("INFO", "Test"))
 
     def test_log(self):
-        self.execute_file("sql/msg_log.sql")
+        self.execute_file("sql/msgs/msg_log.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SET client_min_messages = LOG")
@@ -76,7 +76,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertIn(("LOG", "Test"), self.notices)
 
     def test_debug1(self):
-        self.execute_file("sql/msg_debug1.sql")
+        self.execute_file("sql/msgs/msg_debug1.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SET client_min_messages = DEBUG5")
@@ -86,7 +86,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertIn(("DEBUG", "Test"), self.notices)
 
     def test_debug2(self):
-        self.execute_file("sql/msg_debug2.sql")
+        self.execute_file("sql/msgs/msg_debug2.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SET client_min_messages = DEBUG5")
@@ -96,7 +96,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertIn(("DEBUG", "Test"), self.notices)
 
     def test_debug3(self):
-        self.execute_file("sql/msg_debug3.sql")
+        self.execute_file("sql/msgs/msg_debug3.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SET client_min_messages = DEBUG5")
@@ -106,7 +106,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertIn(("DEBUG", "Test"), self.notices)
 
     def test_debug4(self):
-        self.execute_file("sql/msg_debug4.sql")
+        self.execute_file("sql/msgs/msg_debug4.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SET client_min_messages = DEBUG5")
@@ -116,7 +116,7 @@ class TestMsgs(PLHaskellTestBase):
             self.assertIn(("DEBUG", "Test"), self.notices)
 
     def test_debug5(self):
-        self.execute_file("sql/msg_debug5.sql")
+        self.execute_file("sql/msgs/msg_debug5.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SET client_min_messages = DEBUG5")

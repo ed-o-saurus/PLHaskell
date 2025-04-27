@@ -25,11 +25,11 @@ class TestArray(PLHaskellTestBase):
         cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")
 
     def test_array(self):
-        self.execute_file("sql/mk_array.sql")
-        self.execute_file("sql/echo_int_array.sql")
-        self.execute_file("sql/array_test.sql")
+        self.execute_file("sql/common/mk_array.sql")
+        self.execute_file("sql/array/echo_int_array.sql")
+        self.execute_file("sql/array/array_test.sql")
 
     def test_array_alpha(self):
-        self.execute_file("sql/alpha_func.sql")
-        self.execute_file("sql/echo_alpha_array.sql")
-        self.execute_file("sql/array_alpha_test.sql")
+        self.execute_file("sql/common/alpha_func.sql")
+        self.execute_file("sql/array/echo_alpha_array.sql")
+        self.execute_file("sql/array/array_alpha_test.sql")

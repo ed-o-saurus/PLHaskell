@@ -39,7 +39,7 @@ class TestUntrusted(PLHaskellTestBase):
         cur.execute("CREATE TABLE primes_upper(n int, p int)")
 
     def test_primes_upper(self):
-        self.execute_file("sql/primes_upper.sql")
+        self.execute_file("sql/untrusted/primes_upper.sql")
 
         with self.conn.cursor() as cur:
             cur.execute(
@@ -71,7 +71,7 @@ class TestUntrusted(PLHaskellTestBase):
             self.assertIsNone(cur.fetchone())
 
     def test_forty_two(self):
-        self.execute_file("sql/forty_two.sql")
+        self.execute_file("sql/untrusted/forty_two.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT forty_two()")

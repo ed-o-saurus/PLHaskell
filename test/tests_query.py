@@ -29,12 +29,12 @@ class TestQuery(PLHaskellTestBase):
         cur.execute("CREATE TYPE n_p AS (n int, p int)")
 
     def test_query(self):
-        self.execute_file("sql/query_create.sql")
-        self.execute_file("sql/query_insert.sql")
-        self.execute_file("sql/query_insert_returning.sql")
-        self.execute_file("sql/query_select.sql")
-        self.execute_file("sql/query_delete.sql")
-        self.execute_file("sql/query_drop.sql")
+        self.execute_file("sql/query/query_create.sql")
+        self.execute_file("sql/query/query_insert.sql")
+        self.execute_file("sql/query/query_insert_returning.sql")
+        self.execute_file("sql/query/query_select.sql")
+        self.execute_file("sql/query/query_delete.sql")
+        self.execute_file("sql/query/query_drop.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT query_create()")
@@ -53,8 +53,8 @@ class TestQuery(PLHaskellTestBase):
             cur.execute("SELECT query_drop()")
 
     def test_query_composite(self):
-        self.execute_file("sql/query_composite.sql")
-        self.execute_file("sql/query_pass_composite.sql")
+        self.execute_file("sql/query/query_composite.sql")
+        self.execute_file("sql/query/query_pass_composite.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE deltas(i int, d delta)")
@@ -74,13 +74,13 @@ class TestQuery(PLHaskellTestBase):
             cur.execute("SELECT query_pass_composite()")
 
     def test_query_array(self):
-        self.execute_file("sql/query_array_insert.sql")
-        self.execute_file("sql/query_array_select.sql")
-        self.execute_file("sql/mk_array.sql")
+        self.execute_file("sql/query/query_array_insert.sql")
+        self.execute_file("sql/query/query_array_select.sql")
+        self.execute_file("sql/common/mk_array.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE query_arrays(a int[])")
 
             cur.execute("SELECT query_array_insert()")
 
-        self.execute_file("sql/query_array_select_test.sql")
+        self.execute_file("sql/query/query_array_select_test.sql")

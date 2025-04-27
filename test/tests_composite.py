@@ -30,8 +30,8 @@ class TestComposite(PLHaskellTestBase):
         cur.execute("CREATE TYPE n_p AS (n int, p int)")
 
     def test_alpha(self):
-        self.execute_file("sql/alpha_func.sql")
-        self.execute_file("sql/alpha_func_test.sql")
+        self.execute_file("sql/common/alpha_func.sql")
+        self.execute_file("sql/composite/alpha_func_test.sql")
 
         with self.conn.cursor() as cur:
 
@@ -39,19 +39,19 @@ class TestComposite(PLHaskellTestBase):
                 cur.execute("SELECT alpha_func(-1)")
 
     def test_delta(self):
-        self.execute_file("sql/delta_func.sql")
-        self.execute_file("sql/delta_func_test.sql")
+        self.execute_file("sql/composite/delta_func.sql")
+        self.execute_file("sql/composite/delta_func_test.sql")
 
     def test_echo_delta(self):
-        self.execute_file("sql/echo_delta.sql")
-        self.execute_file("sql/echo_delta_test.sql")
+        self.execute_file("sql/composite/echo_delta.sql")
+        self.execute_file("sql/composite/echo_delta_test.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT echo(%(data)s)", {"data": None})
             self.assertIsNone(cur.fetchone()["echo"])
 
     def test_primes(self):
-        self.execute_file("sql/primes.sql")
+        self.execute_file("sql/composite/primes.sql")
 
         with self.conn.cursor() as cur:
             cur.execute("SELECT n, p FROM primes(10)")
