@@ -1,4 +1,5 @@
 {-# LANGUAGE CApiFFI #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Trustworthy #-}
 
 {- HLINT ignore "Redundant bracket" -}
@@ -26,21 +27,140 @@
 #{include "utils/date.h"}
 #{include "utils/datetime.h"}
 
-module PGdatetime (Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval) where
+module PGdatetime
+  ( Date
+      ( DateNInfinity,
+        DatePInfinity
+      ),
+    Time,
+    Timestamp
+      ( TimestampNInfinity,
+        TimestampPInfinity
+      ),
+    Interval,
+    Weekday (..),
+    Month (..),
+    HasDate
+      ( year,
+        month,
+        day,
+        dayOfWeek,
+        dayOfYear,
+        iso
+      ),
+    HasTime
+      ( hour,
+        minute,
+        second,
+        microsecond
+      ),
+    IntervalDiff
+      ( addInterval,
+        subInterval,
+        diff
+      ),
+    mkDate,
+    mkTime,
+    mkTimestamp,
+    mkInterval,
+    combineTimestamp,
+    separateTimestamp,
+    dateMinusDate,
+    dateMinusInt,
+    datePlusInt,
+    doubleTimesInterval,
+    dateMinusInterval,
+    datePlusInterval,
+    years,
+    months,
+    days,
+    hours,
+    minutes,
+    seconds,
+    microseconds,
+    transactionTimestampUTC',
+    statementTimestampUTC',
+  )
+where
 
 import Data.Functor ((<$>))
 import Data.Int (Int32, Int64)
+import Data.Text
+  ( Text,
+  )
 import Foreign.C.String (CString, peekCString)
 import Foreign.C.Types (CBool (CBool))
 import Foreign.Marshal.Utils (toBool)
 import Foreign.Ptr (Ptr, WordPtr (WordPtr))
 import Foreign.Storable (Storable (alignment, peek, poke, sizeOf), peekByteOff, pokeByteOff)
-import PGcommon (Datum (Datum), pWithCString, palloc, pallocArray, palloca)
-import PGsupport (BaseType (read, write))
+import PGcommon
+  ( Datum
+      ( Datum
+      ),
+    Oid,
+    pWithCString,
+    palloc,
+    pallocArray,
+    palloca,
+  )
+import PGsupport
+  ( BaseType
+      ( read,
+        write
+      ),
+    callFunc1,
+    callFunc2,
+    callFunc3,
+    callFunc6,
+    callFunc7,
+  )
 import System.IO.Unsafe (unsafePerformIO)
 import Text.ParserCombinators.ReadPrec (ReadPrec, readS_to_Prec)
 import Text.Read (parens, readPrec)
-import Prelude (Bool (False, True), Eq, IO, Integer, Ord, Read, Show (show), const, fromIntegral, id, maxBound, minBound, otherwise, return, ($), (&&), (*), (+), (<=), (==), (>>=))
+import Prelude
+  ( Bool
+      ( False,
+        True
+      ),
+    Double,
+    Enum
+      ( fromEnum,
+        pred,
+        succ,
+        toEnum
+      ),
+    Eq,
+    IO,
+    Integer,
+    Maybe
+      ( Just
+      ),
+    Ord,
+    Read,
+    Show
+      ( show
+      ),
+    const,
+    fromIntegral,
+    id,
+    maxBound,
+    maybe,
+    minBound,
+    mod,
+    otherwise,
+    quot,
+    rem,
+    return,
+    round,
+    undefined,
+    ($),
+    (*),
+    (+),
+    (/),
+    (<=),
+    (==),
+    (>>=),
+  )
 
 foreign import capi safe "postgres.h DatumGetPointer"
   datumGetPointer :: Datum -> IO (Ptr a)
@@ -162,52 +282,6 @@ instance Eq Time where
 instance Ord Time where
   (Time time1) <= (Time time2) = time1 <= time2
 
-data TimeTZ = TimeTZ Int64 Int32
-
-instance BaseType TimeTZ where
-  read datum = datumGetPointer datum >>= peek
-  write timeTZ = do
-    pTimeTZ <- palloc #{size TimeTzADT}
-    poke pTimeTZ timeTZ
-    pointerGetDatum pTimeTZ
-
-instance Storable TimeTZ where
-  sizeOf _ = #{size TimeTzADT}
-  alignment _ = #{alignment TimeTzADT}
-
-  peek pTimeTZ = do
-    time <- #{peek TimeTzADT, time} pTimeTZ
-    zone <- #{peek TimeTzADT, zone} pTimeTZ
-    return $ TimeTZ time zone
-
-  poke pTimeTZ (TimeTZ time zone) = do
-    #{poke TimeTzADT, time} pTimeTZ time
-    #{poke TimeTzADT, zone} pTimeTZ zone
-
-foreign import capi safe "datetime_plh.h timetz_read"
-  timeTZRead :: Ptr TimeTZ -> CString -> IO CBool
-
-instance Read TimeTZ where
-  readPrec = mkReadPrec timeTZRead id
-
-foreign import capi safe "datetime_plh.h timetz_show"
-  timeTZShow :: Ptr TimeTZ -> CString -> IO ()
-
-instance Show TimeTZ where
-  show timeTZ = unsafePerformIO $
-    palloca $
-      \pTimeTZ -> pallocArray (#{const MAXDATELEN} + 1) $
-        \buf -> do
-          poke pTimeTZ timeTZ
-          timeTZShow pTimeTZ buf
-          peekCString buf
-
-instance Eq TimeTZ where
-  TimeTZ time1 zone1 == TimeTZ time2 zone2 = (time1 == time2) && (zone1 == zone2)
-
-instance Ord TimeTZ where
-  TimeTZ time1 zone1 <= TimeTZ time2 zone2 = (time1 + 1_000_000 * (fromIntegral zone1), zone1) <= (time2 + 1_000_000 * (fromIntegral zone2), zone2)
-
 data Timestamp
   = TimestampNInfinity
   | Timestamp Int64
@@ -263,61 +337,6 @@ instance Ord Timestamp where
   (Timestamp timestamp1) <= (Timestamp timestamp2) = (timestamp1 <= timestamp2)
   _timestamp1 <= _timestamp2 = False
 
-data TimestampTZ
-  = TimestampTZNInfinity
-  | TimestampTZ Int64
-  | TimestampTZPInfinity
-
-numToTimestampTZ :: Int64 -> TimestampTZ
-numToTimestampTZ timestamptz
-  | timestamptz == minBound = TimestampTZNInfinity
-  | timestamptz == maxBound = TimestampTZPInfinity
-  | otherwise = TimestampTZ timestamptz
-
-foreign import capi safe "utils/timestamp.h DatumGetTimestampTz"
-  datumGetTimestampTZ :: Datum -> IO Int64
-
-foreign import capi safe "utils/timestamp.h TimestampTzGetDatum"
-  timestampTZGetDatum :: Int64 -> IO Datum
-
-instance BaseType TimestampTZ where
-  read datum = numToTimestampTZ <$> datumGetTimestampTZ datum
-
-  write TimestampTZNInfinity = timestampTZGetDatum minBound
-  write (TimestampTZ timestamptz) = timestampTZGetDatum timestamptz
-  write TimestampTZPInfinity = timestampTZGetDatum maxBound
-
-foreign import capi safe "datetime_plh.h timestamptz_read"
-  timestampTZRead :: Ptr Int64 -> CString -> IO CBool
-
-instance Read TimestampTZ where
-  readPrec = mkReadPrec timestampTZRead numToTimestampTZ
-
-foreign import capi safe "datetime_plh.h timestamptz_show"
-  timestampTZShow :: Int64 -> CString -> IO ()
-
-instance Show TimestampTZ where
-  show TimestampTZNInfinity = "-infinity"
-  show TimestampTZPInfinity = "infinity"
-  show (TimestampTZ timestamptz) = unsafePerformIO $
-    pallocArray (#{const MAXDATELEN} + 1) $
-      \buf -> do
-        timestampTZShow timestamptz buf
-        peekCString buf
-
-instance Eq TimestampTZ where
-  TimestampTZNInfinity == TimestampTZNInfinity = True
-  TimestampTZPInfinity == TimestampTZPInfinity = True
-  (TimestampTZ timestamptz1) == (TimestampTZ timestamptz2) = (timestamptz1 == timestamptz2)
-  _timestamptz1 == _timestamptz2 = False
-
-instance Ord TimestampTZ where
-  TimestampTZNInfinity <= TimestampTZPInfinity = True
-  (TimestampTZ _timestamptz) <= TimestampTZPInfinity = True
-  TimestampTZNInfinity <= (TimestampTZ _timestamptz) = True
-  (TimestampTZ timestamptz1) <= (TimestampTZ timestamptz2) = (timestamptz1 <= timestamptz2)
-  _timestamptz1 <= _timestamptz2 = False
-
 data Interval = Interval Int64 Int32 Int32
 
 instance BaseType Interval where
@@ -333,14 +352,14 @@ instance Storable Interval where
 
   peek pInterval = do
     time <- #{peek Interval, time} pInterval
-    day <- #{peek Interval, day} pInterval
-    month <- #{peek Interval, month} pInterval
-    return $ Interval time day month
+    day' <- #{peek Interval, day} pInterval
+    month' <- #{peek Interval, month} pInterval
+    return $ Interval time day' month'
 
-  poke pInterval (Interval time day month) = do
+  poke pInterval (Interval time day' month') = do
     #{poke Interval, time} pInterval time
-    #{poke Interval, day} pInterval day
-    #{poke Interval, month} pInterval month
+    #{poke Interval, day} pInterval day'
+    #{poke Interval, month} pInterval month'
 
 foreign import capi safe "datetime_plh.h interval_read"
   intervalRead :: Ptr Interval -> CString -> IO CBool
@@ -361,10 +380,333 @@ instance Show Interval where
           peekCString buf
 
 duration :: Interval -> Integer
-duration (Interval time day month) = (fromIntegral time) + 86_400_000_000 * ((fromIntegral day) + 30 * (fromIntegral month))
+duration (Interval time day' month') = (fromIntegral time) + 86_400_000_000 * ((fromIntegral day') + 30 * (fromIntegral month'))
 
 instance Eq Interval where
   interval1 == interval2 = (duration interval1) == (duration interval2)
 
 instance Ord Interval where
   interval1 <= interval2 = (duration interval1) <= (duration interval2)
+
+foreign import ccall safe "access/xact.h GetCurrentTransactionStartTimestamp"
+  cTransactionTimestampUTC :: IO Int64
+
+transactionTimestampUTC' :: IO Timestamp
+transactionTimestampUTC' = Timestamp <$> cTransactionTimestampUTC
+
+foreign import ccall safe "access/xact.h GetCurrentStatementStartTimestamp"
+  cStatementTimestampUTC :: IO Int64
+
+statementTimestampUTC' :: IO Timestamp
+statementTimestampUTC' = Timestamp <$> cStatementTimestampUTC
+
+data Month = Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec deriving (Eq)
+
+instance Enum Month where
+  fromEnum Jan = 1
+  fromEnum Feb = 2
+  fromEnum Mar = 3
+  fromEnum Apr = 4
+  fromEnum May = 5
+  fromEnum Jun = 6
+  fromEnum Jul = 7
+  fromEnum Aug = 8
+  fromEnum Sep = 9
+  fromEnum Oct = 10
+  fromEnum Nov = 11
+  fromEnum Dec = 12
+
+  toEnum x = toEnum' $ mod x 12
+    where
+      toEnum' 1 = Jan
+      toEnum' 2 = Feb
+      toEnum' 3 = Mar
+      toEnum' 4 = Apr
+      toEnum' 5 = May
+      toEnum' 6 = Jun
+      toEnum' 7 = Jul
+      toEnum' 8 = Aug
+      toEnum' 9 = Sep
+      toEnum' 10 = Oct
+      toEnum' 11 = Nov
+      toEnum' 0 = Dec
+      toEnum' _ = undefined
+
+  succ Jan = Feb
+  succ Feb = Mar
+  succ Mar = Apr
+  succ Apr = May
+  succ May = Jun
+  succ Jun = Jul
+  succ Jul = Aug
+  succ Aug = Sep
+  succ Sep = Oct
+  succ Oct = Nov
+  succ Nov = Dec
+  succ Dec = Jan
+
+  pred Jan = Dec
+  pred Feb = Jan
+  pred Mar = Feb
+  pred Apr = Mar
+  pred May = Apr
+  pred Jun = May
+  pred Jul = Jun
+  pred Aug = Jul
+  pred Sep = Aug
+  pred Oct = Sep
+  pred Nov = Oct
+  pred Dec = Nov
+
+data Weekday = Sun | Mon | Tue | Wen | Thu | Fri | Sat deriving (Eq)
+
+instance Enum Weekday where
+  fromEnum Sun = 0
+  fromEnum Mon = 1
+  fromEnum Tue = 2
+  fromEnum Wen = 3
+  fromEnum Thu = 4
+  fromEnum Fri = 5
+  fromEnum Sat = 6
+
+  toEnum x = toEnum' $ mod x 7
+    where
+      toEnum' 0 = Sun
+      toEnum' 1 = Mon
+      toEnum' 2 = Tue
+      toEnum' 3 = Wen
+      toEnum' 4 = Thu
+      toEnum' 5 = Fri
+      toEnum' 6 = Sat
+      toEnum' _ = undefined
+
+  succ Sun = Mon
+  succ Mon = Tue
+  succ Tue = Wen
+  succ Wen = Thu
+  succ Thu = Fri
+  succ Fri = Sat
+  succ Sat = Sun
+
+  pred Sun = Sat
+  pred Mon = Sun
+  pred Tue = Mon
+  pred Wen = Tue
+  pred Thu = Wen
+  pred Fri = Thu
+  pred Sat = Fri
+
+mkSecs :: Int32 -> Int32 -> Double
+mkSecs sec usec = (fromIntegral sec) + (fromIntegral usec) / 1_000_000
+
+foreign import ccall safe "&make_date_oid"
+  pMakeDateOid :: Ptr Oid
+
+mkDate :: Int32 -> Month -> Int32 -> Date
+mkDate year' month' day' = unsafePerformIO $ callFunc3 pMakeDateOid (Just year') (Just ((fromIntegral $ fromEnum month') :: Int32)) (Just day') >>= maybe undefined return
+
+foreign import ccall safe "&make_time_oid"
+  pMakeTimeOid :: Ptr Oid
+
+mkTime :: Int32 -> Int32 -> Int32 -> Int32 -> Time
+mkTime hour' minute' second' microsecond' = unsafePerformIO $ callFunc3 pMakeTimeOid (Just hour') (Just minute') (Just $ mkSecs second' microsecond') >>= maybe undefined return
+
+foreign import ccall safe "&make_timestamp_oid"
+  pMakeTimestampOid :: Ptr Oid
+
+mkTimestamp :: Int32 -> Month -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Timestamp
+mkTimestamp year' month' day' hour' minute' second' microsecond' = unsafePerformIO $ callFunc6 pMakeTimestampOid (Just year') (Just ((fromIntegral $ fromEnum month') :: Int32)) (Just day') (Just hour') (Just minute') (Just $ mkSecs second' microsecond') >>= maybe undefined return
+
+foreign import ccall safe "&make_interval_oid"
+  pMakeIntervalOid :: Ptr Oid
+
+mkInterval :: Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Interval
+mkInterval years' months' weeks' days' hours' minutes' seconds' microseconds' = unsafePerformIO $ callFunc7 pMakeIntervalOid (Just years') (Just months') (Just weeks') (Just days') (Just hours') (Just minutes') (Just $ mkSecs seconds' microseconds') >>= maybe undefined return
+
+class HasDate a where
+  datePartForDate :: Text -> a -> Double
+
+  year :: a -> Int32
+  year val = round $ datePartForDate "year" val
+
+  month :: a -> Month
+  month val = toEnum $ round $ datePartForDate "month" val
+
+  day :: a -> Int32
+  day val = round $ datePartForDate "day" val
+
+  dayOfWeek :: a -> Weekday
+  dayOfWeek val = toEnum $ round $ datePartForDate "dow" val
+
+  dayOfYear :: a -> Int32
+  dayOfYear val = round $ datePartForDate "doy" val
+
+  iso :: a -> (Int32, Int32)
+  iso val = (round $ datePartForDate "isoyear" val, round $ datePartForDate "week" val)
+
+class HasTime a where
+  datePartForTime :: Text -> a -> Double
+
+  hour :: a -> Int32
+  hour time = round $ datePartForTime "hour" time
+
+  minute :: a -> Int32
+  minute time = round $ datePartForTime "minute" time
+
+  second :: a -> Int32
+  second time = quot (round $ datePartForTime "microsecond" time) 1_000_000
+
+  microsecond :: a -> Int32
+  microsecond time = rem (round $ datePartForTime "microsecond" time) 1_000_000
+
+foreign import ccall safe "&date_part_date_oid"
+  pDatePartDateOid :: Ptr Oid
+
+datePartDate :: Text -> Date -> Double
+datePartDate part date = unsafePerformIO $ callFunc2 pDatePartDateOid (Just part) (Just date) >>= maybe undefined return
+
+instance HasDate Date where
+  datePartForDate = datePartDate
+
+foreign import ccall safe "&date_part_time_oid"
+  pDatePartTimeOid :: Ptr Oid
+
+datePartTime :: Text -> Time -> Double
+datePartTime part time = unsafePerformIO $ callFunc2 pDatePartTimeOid (Just part) (Just time) >>= maybe undefined return
+
+instance HasTime Time where
+  datePartForTime = datePartTime
+
+foreign import ccall safe "&date_part_timestamp_oid"
+  pDatePartTimestampOid :: Ptr Oid
+
+datePartTimestamp :: Text -> Timestamp -> Double
+datePartTimestamp part timestamp = unsafePerformIO $ callFunc2 pDatePartTimestampOid (Just part) (Just timestamp) >>= maybe undefined return
+
+instance HasDate Timestamp where
+  datePartForDate = datePartTimestamp
+
+instance HasTime Timestamp where
+  datePartForTime = datePartTimestamp
+
+foreign import ccall safe "&date_part_interval_oid"
+  pDatePartIntervalOid :: Ptr Oid
+
+datePartInterval :: Text -> Interval -> Double
+datePartInterval part interval = unsafePerformIO $ callFunc2 pDatePartIntervalOid (Just part) (Just interval) >>= maybe undefined return
+
+years :: Interval -> Int32
+years interval = round $ datePartInterval "year" interval
+
+months :: Interval -> Int32
+months interval = round $ datePartInterval "month" interval
+
+days :: Interval -> Int32
+days interval = round $ datePartInterval "day" interval
+
+hours :: Interval -> Int32
+hours interval = round $ datePartInterval "hour" interval
+
+minutes :: Interval -> Int32
+minutes interval = round $ datePartInterval "minute" interval
+
+seconds :: Interval -> Int32
+seconds interval = quot (round $ datePartInterval "microsecond" interval) 1_000_000
+
+microseconds :: Interval -> Int32
+microseconds interval = rem (round $ datePartInterval "microsecond" interval) 1_000_000
+
+foreign import ccall safe "&combine_oid"
+  pCombineOid :: Ptr Oid
+
+combineTimestamp :: Date -> Time -> Timestamp
+combineTimestamp date time = unsafePerformIO $ callFunc2 pCombineOid (Just date) (Just time) >>= maybe undefined return
+
+foreign import ccall safe "&get_date_oid"
+  pGetDateOid :: Ptr Oid
+
+foreign import ccall safe "&get_time_oid"
+  pGetTimeOid :: Ptr Oid
+
+separateTimestamp :: Timestamp -> (Date, Time)
+separateTimestamp timestamp = (unsafePerformIO $ callFunc1 pGetDateOid (Just timestamp) >>= maybe undefined return, unsafePerformIO $ callFunc1 pGetTimeOid (Just timestamp) >>= maybe undefined return)
+
+foreign import ccall safe "&date_mi_oid"
+  pDateMiOid :: Ptr Oid
+
+dateMinusDate :: Date -> Date -> Int32
+dateMinusDate date1 date2 = unsafePerformIO $ callFunc2 pDateMiOid (Just date1) (Just date2) >>= maybe undefined return
+
+foreign import ccall safe "&date_mii_oid"
+  pDateMiIOid :: Ptr Oid
+
+dateMinusInt :: Date -> Int32 -> Date
+dateMinusInt date int = unsafePerformIO $ callFunc2 pDateMiIOid (Just date) (Just int) >>= maybe undefined return
+
+foreign import ccall safe "&date_pli_oid"
+  pDatePlIOid :: Ptr Oid
+
+datePlusInt :: Date -> Int32 -> Date
+datePlusInt date int = unsafePerformIO $ callFunc2 pDatePlIOid (Just date) (Just int) >>= maybe undefined return
+
+foreign import ccall safe "&mul_d_interval_oid"
+  pMulDIntervalOid :: Ptr Oid
+
+doubleTimesInterval :: Double -> Interval -> Interval
+doubleTimesInterval coeff interval = unsafePerformIO $ callFunc2 pMulDIntervalOid (Just coeff) (Just interval) >>= maybe undefined return
+
+foreign import ccall safe "&date_mi_interval_oid"
+  pDateMiIntervalOid :: Ptr Oid
+
+dateMinusInterval :: Date -> Interval -> Timestamp
+dateMinusInterval date interval = unsafePerformIO $ callFunc2 pDateMiIntervalOid (Just date) (Just interval) >>= maybe undefined return
+
+foreign import ccall safe "&date_pl_interval_oid"
+  pDatePlIntervalOid :: Ptr Oid
+
+datePlusInterval :: Date -> Interval -> Timestamp
+datePlusInterval date interval = unsafePerformIO $ callFunc2 pDatePlIntervalOid (Just date) (Just interval) >>= maybe undefined return
+
+class IntervalDiff a where
+  addInterval :: a -> Interval -> a
+  subInterval :: a -> Interval -> a
+  diff :: a -> a -> Interval
+
+foreign import ccall safe "&time_pl_interval_oid"
+  pTimePlIntervalOid :: Ptr Oid
+
+foreign import ccall safe "&time_mi_interval_oid"
+  pTimeMiIntervalOid :: Ptr Oid
+
+foreign import ccall safe "&time_mi_time_oid"
+  pTimeMiTimeOid :: Ptr Oid
+
+instance IntervalDiff Time where
+  addInterval time interval = unsafePerformIO $ callFunc2 pTimePlIntervalOid (Just time) (Just interval) >>= maybe undefined return
+  subInterval time interval = unsafePerformIO $ callFunc2 pTimeMiIntervalOid (Just time) (Just interval) >>= maybe undefined return
+  diff time1 time2 = unsafePerformIO $ callFunc2 pTimeMiTimeOid (Just time1) (Just time2) >>= maybe undefined return
+
+foreign import ccall safe "&timestamp_pl_interval_oid"
+  pTimestampPlIntervalOid :: Ptr Oid
+
+foreign import ccall safe "&timestamp_mi_interval_oid"
+  pTimestampMiIntervalOid :: Ptr Oid
+
+foreign import ccall safe "&timestamp_mi_oid"
+  pTimestampMiOid :: Ptr Oid
+
+instance IntervalDiff Timestamp where
+  addInterval timestamp interval = unsafePerformIO $ callFunc2 pTimestampPlIntervalOid (Just timestamp) (Just interval) >>= maybe undefined return
+  subInterval timestamp interval = unsafePerformIO $ callFunc2 pTimestampMiIntervalOid (Just timestamp) (Just interval) >>= maybe undefined return
+  diff timestamp1 timestamp2 = unsafePerformIO $ callFunc2 pTimestampMiOid (Just timestamp1) (Just timestamp2) >>= maybe undefined return
+
+foreign import ccall safe "&interval_pl_oid"
+  pIntervalPlOid :: Ptr Oid
+
+foreign import ccall safe "&interval_mi_oid"
+  pIntervalMiOid :: Ptr Oid
+
+instance IntervalDiff Interval where
+  addInterval interval1 interval2 = unsafePerformIO $ callFunc2 pIntervalPlOid (Just interval1) (Just interval2) >>= maybe undefined return
+  subInterval interval1 interval2 = unsafePerformIO $ callFunc2 pIntervalMiOid (Just interval1) (Just interval2) >>= maybe undefined return
+  diff = subInterval

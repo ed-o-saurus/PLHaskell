@@ -200,9 +200,7 @@ PostgreSQL Type |   Module          | Haskell Type
 `float`         | `Prelude`         | `Double`
 `date`          | `PGutils`         | `Date`
 `time`          | `PGutils`         | `Time`
-`timetz`        | `PGutils`         | `TimeTZ`
 `timestamp`     | `PGutils`         | `Timestamp`
-`timestamptz`   | `PGutils`         | `TimestampTZ`
 `interval`      | `PGutils`         | `Interval`
 
 Trusted functions must return type `PGm (Maybe `*`result`*`)` where *`result`* is the appropriate Haskell type as determined by the return type of function while untrusted functions must return type `IO (Maybe `*`result`*`)`. The `PGm`  monad type can be imported from the `PGutils` module.
@@ -284,9 +282,7 @@ Any type that can be passed to PL/Haskell functions can be used as a parameter b
 `QueryParamFloat8                       (Maybe Double)`             |
 `QueryParamDate                         (Maybe Date)`               |
 `QueryParamTime                         (Maybe Time)`               |
-`QueryParamTimeTZ                       (Maybe TimeTZ)`             |
 `QueryParamTimestamp                    (Maybe Timestamp)`          |
-`QueryParamTimestampTZ                  (Maybe TimestampTZ)`        |
 `QueryParamInterval                     (Maybe Interval)`           |
 `QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])`       |
 `QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))` |
@@ -325,9 +321,7 @@ The constructors for `QueryResultValue` are the following:
 `QueryResultValueFloat8                 (Maybe Double)`                   |
 `QueryResultValueDate                   (Maybe Date)`                     |
 `QueryResultValueTime                   (Maybe Time)`                     |
-`QueryResultValueTimeTZ                 (Maybe TimeTZ)`                   |
 `QueryResultValueTimestamp              (Maybe Timestamp)`                |
-`QueryResultValueTimestampTZ            (Maybe TimestampTZ)`              |
 `QueryResultValueInterval               (Maybe Interval)`                 |
 `QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])`       |
 `QueryResultValueArray     (Text, Text) (Maybe (Array QueryResultValue))` |

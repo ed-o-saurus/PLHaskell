@@ -31,14 +31,8 @@ void date_show(DateADT date, char *buf);
 bool time_read(TimeADT *time, char *buf);
 void time_show(TimeADT time, char *buf);
 
-bool timetz_read(TimeTzADT *timetz, char *buf);
-void timetz_show(TimeTzADT *timetz, char *buf);
-
 bool timestamp_read(Timestamp *timestamp, char *buf);
 void timestamp_show(Timestamp timestamp, char *buf);
-
-bool timestamptz_read(TimestampTz *timestamptz, char *buf);
-void timestamptz_show(TimestampTz timestamptz, char *buf);
 
 bool interval_read(Interval *interval, char *buf);
 void interval_show(Interval *interval, char *buf);

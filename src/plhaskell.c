@@ -33,6 +33,8 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 
+#include "time.h"
+
 #define ARRAY_SUBSCRIPT_HANDLER_NAME "array_subscript_handler"
 
 static void build_call_info(CallInfo *p_call_info, Oid func_oid,
@@ -65,6 +67,36 @@ static CallInfo *first_p_call_info =
 
 static int plhaskell_max_memory;
 static Oid array_subscript_handler_oid;
+
+Oid make_date_oid;
+Oid make_time_oid;
+Oid make_timestamp_oid;
+Oid make_interval_oid;
+
+Oid date_part_date_oid;
+Oid date_part_time_oid;
+Oid date_part_timestamp_oid;
+Oid date_part_interval_oid;
+
+Oid combine_oid;
+
+Oid get_date_oid;
+Oid get_time_oid;
+
+Oid date_mi_oid;
+Oid date_mii_oid;
+Oid date_pli_oid;
+Oid mul_d_interval_oid;
+Oid interval_mi_oid;
+Oid interval_pl_oid;
+Oid time_mi_time_oid;
+Oid timestamp_mi_oid;
+Oid time_mi_interval_oid;
+Oid time_pl_interval_oid;
+Oid date_mi_interval_oid;
+Oid date_pl_interval_oid;
+Oid timestamp_mi_interval_oid;
+Oid timestamp_pl_interval_oid;
 
 PG_MODULE_MAGIC;
 
@@ -780,6 +812,79 @@ static void enter(void) {
   Oid array_subscript_handler_args[] = {INTERNALOID, VOIDOID};
   array_subscript_handler_oid = get_function_id(ARRAY_SUBSCRIPT_HANDLER_NAME,
                                                 array_subscript_handler_args);
+
+  Oid make_date_args[] = {INT4OID, INT4OID, INT4OID, VOIDOID};
+  make_date_oid = get_function_id("make_date", make_date_args);
+
+  Oid make_time_args[] = {INT4OID, INT4OID, FLOAT8OID, VOIDOID};
+  make_time_oid = get_function_id("make_time", make_time_args);
+
+  Oid make_timestamp_args[] = {INT4OID, INT4OID,   INT4OID, INT4OID,
+                               INT4OID, FLOAT8OID, VOIDOID};
+  make_timestamp_oid = get_function_id("make_timestamp", make_timestamp_args);
+
+  Oid make_interval_args[] = {INT4OID, INT4OID, INT4OID,   INT4OID,
+                              INT4OID, INT4OID, FLOAT8OID, VOIDOID};
+  make_interval_oid = get_function_id("make_interval", make_interval_args);
+
+  Oid date_part_date_args[] = {TEXTOID, DATEOID, VOIDOID};
+  date_part_date_oid = get_function_id("date_part", date_part_date_args);
+
+  Oid date_part_time_args[] = {TEXTOID, TIMEOID, VOIDOID};
+  date_part_time_oid = get_function_id("date_part", date_part_time_args);
+
+  Oid date_part_timestamp_args[] = {TEXTOID, TIMESTAMPOID, VOIDOID};
+  date_part_timestamp_oid =
+      get_function_id("date_part", date_part_timestamp_args);
+
+  Oid date_part_interval_args[] = {TEXTOID, INTERVALOID, VOIDOID};
+  date_part_interval_oid =
+      get_function_id("date_part", date_part_interval_args);
+
+  Oid combine_args[] = {DATEOID, TIMEOID, VOIDOID};
+  combine_oid = get_function_id("timestamp", combine_args);
+
+  Oid get_args[] = {TIMESTAMPOID, VOIDOID};
+  get_date_oid = get_function_id("date", get_args);
+  get_time_oid = get_function_id("time", get_args);
+
+  Oid date_mi_args[] = {DATEOID, DATEOID, VOIDOID};
+  date_mi_oid = get_function_id("date_mi", date_mi_args);
+
+  Oid date_mipli_args[] = {DATEOID, INT4OID, VOIDOID};
+  date_mii_oid = get_function_id("date_mii", date_mipli_args);
+  date_pli_oid = get_function_id("date_pli", date_mipli_args);
+
+  Oid mul_d_interval_args[] = {FLOAT8OID, INTERVALOID, VOIDOID};
+  mul_d_interval_oid = get_function_id("mul_d_interval", mul_d_interval_args);
+
+  Oid interval_mipl_args[] = {INTERVALOID, INTERVALOID, VOIDOID};
+  interval_mi_oid = get_function_id("interval_mi", interval_mipl_args);
+  interval_pl_oid = get_function_id("interval_pl", interval_mipl_args);
+
+  Oid time_mi_time_args[] = {TIMEOID, TIMEOID, VOIDOID};
+  time_mi_time_oid = get_function_id("time_mi_time", time_mi_time_args);
+
+  Oid timestamp_mi_args[] = {TIMESTAMPOID, TIMESTAMPOID, VOIDOID};
+  timestamp_mi_oid = get_function_id("timestamp_mi", timestamp_mi_args);
+
+  Oid time_mipl_interval_args[] = {TIMEOID, INTERVALOID, VOIDOID};
+  time_mi_interval_oid =
+      get_function_id("time_mi_interval", time_mipl_interval_args);
+  time_pl_interval_oid =
+      get_function_id("time_pl_interval", time_mipl_interval_args);
+
+  Oid date_mipl_interval_args[] = {DATEOID, INTERVALOID, VOIDOID};
+  date_mi_interval_oid =
+      get_function_id("date_mi_interval", date_mipl_interval_args);
+  date_pl_interval_oid =
+      get_function_id("date_pl_interval", date_mipl_interval_args);
+
+  Oid timestamp_mipl_interval_args[] = {TIMESTAMPOID, INTERVALOID, VOIDOID};
+  timestamp_mi_interval_oid =
+      get_function_id("timestamp_mi_interval", timestamp_mipl_interval_args);
+  timestamp_pl_interval_oid =
+      get_function_id("timestamp_pl_interval", timestamp_mipl_interval_args);
 
   TempTablespacePath(tempdirpath, DEFAULTTABLESPACE_OID);
   MakePGDirectory(tempdirpath);

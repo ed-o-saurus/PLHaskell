@@ -29,7 +29,71 @@
 #{include "plhaskell.h"}
 #{include "executor/spi.h"}
 
-module PGutils (PGm, ErrorLevel, Date, Time, TimeTZ, Timestamp, TimestampTZ, Interval, arrayMap, arrayMapM, commit, debug5, debug4, debug3, debug2, debug1, log', info, notice, warning, exception, report, fatal, raiseError, raiseFatal, rollback, unPGm, Array (..), QueryParam (..), query, QueryResultValue (..), QueryResults (..)) where
+module PGutils
+  ( PGm,
+    ErrorLevel,
+    Date
+      ( DateNInfinity,
+        DatePInfinity
+      ),
+    Time,
+    Timestamp
+      ( TimestampNInfinity,
+        TimestampPInfinity
+      ),
+    Interval,
+    Weekday (..),
+    Month (..),
+    HasDate (..),
+    HasTime (..),
+    arrayMap,
+    arrayMapM,
+    commit,
+    debug5,
+    debug4,
+    debug3,
+    debug2,
+    debug1,
+    log',
+    info,
+    notice,
+    warning,
+    exception,
+    report,
+    fatal,
+    raiseError,
+    raiseFatal,
+    rollback,
+    unPGm,
+    Array (..),
+    QueryParam (..),
+    query,
+    QueryResultValue (..),
+    QueryResults (..),
+    IntervalDiff (..),
+    mkDate,
+    mkTime,
+    mkTimestamp,
+    mkInterval,
+    combineTimestamp,
+    separateTimestamp,
+    dateMinusDate,
+    dateMinusInt,
+    datePlusInt,
+    doubleTimesInterval,
+    dateMinusInterval,
+    datePlusInterval,
+    years,
+    months,
+    days,
+    hours,
+    minutes,
+    seconds,
+    microseconds,
+    transactionTimestampUTC,
+    statementTimestampUTC,
+  )
+where
 
 import Control.Monad (zipWithM, (>=>))
 import Control.Monad.Fail (MonadFail (fail))
@@ -47,7 +111,44 @@ import Foreign.Ptr (Ptr, WordPtr (WordPtr))
 import Foreign.Storable (peek, peekByteOff, peekElemOff)
 import PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray)
 import PGcommon (Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
-import PGdatetime (Date, Interval, Time, TimeTZ, Timestamp, TimestampTZ)
+import PGdatetime
+  ( Date
+      ( DateNInfinity,
+        DatePInfinity
+      ),
+    HasDate (..),
+    HasTime (..),
+    Interval,
+    IntervalDiff (..),
+    Month (..),
+    Time,
+    Timestamp
+      ( TimestampNInfinity,
+        TimestampPInfinity
+      ),
+    Weekday (..),
+    combineTimestamp,
+    dateMinusDate,
+    dateMinusInt,
+    dateMinusInterval,
+    datePlusInt,
+    datePlusInterval,
+    days,
+    separateTimestamp,
+    doubleTimesInterval,
+    hours,
+    microseconds,
+    minutes,
+    mkDate,
+    mkInterval,
+    mkTime,
+    mkTimestamp,
+    months,
+    seconds,
+    statementTimestampUTC',
+    transactionTimestampUTC',
+    years,
+  )
 import PGsupport (BaseType (decode, encode), Datum (Datum), maybeWrap, readComposite, writeComposite)
 import System.IO.Unsafe (unsafePerformIO)
 import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
@@ -124,9 +225,7 @@ data QueryParam
   | QueryParamFloat8 (Maybe Double)
   | QueryParamDate (Maybe Date)
   | QueryParamTime (Maybe Time)
-  | QueryParamTimeTZ (Maybe TimeTZ)
   | QueryParamTimestamp (Maybe Timestamp)
-  | QueryParamTimestampTZ (Maybe TimestampTZ)
   | QueryParamInterval (Maybe Interval)
   | QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])
   | QueryParamArray (Maybe Text, Text) (Maybe (Array QueryParam))
@@ -148,9 +247,7 @@ getOid (QueryParamFloat4 _) = return #{const FLOAT4OID}
 getOid (QueryParamFloat8 _) = return #{const FLOAT8OID}
 getOid (QueryParamDate _) = return #{const DATEOID}
 getOid (QueryParamTime _) = return #{const TIMEOID}
-getOid (QueryParamTimeTZ _) = return #{const TIMETZOID}
 getOid (QueryParamTimestamp _) = return #{const TIMESTAMPOID}
-getOid (QueryParamTimestampTZ _) = return #{const TIMESTAMPTZOID}
 getOid (QueryParamInterval _) = return #{const INTERVALOID}
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
@@ -217,17 +314,9 @@ encode' pTypeInfo (QueryParamTime value) = do
   oid <- getTypeOid pTypeInfo
   assert (oid == #{const TIMEOID}) $ expectedType #{const TIMEOID}
   encode pTypeInfo value
-encode' pTypeInfo (QueryParamTimeTZ value) = do
-  oid <- getTypeOid pTypeInfo
-  assert (oid == #{const TIMETZOID}) $ expectedType #{const TIMETZOID}
-  encode pTypeInfo value
 encode' pTypeInfo (QueryParamTimestamp value) = do
   oid <- getTypeOid pTypeInfo
   assert (oid == #{const TIMESTAMPOID}) $ expectedType #{const TIMESTAMPOID}
-  encode pTypeInfo value
-encode' pTypeInfo (QueryParamTimestampTZ value) = do
-  oid <- getTypeOid pTypeInfo
-  assert (oid == #{const TIMESTAMPTZOID}) $ expectedType #{const TIMESTAMPTZOID}
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamInterval value) = do
   oid <- getTypeOid pTypeInfo
@@ -267,9 +356,7 @@ data QueryResultValue
   | QueryResultValueFloat8 (Maybe Double)
   | QueryResultValueDate (Maybe Date)
   | QueryResultValueTime (Maybe Time)
-  | QueryResultValueTimeTZ (Maybe TimeTZ)
   | QueryResultValueTimestamp (Maybe Timestamp)
-  | QueryResultValueTimestampTZ (Maybe TimestampTZ)
   | QueryResultValueInterval (Maybe Interval)
   | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])
   | QueryResultValueArray (Text, Text) (Maybe (Array QueryResultValue))
@@ -347,9 +434,7 @@ decode' pTypeInfo mDatum = do
         #{const FLOAT8OID} -> QueryResultValueFloat8 <$> decode mDatum
         #{const DATEOID} -> QueryResultValueDate <$> decode mDatum
         #{const TIMEOID} -> QueryResultValueTime <$> decode mDatum
-        #{const TIMETZOID} -> QueryResultValueTimeTZ <$> decode mDatum
         #{const TIMESTAMPOID} -> QueryResultValueTimestamp <$> decode mDatum
-        #{const TIMESTAMPTZOID} -> QueryResultValueTimestampTZ <$> decode mDatum
         #{const INTERVALOID} -> QueryResultValueInterval <$> decode mDatum
         _ -> undefined
     #{const COMPOSITE_TYPE} -> do
@@ -471,3 +556,9 @@ commit = commitRollback (fromBool True) . fromBool
 
 rollback :: Bool -> PGm ()
 rollback = commitRollback (fromBool False) . fromBool
+
+transactionTimestampUTC :: PGm Timestamp
+transactionTimestampUTC = PGm transactionTimestampUTC'
+
+statementTimestampUTC :: PGm Timestamp
+statementTimestampUTC = PGm statementTimestampUTC'
