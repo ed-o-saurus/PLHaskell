@@ -28,22 +28,152 @@
 
 module PLHaskell () where
 
-import Control.Exception (handle)
-import Control.Monad (mapM, mapM_, zipWithM, (>=>))
-import Data.Functor ((<$>))
-import Data.Int (Int16)
-import Data.List (intercalate)
-import Data.Maybe (fromMaybe)
-import Foreign.C.String (CString, peekCString)
-import Foreign.C.Types (CBool (CBool), CInt (CInt), CUInt (CUInt))
-import Foreign.Marshal.Utils (fromBool, toBool)
-import Foreign.Ptr (Ptr, WordPtr (WordPtr), nullPtr, plusPtr, ptrToWordPtr)
-import Foreign.StablePtr (deRefStablePtr, freeStablePtr, newStablePtr)
-import Foreign.Storable (peek, peekByteOff, peekElemOff, poke)
-import Language.Haskell.Interpreter (Extension (OverloadedStrings, Safe), ImportList (ImportList), Interpreter, InterpreterError (GhcException, NotAllowed, UnknownError, WontCompile), ModuleImport (ModuleImport), ModuleQualification (NotQualified, QualifiedAs), OptionVal ((:=)), errMsg, installedModulesInScope, languageExtensions, liftIO, loadModules, runStmt, set, setImportsF, typeChecks)
-import Language.Haskell.Interpreter.Unsafe (unsafeRunInterpreterWithArgs)
-import PGcommon (Datum (Datum), NullableDatum, Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, handler, pWithCString, range, voidDatum)
-import Prelude (Bool (False), Either (Left, Right), IO, Maybe (Just, Nothing), String, concat, concatMap, fromIntegral, map, not, null, return, show, undefined, ($), (++), (.), (>>=))
+import Control.Exception
+  ( handle,
+  )
+import Control.Monad
+  ( mapM,
+    mapM_,
+    zipWithM,
+    (>=>),
+  )
+import Data.Functor
+  ( (<$>),
+  )
+import Data.Int
+  ( Int16,
+  )
+import Data.List
+  ( intercalate,
+  )
+import Data.Maybe
+  ( fromMaybe,
+  )
+import Foreign.C.String
+  ( CString,
+    peekCString,
+  )
+import Foreign.C.Types
+  ( CBool
+      ( CBool
+      ),
+    CInt
+      ( CInt
+      ),
+    CUInt
+      ( CUInt
+      ),
+  )
+import Foreign.Marshal.Utils
+  ( fromBool,
+    toBool,
+  )
+import Foreign.Ptr
+  ( Ptr,
+    WordPtr
+      ( WordPtr
+      ),
+    nullPtr,
+    plusPtr,
+    ptrToWordPtr,
+  )
+import Foreign.StablePtr
+  ( deRefStablePtr,
+    freeStablePtr,
+    newStablePtr,
+  )
+import Foreign.Storable
+  ( peek,
+    peekByteOff,
+    peekElemOff,
+    poke,
+  )
+import Language.Haskell.Interpreter
+  ( Extension
+      ( OverloadedStrings,
+        Safe
+      ),
+    ImportList
+      ( ImportList
+      ),
+    Interpreter,
+    InterpreterError
+      ( GhcException,
+        NotAllowed,
+        UnknownError,
+        WontCompile
+      ),
+    ModuleImport
+      ( ModuleImport
+      ),
+    ModuleQualification
+      ( NotQualified,
+        QualifiedAs
+      ),
+    OptionVal
+      ( (:=)
+      ),
+    errMsg,
+    installedModulesInScope,
+    languageExtensions,
+    liftIO,
+    loadModules,
+    runStmt,
+    set,
+    setImportsF,
+    typeChecks,
+  )
+import Language.Haskell.Interpreter.Unsafe
+  ( unsafeRunInterpreterWithArgs,
+  )
+import PGcommon
+  ( Datum
+      ( Datum
+      ),
+    NullableDatum,
+    Oid
+      ( Oid
+      ),
+    TypeInfo,
+    assert,
+    getCount,
+    getElement,
+    getFields,
+    getTypeOid,
+    getValueType,
+    handler,
+    pWithCString,
+    range,
+    voidDatum,
+  )
+import Prelude
+  ( Bool
+      ( False
+      ),
+    Either
+      ( Left,
+        Right
+      ),
+    IO,
+    Maybe
+      ( Just,
+        Nothing
+      ),
+    String,
+    concat,
+    concatMap,
+    fromIntegral,
+    map,
+    not,
+    null,
+    return,
+    show,
+    undefined,
+    ($),
+    (++),
+    (.),
+    (>>=),
+  )
 
 -- Dummy type to make pointers
 data CallInfo

@@ -24,22 +24,138 @@
 
 #{include "postgres.h"}
 
-module PGsupport (Datum (Datum), BaseType (read, write, decode, encode), callFunc0, callFunc1, callFunc2, callFunc3, callFunc4, callFunc5, callFunc6, callFunc7, encodeVoid, maybeWrap, mkResultList, readComposite, wrapFunction, writeComposite, writeResult) where
+module PGsupport
+  ( Datum
+      ( Datum
+      ),
+    BaseType
+      ( read,
+        write,
+        decode,
+        encode
+      ),
+    callFunc0,
+    callFunc1,
+    callFunc2,
+    callFunc3,
+    callFunc4,
+    callFunc5,
+    callFunc6,
+    callFunc7,
+    encodeVoid,
+    maybeWrap,
+    mkResultList,
+    readComposite,
+    wrapFunction,
+    writeComposite,
+    writeResult,
+  )
+where
 
-import Control.Monad ((>=>))
-import Data.ByteString (ByteString, packCStringLen, useAsCStringLen)
-import Data.Functor ((<$>))
-import Data.Int (Int16, Int32, Int64)
-import Data.Maybe (fromMaybe, isNothing)
-import Data.Text (Text, head, singleton)
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import Foreign.C.Types (CBool (CBool), CSize (CSize), CUInt (CUInt))
-import Foreign.Marshal.Array (peekArray)
-import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
-import Foreign.Ptr (FunPtr, Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
-import Foreign.Storable (peek, poke)
-import PGcommon (Datum (Datum), NullableDatum (NullableDatum), Oid (Oid), TypeInfo, getCount, pWithArray, pWithArrayLen, palloc, pallocArray, palloca, voidDatum)
-import Prelude (Bool (False, True), Char, Double, Float, IO, Maybe (Just, Nothing), fromIntegral, map, otherwise, return, zipWith, ($), (+), (.), (==), (>>=))
+import Control.Monad
+  ( (>=>),
+  )
+import Data.ByteString
+  ( ByteString,
+    packCStringLen,
+    useAsCStringLen,
+  )
+import Data.Functor
+  ( (<$>),
+  )
+import Data.Int
+  ( Int16,
+    Int32,
+    Int64,
+  )
+import Data.Maybe
+  ( fromMaybe,
+    isNothing,
+  )
+import Data.Text
+  ( Text,
+    head,
+    singleton,
+  )
+import Data.Text.Encoding
+  ( decodeUtf8,
+    encodeUtf8,
+  )
+import Foreign.C.Types
+  ( CBool
+      ( CBool
+      ),
+    CSize
+      ( CSize
+      ),
+    CUInt
+      ( CUInt
+      ),
+  )
+import Foreign.Marshal.Array
+  ( peekArray,
+  )
+import Foreign.Marshal.Utils
+  ( copyBytes,
+    fromBool,
+    toBool,
+  )
+import Foreign.Ptr
+  ( FunPtr,
+    Ptr,
+    WordPtr
+      ( WordPtr
+      ),
+    nullPtr,
+    ptrToWordPtr,
+  )
+import Foreign.Storable
+  ( peek,
+    poke,
+  )
+import PGcommon
+  ( Datum
+      ( Datum
+      ),
+    NullableDatum
+      ( NullableDatum
+      ),
+    Oid
+      ( Oid
+      ),
+    TypeInfo,
+    getCount,
+    pWithArray,
+    pWithArrayLen,
+    palloc,
+    pallocArray,
+    palloca,
+    voidDatum,
+  )
+import Prelude
+  ( Bool
+      ( False,
+        True
+      ),
+    Char,
+    Double,
+    Float,
+    IO,
+    Maybe
+      ( Just,
+        Nothing
+      ),
+    fromIntegral,
+    map,
+    otherwise,
+    return,
+    zipWith,
+    ($),
+    (+),
+    (.),
+    (==),
+    (>>=),
+  )
 
 -- Dummy type to make pointers
 data MemoryContextData

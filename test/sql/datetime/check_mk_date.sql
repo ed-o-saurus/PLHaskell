@@ -25,7 +25,9 @@ CREATE FUNCTION check_mk_date(integer
                             , integer)
 RETURNS boolean
 AS $$
-  import Data.Int (Int32)
+  import Data.Int
+    ( Int32,
+    )
   import PGutils
     ( Date,
       Month,

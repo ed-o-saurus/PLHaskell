@@ -95,22 +95,96 @@ module PGutils
   )
 where
 
-import Control.Monad (zipWithM, (>=>))
-import Control.Monad.Fail (MonadFail (fail))
-import Data.ByteString (ByteString)
-import Data.Functor ((<$>))
-import Data.Int (Int16, Int32, Int64)
-import Data.Text (Text, pack, unpack)
-import Data.Text.Encoding (encodeUtf8)
-import Data.Word (Word64)
-import Foreign.C.String (CString, peekCString)
-import Foreign.C.Types (CBool (CBool), CInt (CInt), CUInt (CUInt))
-import Foreign.Marshal.Array (allocaArray)
-import Foreign.Marshal.Utils (fromBool, toBool)
-import Foreign.Ptr (Ptr, WordPtr (WordPtr))
-import Foreign.Storable (peek, peekByteOff, peekElemOff)
-import PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray)
-import PGcommon (Oid (Oid), TypeInfo, assert, getCount, getElement, getFields, getTypeOid, getValueType, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, voidDatum)
+import Control.Monad
+  ( zipWithM,
+    (>=>),
+  )
+import Control.Monad.Fail
+  ( MonadFail
+      ( fail
+      ),
+  )
+import Data.ByteString
+  ( ByteString,
+  )
+import Data.Functor
+  ( (<$>),
+  )
+import Data.Int
+  ( Int16,
+    Int32,
+    Int64,
+  )
+import Data.Text
+  ( Text,
+    pack,
+    unpack,
+  )
+import Data.Text.Encoding
+  ( encodeUtf8,
+  )
+import Data.Word
+  ( Word64,
+  )
+import Foreign.C.String
+  ( CString,
+    peekCString,
+  )
+import Foreign.C.Types
+  ( CBool
+      ( CBool
+      ),
+    CInt
+      ( CInt
+      ),
+    CUInt
+      ( CUInt
+      ),
+  )
+import Foreign.Marshal.Array
+  ( allocaArray,
+  )
+import Foreign.Marshal.Utils
+  ( fromBool,
+    toBool,
+  )
+import Foreign.Ptr
+  ( Ptr,
+    WordPtr
+      ( WordPtr
+      ),
+  )
+import Foreign.Storable
+  ( peek,
+    peekByteOff,
+    peekElemOff,
+  )
+import PGarray
+  ( Array (..),
+    arrayMap,
+    arrayMapM,
+    readArray,
+    writeArray,
+  )
+import PGcommon
+  ( Oid
+      ( Oid
+      ),
+    TypeInfo,
+    assert,
+    getCount,
+    getElement,
+    getFields,
+    getTypeOid,
+    getValueType,
+    pUseAsCString,
+    pWithArray,
+    pWithArrayLen,
+    pWithCString,
+    pWithCString2,
+    range,
+    voidDatum,
+  )
 import PGdatetime
   ( Date
       ( DateNInfinity,
@@ -134,7 +208,6 @@ import PGdatetime
     datePlusInt,
     datePlusInterval,
     days,
-    separateTimestamp,
     doubleTimesInterval,
     hours,
     microseconds,
@@ -145,13 +218,56 @@ import PGdatetime
     mkTimestamp,
     months,
     seconds,
+    separateTimestamp,
     statementTimestampUTC',
     transactionTimestampUTC',
     years,
   )
-import PGsupport (BaseType (decode, encode), Datum (Datum), maybeWrap, readComposite, writeComposite)
-import System.IO.Unsafe (unsafePerformIO)
-import Prelude (Applicative, Bool (False, True), Char, Double, Float, Functor, IO, Maybe (Just, Nothing), Monad, Show, flip, fromIntegral, length, map, mapM, mapM_, return, undefined, ($), (.), (==), (>>=))
+import PGsupport
+  ( BaseType
+      ( decode,
+        encode
+      ),
+    Datum
+      ( Datum
+      ),
+    maybeWrap,
+    readComposite,
+    writeComposite,
+  )
+import System.IO.Unsafe
+  ( unsafePerformIO,
+  )
+import Prelude
+  ( Applicative,
+    Bool
+      ( False,
+        True
+      ),
+    Char,
+    Double,
+    Float,
+    Functor,
+    IO,
+    Maybe
+      ( Just,
+        Nothing
+      ),
+    Monad,
+    Show,
+    flip,
+    fromIntegral,
+    length,
+    map,
+    mapM,
+    mapM_,
+    return,
+    undefined,
+    ($),
+    (.),
+    (==),
+    (>>=),
+  )
 
 data TupleTable
 

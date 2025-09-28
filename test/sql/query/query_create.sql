@@ -16,13 +16,20 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION query_create() RETURNS void VOLATILE AS
-$$
-    import PGutils (PGm, query, QueryResults (UtilityResults))
-
-    query_create :: PGm ()
-    query_create = do
-        UtilityResults _processed <- query "CREATE TABLE t(i int, l text)" []
-        return ()
+CREATE FUNCTION query_create()
+RETURNS void VOLATILE
+AS $$
+  import PGutils
+    ( PGm,
+      QueryResults
+        ( UtilityResults
+        ),
+      query,
+    )
+  
+  query_create :: PGm ()
+  query_create = do
+    UtilityResults _processed <- query "CREATE TABLE t(i int, l text)" []
+    return ()
 $$
 LANGUAGE plhaskell;

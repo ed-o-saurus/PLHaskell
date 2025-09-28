@@ -16,11 +16,14 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION nan() RETURNS float IMMUTABLE AS
-$$
-    import PGutils (PGm)
-
-    nan :: PGm (Maybe Double)
-    nan = return (Just (0.0 / 0.0))
+CREATE FUNCTION nan()
+RETURNS double precision IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+    )
+  
+  nan :: PGm (Maybe Double)
+  nan = return (Just (0.0 / 0.0))
 $$
 LANGUAGE plhaskell;

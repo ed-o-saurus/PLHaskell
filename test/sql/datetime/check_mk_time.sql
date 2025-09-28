@@ -22,7 +22,9 @@ CREATE FUNCTION check_mk_time(integer
                             , integer)
 RETURNS boolean
 AS $$
-  import Data.Int (Int32)
+  import Data.Int
+    ( Int32,
+    )
   import PGutils
     ( PGm,
       Timestamp,

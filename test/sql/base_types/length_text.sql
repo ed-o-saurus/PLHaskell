@@ -16,14 +16,22 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION length_text(text) RETURNS int IMMUTABLE AS
-$$
-    import PGutils (PGm)
-    import Data.Text (length, Text)
-    import Data.Int (Int32)
-
-    length_text :: Maybe Text -> PGm (Maybe Int32)
-    length_text Nothing = return Nothing
-    length_text (Just s) = return $ Just $ fromIntegral $ Data.Text.length s
+CREATE FUNCTION length_text(text)
+RETURNS integer IMMUTABLE
+AS $$
+  import Data.Int
+    ( Int32,
+    )
+  import Data.Text
+    ( Text,
+      length,
+    )
+  import PGutils
+    ( PGm,
+    )
+  
+  length_text :: Maybe Text -> PGm (Maybe Int32)
+  length_text Nothing = return Nothing
+  length_text (Just s) = return $ Just $ fromIntegral $ Data.Text.length s
 $$
 LANGUAGE plhaskell;

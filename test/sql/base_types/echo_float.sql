@@ -16,11 +16,14 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION echo(float) RETURNS float IMMUTABLE AS
-$$
-    import PGutils (PGm)
-
-    echo :: a -> PGm a
-    echo = return
+CREATE FUNCTION echo(double precision)
+RETURNS double precision IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+    )
+  
+  echo :: a -> PGm a
+  echo = return
 $$
 LANGUAGE plhaskell;

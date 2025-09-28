@@ -16,18 +16,23 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-DO
+DO $$
+  import PGutils
+    ( PGm,
+      QueryParam (QueryParamInt4),
+      QueryResults (InsertResults),
+      query,
+    )
+  
+  _' :: PGm ()
+  _' = do
+    InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 0), QueryParamInt4 (Just 0)]
+    InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 1), QueryParamInt4 (Just 1)]
+    InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 2), QueryParamInt4 (Just 4)]
+    InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 3), QueryParamInt4 (Just 9)]
+    InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 4), QueryParamInt4 (Just 16)]
+    InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 5), QueryParamInt4 (Just 25)]
+    return ()
 $$
-    import PGutils (PGm, query, QueryResults(InsertResults), QueryParam(QueryParamInt4))
-
-    _' :: PGm ()
-    _' = do
-        InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 0), QueryParamInt4 (Just  0)]
-        InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 1), QueryParamInt4 (Just  1)]
-        InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 2), QueryParamInt4 (Just  4)]
-        InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 3), QueryParamInt4 (Just  9)]
-        InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 4), QueryParamInt4 (Just 16)]
-        InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 5), QueryParamInt4 (Just 25)]
-        return ()
-$$
-LANGUAGE plhaskell;
+   
+ LANGUAGE plhaskell;

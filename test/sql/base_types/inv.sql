@@ -16,13 +16,16 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION inv(bool) RETURNS bool IMMUTABLE AS
-$$
-    import PGutils (PGm)
-
-    inv :: Maybe Bool -> PGm (Maybe Bool)
-    inv Nothing = return Nothing
-    inv (Just True) = return (Just False)
-    inv (Just False) = return (Just True)
+CREATE FUNCTION inv(bool)
+RETURNS bool IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+    )
+  
+  inv :: Maybe Bool -> PGm (Maybe Bool)
+  inv Nothing = return Nothing
+  inv (Just True) = return (Just False)
+  inv (Just False) = return (Just True)
 $$
 LANGUAGE plhaskell;

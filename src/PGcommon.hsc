@@ -29,19 +29,123 @@
 
 #{include "plhaskell.h"}
 
-module PGcommon (Datum (Datum), NullableDatum (NullableDatum), Oid (Oid), TypeInfo, assert, handler, getCount, getElement, getTypeOid, getValueType, getFields, palloc, palloca, pallocArray, pUseAsCString, pWithArray, pWithArrayLen, pWithCString, pWithCString2, range, unNullableDatum, voidDatum) where
+module PGcommon
+  ( Datum
+      ( Datum
+      ),
+    NullableDatum
+      ( NullableDatum
+      ),
+    Oid
+      ( Oid
+      ),
+    TypeInfo,
+    assert,
+    handler,
+    getCount,
+    getElement,
+    getTypeOid,
+    getValueType,
+    getFields,
+    palloc,
+    palloca,
+    pallocArray,
+    pUseAsCString,
+    pWithArray,
+    pWithArrayLen,
+    pWithCString,
+    pWithCString2,
+    range,
+    unNullableDatum,
+    voidDatum,
+  )
+where
 
-import Control.Exception (SomeException)
-import Data.ByteString (ByteString, useAsCStringLen)
-import Data.Int (Int16)
-import Data.Word (Word16)
-import Foreign.C.String (CString, CStringLen, withCStringLen)
-import Foreign.C.Types (CBool (CBool), CSize (CSize), CUInt (CUInt))
-import Foreign.Marshal.Array (pokeArray)
-import Foreign.Marshal.Utils (copyBytes, fromBool, toBool)
-import Foreign.Ptr (Ptr, WordPtr (WordPtr), nullPtr, ptrToWordPtr)
-import Foreign.Storable (Storable, alignment, peek, peekByteOff, peekElemOff, poke, pokeByteOff, sizeOf)
-import Prelude (Bool (False, True), Eq, IO, Int, Integral, Maybe (Just, Nothing), Num, String, const, flip, fromIntegral, length, mapM, return, show, undefined, ($), (*), (+), (-), (.), (>>=))
+import Control.Exception
+  ( SomeException,
+  )
+import Data.ByteString
+  ( ByteString,
+    useAsCStringLen,
+  )
+import Data.Int
+  ( Int16,
+  )
+import Data.Word
+  ( Word16,
+  )
+import Foreign.C.String
+  ( CString,
+    CStringLen,
+    withCStringLen,
+  )
+import Foreign.C.Types
+  ( CBool
+      ( CBool
+      ),
+    CSize
+      ( CSize
+      ),
+    CUInt
+      ( CUInt
+      ),
+  )
+import Foreign.Marshal.Array
+  ( pokeArray,
+  )
+import Foreign.Marshal.Utils
+  ( copyBytes,
+    fromBool,
+    toBool,
+  )
+import Foreign.Ptr
+  ( Ptr,
+    WordPtr
+      ( WordPtr
+      ),
+    nullPtr,
+    ptrToWordPtr,
+  )
+import Foreign.Storable
+  ( Storable,
+    alignment,
+    peek,
+    peekByteOff,
+    peekElemOff,
+    poke,
+    pokeByteOff,
+    sizeOf,
+  )
+import Prelude
+  ( Bool
+      ( False,
+        True
+      ),
+    Eq,
+    IO,
+    Int,
+    Integral,
+    Maybe
+      ( Just,
+        Nothing
+      ),
+    Num,
+    String,
+    const,
+    flip,
+    fromIntegral,
+    length,
+    mapM,
+    return,
+    show,
+    undefined,
+    ($),
+    (*),
+    (+),
+    (-),
+    (.),
+    (>>=),
+  )
 
 -- Dummy type to make pointers
 data TypeInfo

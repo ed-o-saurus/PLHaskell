@@ -23,17 +23,82 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-module PGarray (Array (..), arrayMap, arrayMapM, readArray, writeArray) where
+module PGarray
+  ( Array (..),
+    arrayMap,
+    arrayMapM,
+    readArray,
+    writeArray,
+  )
+where
 
-import Data.Functor ((<$>))
-import Data.Int (Int32)
-import Data.Maybe (fromMaybe, isNothing)
-import Foreign.C.Types (CBool (CBool), CInt (CInt))
-import Foreign.Marshal.Array (peekArray)
-import Foreign.Marshal.Utils (fromBool, toBool)
-import Foreign.Ptr (Ptr, WordPtr (WordPtr))
-import PGcommon (Datum (Datum), TypeInfo, assert, pWithArray, pallocArray, voidDatum)
-import Prelude (IO, Int, Maybe (Just, Nothing), Monad, Num, Show, concat, fromIntegral, length, map, mapM, mapM_, product, return, splitAt, undefined, zipWith, ($), (.), (==), (>>=))
+import Data.Functor
+  ( (<$>),
+  )
+import Data.Int
+  ( Int32,
+  )
+import Data.Maybe
+  ( fromMaybe,
+    isNothing,
+  )
+import Foreign.C.Types
+  ( CBool
+      ( CBool
+      ),
+    CInt
+      ( CInt
+      ),
+  )
+import Foreign.Marshal.Array
+  ( peekArray,
+  )
+import Foreign.Marshal.Utils
+  ( fromBool,
+    toBool,
+  )
+import Foreign.Ptr
+  ( Ptr,
+    WordPtr
+      ( WordPtr
+      ),
+  )
+import PGcommon
+  ( Datum
+      ( Datum
+      ),
+    TypeInfo,
+    assert,
+    pWithArray,
+    pallocArray,
+    voidDatum,
+  )
+import Prelude
+  ( IO,
+    Int,
+    Maybe
+      ( Just,
+        Nothing
+      ),
+    Monad,
+    Num,
+    Show,
+    concat,
+    fromIntegral,
+    length,
+    map,
+    mapM,
+    mapM_,
+    product,
+    return,
+    splitAt,
+    undefined,
+    zipWith,
+    ($),
+    (.),
+    (==),
+    (>>=),
+  )
 
 -- Dummy type to make pointers
 data {-# CTYPE "utils/array.h" "ArrayType" #-} ArrayType

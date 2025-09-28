@@ -16,11 +16,14 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION poop() RETURNS char IMMUTABLE AS
-$$
-    import PGutils (PGm)
-
-    poop :: PGm (Maybe Char)
-    poop = return (Just '\x0001F4A9')
+CREATE FUNCTION poop()
+RETURNS char IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+    )
+  
+  poop :: PGm (Maybe Char)
+  poop = return (Just '\x0001F4A9')
 $$
 LANGUAGE plhaskell;

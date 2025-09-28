@@ -16,12 +16,17 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION shrug() RETURNS text IMMUTABLE AS
-$$
-    import PGutils (PGm)
-    import Data.Text (Text)
-
-    shrug :: PGm (Maybe Text)
-    shrug = return (Just "¯\\_(ツ)_/¯")
+CREATE FUNCTION shrug()
+RETURNS text IMMUTABLE
+AS $$
+  import Data.Text
+    ( Text,
+    )
+  import PGutils
+    ( PGm,
+    )
+  
+  shrug :: PGm (Maybe Text)
+  shrug = return (Just "¯\\_(ツ)_/¯")
 $$
 LANGUAGE plhaskell;

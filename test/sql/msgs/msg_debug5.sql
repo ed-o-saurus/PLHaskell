@@ -16,11 +16,16 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION msg_debug5() RETURNS void IMMUTABLE AS
-$$
-    import PGutils (PGm, report, debug1)
-
-    msg_debug5 :: PGm ()
-    msg_debug5 = report debug1 "Test"
+CREATE FUNCTION msg_debug5()
+RETURNS void IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+      debug1,
+      report,
+    )
+  
+  msg_debug5 :: PGm ()
+  msg_debug5 = report debug1 "Test"
 $$
 LANGUAGE plhaskell;

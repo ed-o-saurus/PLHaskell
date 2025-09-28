@@ -16,11 +16,16 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION msg_exception() RETURNS void IMMUTABLE AS
-$$
-    import PGutils (PGm, report, exception)
-
-    msg_exception :: PGm ()
-    msg_exception = report exception "Test"
+CREATE FUNCTION msg_exception()
+RETURNS void IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+      exception,
+      report,
+    )
+  
+  msg_exception :: PGm ()
+  msg_exception = report exception "Test"
 $$
 LANGUAGE plhaskell;

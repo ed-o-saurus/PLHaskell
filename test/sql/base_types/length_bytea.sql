@@ -16,14 +16,22 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION length_bytea(bytea) RETURNS int IMMUTABLE AS
-$$
-    import PGutils (PGm)
-    import Data.ByteString (length, ByteString)
-    import Data.Int (Int32)
-
-    length_bytea :: Maybe ByteString -> PGm (Maybe Int32)
-    length_bytea Nothing = return Nothing
-    length_bytea (Just s) = return $ Just $ fromIntegral $ Data.ByteString.length s
+CREATE FUNCTION length_bytea(bytea)
+RETURNS integer IMMUTABLE
+AS $$
+  import Data.ByteString
+    ( ByteString,
+      length,
+    )
+  import Data.Int
+    ( Int32,
+    )
+  import PGutils
+    ( PGm,
+    )
+  
+  length_bytea :: Maybe ByteString -> PGm (Maybe Int32)
+  length_bytea Nothing = return Nothing
+  length_bytea (Just s) = return $ Just $ fromIntegral $ Data.ByteString.length s
 $$
 LANGUAGE plhaskell;

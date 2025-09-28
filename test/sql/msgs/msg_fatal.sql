@@ -16,11 +16,16 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION msg_fatal() RETURNS void IMMUTABLE AS
-$$
-    import PGutils (PGm, report, fatal)
-
-    msg_fatal :: PGm ()
-    msg_fatal = report fatal "Test"
+CREATE FUNCTION msg_fatal()
+RETURNS void IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+      fatal,
+      report,
+    )
+  
+  msg_fatal :: PGm ()
+  msg_fatal = report fatal "Test"
 $$
 LANGUAGE plhaskell;

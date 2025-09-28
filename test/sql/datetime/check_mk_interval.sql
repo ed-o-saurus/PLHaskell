@@ -33,7 +33,9 @@ CREATE FUNCTION check_mk_interval(integer
                                 , integer)
 RETURNS boolean
 AS $$
-  import Data.Int (Int32)
+  import Data.Int
+    ( Int32,
+    )
   import PGutils
     ( Interval,
       PGm,

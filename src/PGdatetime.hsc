@@ -83,16 +83,44 @@ module PGdatetime
   )
 where
 
-import Data.Functor ((<$>))
-import Data.Int (Int32, Int64)
+import Data.Functor
+  ( (<$>),
+  )
+import Data.Int
+  ( Int32,
+    Int64,
+  )
 import Data.Text
   ( Text,
   )
-import Foreign.C.String (CString, peekCString)
-import Foreign.C.Types (CBool (CBool))
-import Foreign.Marshal.Utils (toBool)
-import Foreign.Ptr (Ptr, WordPtr (WordPtr))
-import Foreign.Storable (Storable (alignment, peek, poke, sizeOf), peekByteOff, pokeByteOff)
+import Foreign.C.String
+  ( CString,
+    peekCString,
+  )
+import Foreign.C.Types
+  ( CBool
+      ( CBool
+      ),
+  )
+import Foreign.Marshal.Utils
+  ( toBool,
+  )
+import Foreign.Ptr
+  ( Ptr,
+    WordPtr
+      ( WordPtr
+      ),
+  )
+import Foreign.Storable
+  ( Storable
+      ( alignment,
+        peek,
+        poke,
+        sizeOf
+      ),
+    peekByteOff,
+    pokeByteOff,
+  )
 import PGcommon
   ( Datum
       ( Datum
@@ -114,9 +142,17 @@ import PGsupport
     callFunc6,
     callFunc7,
   )
-import System.IO.Unsafe (unsafePerformIO)
-import Text.ParserCombinators.ReadPrec (ReadPrec, readS_to_Prec)
-import Text.Read (parens, readPrec)
+import System.IO.Unsafe
+  ( unsafePerformIO,
+  )
+import Text.ParserCombinators.ReadPrec
+  ( ReadPrec,
+    readS_to_Prec,
+  )
+import Text.Read
+  ( parens,
+    readPrec,
+  )
 import Prelude
   ( Bool
       ( False,

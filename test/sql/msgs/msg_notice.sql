@@ -16,11 +16,16 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION msg_notice() RETURNS void IMMUTABLE AS
-$$
-    import PGutils (PGm, report, notice)
-
-    msg_notice :: PGm ()
-    msg_notice = report notice "Test"
+CREATE FUNCTION msg_notice()
+RETURNS void IMMUTABLE
+AS $$
+  import PGutils
+    ( PGm,
+      notice,
+      report,
+    )
+  
+  msg_notice :: PGm ()
+  msg_notice = report notice "Test"
 $$
 LANGUAGE plhaskell;

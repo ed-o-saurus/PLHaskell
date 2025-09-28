@@ -16,14 +16,22 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION make_length_text(int) RETURNS text IMMUTABLE AS
-$$
-    import PGutils (PGm)
-    import Data.Int (Int32)
-    import Data.Text (pack, Text)
-
-    make_length_text :: Maybe Int32 -> PGm (Maybe Text)
-    make_length_text Nothing = return Nothing
-    make_length_text (Just n) = return $ Just $ pack (take (fromIntegral n) (repeat '_'))
+CREATE FUNCTION make_length_text(integer)
+RETURNS text IMMUTABLE
+AS $$
+  import Data.Int
+    ( Int32,
+    )
+  import Data.Text
+    ( Text,
+      pack,
+    )
+  import PGutils
+    ( PGm,
+    )
+  
+  make_length_text :: Maybe Int32 -> PGm (Maybe Text)
+  make_length_text Nothing = return Nothing
+  make_length_text (Just n) = return $ Just $ pack (take (fromIntegral n) (repeat '_'))
 $$
 LANGUAGE plhaskell;

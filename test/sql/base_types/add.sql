@@ -16,14 +16,20 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-CREATE FUNCTION add(int, int) RETURNS int IMMUTABLE AS
-$$
-    import PGutils (PGm)
-    import Data.Int (Int32)
-
-    add :: Maybe Int32 -> Maybe Int32 -> PGm (Maybe Int32)
-    add (Just a) (Just b) = return (Just (a+b))
-    add a Nothing = return a
-    add Nothing _ = return Nothing
+CREATE FUNCTION add(integer
+                  , integer)
+RETURNS integer IMMUTABLE
+AS $$
+  import Data.Int
+    ( Int32,
+    )
+  import PGutils
+    ( PGm,
+    )
+  
+  add :: Maybe Int32 -> Maybe Int32 -> PGm (Maybe Int32)
+  add (Just a) (Just b) = return (Just (a + b))
+  add a Nothing = return a
+  add Nothing _ = return Nothing
 $$
 LANGUAGE plhaskell;

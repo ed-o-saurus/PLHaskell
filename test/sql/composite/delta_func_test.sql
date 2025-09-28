@@ -16,8 +16,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-DO
-$$
+DO $$
 BEGIN
     IF delta_func() <> (((('abc', 42, 42.3), 0), '()'::charlie))::delta THEN
         raise EXCEPTION 'delta_test failed';
