@@ -16,7 +16,9 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-DO $$
+DO
+ LANGUAGE plhaskell
+   $$
   import PGutils
     ( PGm,
       QueryParam (QueryParamInt4),
@@ -33,6 +35,4 @@ DO $$
     InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 4), QueryParamInt4 (Just 16)]
     InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 5), QueryParamInt4 (Just 25)]
     return ()
-$$
-   
- LANGUAGE plhaskell;
+$$;
