@@ -37,7 +37,7 @@ AS $$
         ),
       query,
     )
-  
+
   query_insert :: Maybe Int32 -> Maybe Text -> PGm ()
   query_insert i l = do
     InsertResults _processed <- query "INSERT INTO t(i, l) VALUES ($1, $2);" [QueryParamInt4 i, QueryParamText l]

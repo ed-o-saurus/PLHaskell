@@ -34,7 +34,7 @@ AS $$
       mkTime,
       second,
     )
-  
+
   check_mk_time :: Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> PGm (Maybe Bool)
   check_mk_time (Just hour') (Just minute') (Just second') (Just microsecond') =
     return $ Just $ hour_match && minute_match && second_match && microsecond_match

@@ -24,7 +24,7 @@ AS $$
       Timestamp,
       transactionTimestampUTC,
     )
-  
+
   get_transaction_timestamp :: PGm (Maybe Timestamp)
   get_transaction_timestamp = Just <$> transactionTimestampUTC
 $$

@@ -23,7 +23,7 @@ DO $$
       QueryResults (InsertResults),
       query,
     )
-  
+
   _' :: PGm ()
   _' = do
     InsertResults _processed <- query "INSERT INTO inline_test(i, i_sq) VALUES ($1, $2)" [QueryParamInt4 (Just 0), QueryParamInt4 (Just 0)]

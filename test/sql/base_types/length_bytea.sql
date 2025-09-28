@@ -29,7 +29,7 @@ AS $$
   import PGutils
     ( PGm,
     )
-  
+
   length_bytea :: Maybe ByteString -> PGm (Maybe Int32)
   length_bytea Nothing = return Nothing
   length_bytea (Just s) = return $ Just $ fromIntegral $ Data.ByteString.length s

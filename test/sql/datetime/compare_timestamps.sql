@@ -24,12 +24,12 @@ AS $$
     ( PGm,
       Timestamp,
     )
-  
+
   check_compare :: Ordering -> Timestamp -> Timestamp -> Bool
   check_compare LT timestamp1 timestamp2 = (timestamp1 < timestamp2)
   check_compare EQ timestamp1 timestamp2 = (timestamp1 == timestamp2)
   check_compare GT timestamp1 timestamp2 = (timestamp1 > timestamp2)
-  
+
   compare_timestamps :: Maybe Timestamp -> Maybe Timestamp -> PGm (Maybe Bool)
   compare_timestamps (Just timestamp1) (Just timestamp2) = return $ Just $ check_compare (compare timestamp1 timestamp2) timestamp1 timestamp2
 $$

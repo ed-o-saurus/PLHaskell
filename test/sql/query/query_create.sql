@@ -26,7 +26,7 @@ AS $$
         ),
       query,
     )
-  
+
   query_create :: PGm ()
   query_create = do
     UtilityResults _processed <- query "CREATE TABLE t(i int, l text)" []

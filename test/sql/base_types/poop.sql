@@ -22,7 +22,7 @@ AS $$
   import PGutils
     ( PGm,
     )
-  
+
   poop :: PGm (Maybe Char)
   poop = return (Just '\x0001F4A9')
 $$

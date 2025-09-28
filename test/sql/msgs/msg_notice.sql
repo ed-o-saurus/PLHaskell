@@ -24,7 +24,7 @@ AS $$
       notice,
       report,
     )
-  
+
   msg_notice :: PGm ()
   msg_notice = report notice "Test"
 $$

@@ -23,7 +23,7 @@ AS $$
     ( PGm,
       Timestamp (..),
     )
-  
+
   mk_inf_timestamp :: Maybe Bool -> PGm (Maybe Timestamp)
   mk_inf_timestamp (Just True) = return $ Just $ TimestampPInfinity
   mk_inf_timestamp (Just False) = return $ Just $ TimestampNInfinity

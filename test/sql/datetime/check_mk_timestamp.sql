@@ -48,7 +48,7 @@ AS $$
       second,
       year,
     )
-  
+
   check_mk_timestamp :: Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> PGm (Maybe Bool)
   check_mk_timestamp (Just year') (Just month') (Just day') (Just hour') (Just minute') (Just second') (Just microsecond') (Just expect_dow) (Just expect_doy) (Just expect_isoyear) (Just expect_isoweek) =
     return $ Just $ year_match && month_match && day_match && hour_match && minute_match && second_match --   && microsecond_match --  && dow_match -- && doy_match -- && iso_match

@@ -29,7 +29,7 @@ AS $$
     ( PGm,
       Time,
     )
-  
+
   check_show_read_time :: Maybe Time -> Maybe Text -> PGm (Maybe Bool)
   check_show_read_time (Just d) (Just s) =
     return $ Just $ d_match && s_match

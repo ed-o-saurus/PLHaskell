@@ -24,7 +24,7 @@ AS $$
       log',
       report,
     )
-  
+
   msg_log :: PGm ()
   msg_log = report log' "Test"
 $$

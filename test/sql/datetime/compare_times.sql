@@ -24,12 +24,12 @@ AS $$
     ( PGm,
       Time,
     )
-  
+
   check_compare :: Ordering -> Time -> Time -> Bool
   check_compare LT time1 time2 = (time1 < time2)
   check_compare EQ time1 time2 = (time1 == time2)
   check_compare GT time1 time2 = (time1 > time2)
-  
+
   compare_times :: Maybe Time -> Maybe Time -> PGm (Maybe Bool)
   compare_times (Just time1) (Just time2) = return $ Just $ check_compare (compare time1 time2) time1 time2
 $$

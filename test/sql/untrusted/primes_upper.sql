@@ -35,7 +35,7 @@ AS $$
       query,
       unPGm,
     )
-  
+
   primes_upper :: Maybe Int32 -> IO [Maybe (Maybe Int32, Maybe Int32)]
   primes_upper minimum = do
     SelectResults _processed [_header_n, _header_p] rows <- unPGm $ query "SELECT n, p FROM primes WHERE p >= $1" [QueryParamInt4 minimum]

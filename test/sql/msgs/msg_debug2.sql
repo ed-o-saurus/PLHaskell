@@ -24,7 +24,7 @@ AS $$
       debug2,
       report,
     )
-  
+
   msg_debug2 :: PGm ()
   msg_debug2 = report debug2 "Test"
 $$

@@ -33,7 +33,7 @@ AS $$
       Time,
       query,
     )
-  
+
   query_time :: Maybe Time -> PGm (Maybe Time)
   query_time mTime = do
     SelectResults _processed [_header] [[QueryResultValueTime retVal]] <- query "SELECT $1" [QueryParamTime mTime]

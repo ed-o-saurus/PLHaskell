@@ -27,7 +27,7 @@ AS $$
       Timestamp,
       combineTimestamp,
     )
-  
+
   combine_timestamp :: Maybe Date -> Maybe Time -> PGm (Maybe Timestamp)
   combine_timestamp (Just date) (Just time) = return $ Just $ combineTimestamp date time
 $$

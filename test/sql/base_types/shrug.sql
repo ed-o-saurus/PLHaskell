@@ -25,7 +25,7 @@ AS $$
   import PGutils
     ( PGm,
     )
-  
+
   shrug :: PGm (Maybe Text)
   shrug = return (Just "¯\\_(ツ)_/¯")
 $$

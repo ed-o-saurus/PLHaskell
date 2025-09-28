@@ -29,13 +29,13 @@ AS $$
     ( PGm,
       raiseError,
     )
-  
+
   p :: Double
   p = 12.3
-  
+
   r :: Double
   r = 32.1
-  
+
   alpha_func :: Maybe Int32 -> PGm (Maybe (Maybe Text, Maybe Int32, Maybe Double))
   alpha_func (Just 1) = return (Just (Just "abc", Just 42, Nothing))
   alpha_func (Just 2) = return (Just (Just "cde", Nothing, Just p))

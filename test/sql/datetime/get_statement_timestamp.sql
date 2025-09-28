@@ -24,7 +24,7 @@ AS $$
       Timestamp,
       statementTimestampUTC,
     )
-  
+
   get_statement_timestamp :: PGm (Maybe Timestamp)
   get_statement_timestamp = Just <$> statementTimestampUTC
 $$

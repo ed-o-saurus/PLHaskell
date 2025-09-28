@@ -48,7 +48,7 @@ AS $$
       seconds,
       years,
     )
-  
+
   check_mk_interval :: Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> PGm (Maybe Bool)
   check_mk_interval (Just years') (Just months') (Just weeks') (Just days') (Just hours') (Just minutes') (Just seconds') (Just microseconds') (Just expect_years') (Just expect_months') (Just expect_days') (Just expect_hours') (Just expect_minutes') (Just expect_seconds') (Just expect_microseconds') =
     return $ Just $ years_match && months_match && days_match && hours_match && minutes_match && seconds_match && microseconds_match

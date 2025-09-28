@@ -32,10 +32,10 @@ AS $$
   import PGutils
     ( PGm,
     )
-  
+
   make_length :: Int32 -> [Word8]
   make_length n = take (fromIntegral n) (repeat 0)
-  
+
   make_length_bytea :: Maybe Int32 -> PGm (Maybe ByteString)
   make_length_bytea Nothing = return Nothing
   make_length_bytea (Just n) = return $ Just (pack (make_length n))

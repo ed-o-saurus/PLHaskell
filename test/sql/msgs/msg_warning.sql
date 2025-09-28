@@ -24,7 +24,7 @@ AS $$
       report,
       warning,
     )
-  
+
   msg_warning :: PGm ()
   msg_warning = report warning "Test"
 $$

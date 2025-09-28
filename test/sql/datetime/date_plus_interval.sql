@@ -27,7 +27,7 @@ AS $$
       Timestamp,
       datePlusInterval,
     )
-  
+
   date_plus_interval :: Maybe Date -> Maybe Interval -> PGm (Maybe Timestamp)
   date_plus_interval (Just date) (Just interval) = return $ Just $ datePlusInterval date interval
 $$

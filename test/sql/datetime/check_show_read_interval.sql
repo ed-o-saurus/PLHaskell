@@ -29,7 +29,7 @@ AS $$
     ( Interval,
       PGm,
     )
-  
+
   check_show_read_interval :: Maybe Interval -> Maybe Text -> PGm (Maybe Bool)
   check_show_read_interval (Just d) (Just s) =
     return $ Just $ d_match && s_match

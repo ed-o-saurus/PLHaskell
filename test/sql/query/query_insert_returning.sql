@@ -34,11 +34,11 @@ AS $$
       query,
       raiseError,
     )
-  
+
   assert :: Bool -> Text -> PGm ()
   assert True _msg = return ()
   assert False msg = raiseError msg
-  
+
   query_insert_returning :: PGm ()
   query_insert_returning = do
     InsertReturningResults
@@ -55,7 +55,7 @@ AS $$
         \ WHERE i is not NULL \
         \ ORDER BY i RETURNING i, l"
         []
-  
+
     assert (processed == 3) "Bad processed"
     assert (header1 == "i") "Bad header1"
     assert (header2 == "l") "Bad header2"
@@ -65,7 +65,7 @@ AS $$
     assert (l1 == Just "B") "Bad l1"
     assert (i2 == Just 6) "Bad i2"
     assert (l2 == Just "C") "Bad l2"
-  
+
     return ()
 $$
 LANGUAGE plhaskell;

@@ -25,7 +25,7 @@ AS $$
       Timestamp,
       separateTimestamp,
     )
-  
+
   separate_date :: Maybe Timestamp -> PGm (Maybe Date)
   separate_date (Just timestamp) = return $ Just $ date
     where

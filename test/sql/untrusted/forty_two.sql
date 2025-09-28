@@ -35,7 +35,7 @@ AS $$
       query,
       unPGm,
     )
-  
+
   forty_two :: IO (Maybe Int32)
   forty_two = do
     SelectResults _processed [_header] [[QueryResultValueInt4 val]] <- unPGm $ query "SELECT $1" [QueryParamInt4 (Just 42)]

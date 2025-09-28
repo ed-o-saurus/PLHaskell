@@ -33,7 +33,7 @@ AS $$
       Timestamp,
       query,
     )
-  
+
   query_timestamp :: Maybe Timestamp -> PGm (Maybe Timestamp)
   query_timestamp mTimestamp = do
     SelectResults _processed [_header] [[QueryResultValueTimestamp retVal]] <- query "SELECT $1" [QueryParamTimestamp mTimestamp]

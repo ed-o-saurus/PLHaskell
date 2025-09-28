@@ -41,11 +41,11 @@ AS $$
       query,
       raiseError,
     )
-  
+
   assert :: Bool -> Text -> PGm ()
   assert True _msg = return ()
   assert False msg = raiseError msg
-  
+
   query_array_select :: PGm (Maybe (Array (Maybe Int32)))
   query_array_select = do
     SelectResults _processed [_header] [[QueryResultValueArray (_schema, name) a]] <- query "SELECT a FROM query_arrays" []

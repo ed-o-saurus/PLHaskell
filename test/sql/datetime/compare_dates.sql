@@ -24,12 +24,12 @@ AS $$
     ( Date,
       PGm,
     )
-  
+
   check_compare :: Ordering -> Date -> Date -> Bool
   check_compare LT date1 date2 = (date1 < date2)
   check_compare EQ date1 date2 = (date1 == date2)
   check_compare GT date1 date2 = (date1 > date2)
-  
+
   compare_dates :: Maybe Date -> Maybe Date -> PGm (Maybe Bool)
   compare_dates (Just date1) (Just date2) = return $ Just $ check_compare (compare date1 date2) date1 date2
 $$

@@ -24,12 +24,12 @@ AS $$
     ( Interval,
       PGm,
     )
-  
+
   check_compare :: Ordering -> Interval -> Interval -> Bool
   check_compare LT interval1 interval2 = (interval1 < interval2)
   check_compare EQ interval1 interval2 = (interval1 == interval2)
   check_compare GT interval1 interval2 = (interval1 > interval2)
-  
+
   compare_intervals :: Maybe Interval -> Maybe Interval -> PGm (Maybe Bool)
   compare_intervals (Just interval1) (Just interval2) = return $ Just $ check_compare (compare interval1 interval2) interval1 interval2
 $$

@@ -34,11 +34,11 @@ AS $$
       query,
       raiseError,
     )
-  
+
   assert :: Bool -> Text -> PGm ()
   assert True _msg = return ()
   assert False msg = raiseError msg
-  
+
   query_select :: PGm ()
   query_select = do
     SelectResults
@@ -57,7 +57,7 @@ AS $$
         \ FROM t \
         \ ORDER BY i"
         []
-  
+
     assert (processed == 7) "Bad processed"
     assert (header1 == "i") "Bad header1"
     assert (header2 == "l") "Bad header2"
@@ -75,7 +75,7 @@ AS $$
     assert (l5 == Just "C") "Bad l5"
     assert (i6 == Nothing) "Bad i6"
     assert (l6 == Nothing) "Bad l6"
-  
+
     return ()
 $$
 LANGUAGE plhaskell;

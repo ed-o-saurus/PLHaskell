@@ -29,7 +29,7 @@ AS $$
   import PGutils
     ( PGm,
     )
-  
+
   length_text :: Maybe Text -> PGm (Maybe Int32)
   length_text Nothing = return Nothing
   length_text (Just s) = return $ Just $ fromIntegral $ Data.Text.length s

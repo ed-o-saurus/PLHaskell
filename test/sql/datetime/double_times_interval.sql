@@ -25,7 +25,7 @@ AS $$
       PGm,
       doubleTimesInterval,
     )
-  
+
   double_times_interval :: Maybe Double -> Maybe Interval -> PGm (Maybe Interval)
   double_times_interval (Just d) (Just i) = return $ Just $ doubleTimesInterval d i
 $$

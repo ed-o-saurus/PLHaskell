@@ -33,7 +33,7 @@ AS $$
         ),
       query,
     )
-  
+
   query_date :: Maybe Date -> PGm (Maybe Date)
   query_date mDate = do
     SelectResults _processed [_header] [[QueryResultValueDate retVal]] <- query "SELECT $1" [QueryParamDate mDate]

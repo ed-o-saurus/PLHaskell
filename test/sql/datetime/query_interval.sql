@@ -33,7 +33,7 @@ AS $$
         ),
       query,
     )
-  
+
   query_interval :: Maybe Interval -> PGm (Maybe Interval)
   query_interval mInterval = do
     SelectResults _processed [_header] [[QueryResultValueInterval retVal]] <- query "SELECT $1" [QueryParamInterval mInterval]

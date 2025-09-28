@@ -23,7 +23,7 @@ AS $$
     ( Date (..),
       PGm,
     )
-  
+
   mk_inf_date :: Maybe Bool -> PGm (Maybe Date)
   mk_inf_date (Just True) = return $ Just $ DatePInfinity
   mk_inf_date (Just False) = return $ Just $ DateNInfinity

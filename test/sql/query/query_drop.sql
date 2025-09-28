@@ -26,7 +26,7 @@ AS $$
         ),
       query,
     )
-  
+
   query_drop :: PGm ()
   query_drop = do
     UtilityResults _processed <- query "DROP TABLE t" []

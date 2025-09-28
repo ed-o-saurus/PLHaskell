@@ -28,7 +28,7 @@ AS $$
       diff,
       subInterval,
     )
-  
+
   check_interval_diff_interval :: Maybe Interval -> Maybe Interval -> Maybe Interval -> PGm (Maybe Bool)
   check_interval_diff_interval (Just a) (Just b) (Just i) =
     return $ Just $ add_match && sub_match && diff_match

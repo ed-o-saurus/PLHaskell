@@ -24,7 +24,7 @@ AS $$
       fatal,
       report,
     )
-  
+
   msg_fatal :: PGm ()
   msg_fatal = report fatal "Test"
 $$

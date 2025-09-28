@@ -24,7 +24,7 @@ AS $$
       exception,
       report,
     )
-  
+
   msg_exception :: PGm ()
   msg_exception = report exception "Test"
 $$

@@ -26,16 +26,16 @@ AS $$
     ( Array (..),
       PGm,
     )
-  
+
   chunksOf :: Int -> [a] -> [[a]]
   chunksOf _ [] = []
   chunksOf n xs = fxs : chunksOf n sxs
     where
       (fxs, sxs) = splitAt n xs
-  
+
   mkList :: Int32 -> [Maybe Int32]
   mkList upper = [if x `mod` 3 == 0 then Nothing else Just x | x <- [0 .. upper - 1]]
-  
+
   mk_array :: Maybe Int32 -> PGm (Maybe (Array (Maybe Int32)))
   mk_array m = case m of
     Nothing -> return Nothing

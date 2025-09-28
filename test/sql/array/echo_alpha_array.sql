@@ -22,7 +22,7 @@ AS $$
   import PGutils
     ( PGm,
     )
-  
+
   echo :: a -> PGm a
   echo = return
 $$

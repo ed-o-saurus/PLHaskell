@@ -40,7 +40,7 @@ AS $$
       month,
       year,
     )
-  
+
   check_mk_date :: Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> Maybe Int32 -> PGm (Maybe Bool)
   check_mk_date (Just year') (Just month') (Just day') (Just expect_dow) (Just expect_doy) (Just expect_isoyear) (Just expect_isoweek) =
     return $ Just $ year_match && month_match && day_match && dow_match && doy_match && iso_match

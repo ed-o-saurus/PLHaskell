@@ -32,7 +32,7 @@ AS $$
       dateMinusInt,
       datePlusInt,
     )
-  
+
   check_arith_date :: Maybe Date -> Maybe Date -> Maybe Int32 -> PGm (Maybe Bool)
   check_arith_date (Just a) (Just b) (Just i) =
     return $ Just $ add_match && sub_match && diff_match
