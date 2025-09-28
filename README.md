@@ -209,6 +209,96 @@ If a function returns a void (no value), the Haskell function should return type
 
 In addition, functions can use composite types as arguments or return values provided that the composite types consist of elements that are listed in the table above or are themselves composite types. Composite values are represented as Haskell tuples.
 
+### Time and Date
+
+Types `Date`, `Time`, `Timestamp`, and `Interval` represent corresponding PostgreSQL types. They can be imported from the `PGutils` module as can all functions listed in this section.
+
+Timezones are not supported.
+
+#### Construction
+
+The type `Date` has two exported constructors. `DateNInfinity` and `DatePInfinity` create dates at negative and positive infinity. In addition, the function `mkDate :: Int32 -> Month -> Int32 -> Date` builds a date from the passed year, month, and day. The type `Month` has constructors with names of standard English month name abbreviations (`Jan`, `Feb`, `Mar`, `Apr`, `May`, `Jun`, `Jul`, `Aug`, `Sep`, `Oct`, `Nov`, `Dec`).
+
+The type `Time` can only be created by the function `mkTime :: Int32 -> Int32 -> Int32 -> Int32 -> Time` which takes arguments of hour, minute, second, and microsecond.
+
+The type `Timestamp` has two exported constructors. `TimestampNInfinity` and `TimestampPInfinity` create timestamps at negative and positive infinity. In addition, the function `mkTimestamp :: mkTimestamp :: Int32 -> Month -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Timestamp` builds a timestamp from the passed year, month, day, hour, minute, second, and microsecond.
+
+The type `Interval` can only be created by the function `mkInterval :: Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Int32 -> Interval` which takes arguments of years, months, weeks, days, hours, minutes, seconds, and microseconds.
+
+#### Arithmetic
+
+The types `Time`, `Timestamp`, and `Interval` are instances of the class `IntervalDiff`.
+
+```
+class IntervalDiff a where
+  addInterval :: a -> Interval -> a
+  subInterval :: a -> Interval -> a
+  diff :: a -> a -> Interval
+```
+
+The following can be used to perform arithmetic on `Date` or `Interval` types.
+* `dateMinusDate :: Date -> Date -> Int32`
+* `dateMinusInt :: Date -> Int32 -> Date`
+* `datePlusInt :: Date -> Int32 -> Date`
+* `doubleTimesInterval :: Double -> Interval -> Interval`
+* `dateMinusInterval :: Date -> Interval -> Timestamp`
+* `datePlusInterval :: Date -> Interval -> Timestamp`
+
+#### Extracting Information
+
+The types `Date` and `Timestamp` are instances of the class `HasDate`.
+
+```
+class HasDate a where
+  year :: a -> Int32
+  month :: a -> Month
+  day :: a -> Int32
+  dayOfWeek :: a -> Weekday
+  dayOfYear :: a -> Int32
+  iso :: a -> (Int32, Int32)
+```
+ The functions `year` , `month`, and `day` extract those fields. The function `dayOfWeek` returns the day of the week.  The type `Weekday` has constructors with names of standard English day abbreviations (`Sun`, `Mon`, `Tue`, `Wen`, `Thu`, `Fri`, `Sat`). The function `dayOfYear` returns the day of the calendar year. The function `iso` returns a tuple of the [ISO standard](https://en.wikipedia.org/wiki/ISO_week_date) year and week.
+
+The types `Time` and `Timestamp` are instances of the class `HasTime`.
+
+```
+class HasTime a where
+  hour :: a -> Int32
+  minute :: a -> Int32
+  second :: a -> Int32
+  microsecond :: a -> Int32
+```
+
+The functions listed extract those fields.
+
+Fields from type `Interval` can be extracted via the functions
+
+* `years :: Interval -> Int32`
+* `months :: Interval -> Int32`
+* `days :: Interval -> Int32`
+* `hours :: Interval -> Int32`
+* `minutes :: Interval -> Int32`
+* `seconds :: Interval -> Int32`
+* `microseconds :: Interval -> Int32`
+
+#### Combining and Separating
+
+The function `combineTimestamp :: Date -> Time -> Timestamp` combines a date and time into a timestamp.
+
+The function `separateTimestamp :: Timestamp -> (Date, Time)` separates a timestamp into date and time.
+
+#### `Eq` and `Ord`
+
+All time and date types are instances of the classes `Eq` and `Ord`.
+
+#### `Show` and `Read`
+
+All time and date types are instances of the classes `Show` and `Read`. The `show` function returns an ISO representation of the type. The `read` function accepts the same formats as PostgreSQL's input functions.
+
+#### Accessing Current Time
+
+The PostgreSQL functions `transaction_timestamp` and `statement_timestamp` can be accessed from the functions `transactionTimestampUTC :: PGm Timestamp` and `statementTimestampUTC :: PGm Timestamp` respectively.
+
 ### Arrays
 
 Arrays can be passed to and returned from functions. They are represented in Haskell by the `Array a` type which can be imported from the `PGutils` module. The constructors are the following:
