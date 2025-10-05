@@ -299,6 +299,22 @@ All time and date types are instances of the classes `Show` and `Read`. The `sho
 
 The PostgreSQL functions `transaction_timestamp` and `statement_timestamp` can be accessed from the functions `transactionTimestampUTC :: PGm Timestamp` and `statementTimestampUTC :: PGm Timestamp` respectively.
 
+### Advisory Locking
+
+Advisory locks can be managed via the following function:
+
+* `lock :: LockMode -> LockLevel -> a -> PGm ()`
+* `tryLock :: LockMode -> LockLevel -> a -> PGm Bool`
+* `unlock :: LockMode -> a -> PGm Bool`
+
+`a` must be of type `Int64` or `(Int32, Int32)`.
+
+The constructors of `LockMode` are `Shared` and `Exclusive`. The constructors of `LockLevel` are `Transaction` and `Session`.
+
+The function `lock` waits until a lock is acquired. The function `tryLock` returns immediately with `True` if a lock is obtained or `False` if not. The function `unlock` releases a session-level lock and returns `True` if the lock was previously held.
+
+The function `unlockAll :: PGm ()` releases all session-level locks.
+
 ### Arrays
 
 Arrays can be passed to and returned from functions. They are represented in Haskell by the `Array a` type which can be imported from the `PGutils` module. The constructors are the following:

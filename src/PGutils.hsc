@@ -92,6 +92,12 @@ module PGutils
     microseconds,
     transactionTimestampUTC,
     statementTimestampUTC,
+    LockMode (..),
+    LockLevel (..),
+    lock,
+    tryLock,
+    unlock,
+    unlockAll,
   )
 where
 
@@ -222,6 +228,15 @@ import PGdatetime
     statementTimestampUTC',
     transactionTimestampUTC',
     years,
+  )
+import PGlock
+  ( LockLevel (..),
+    LockMode (..),
+    Lockable,
+    lock',
+    tryLock',
+    unlock',
+    unlockAll',
   )
 import PGsupport
   ( BaseType
@@ -678,3 +693,15 @@ transactionTimestampUTC = PGm transactionTimestampUTC'
 
 statementTimestampUTC :: PGm Timestamp
 statementTimestampUTC = PGm statementTimestampUTC'
+
+lock :: (Lockable a) => LockMode -> LockLevel -> a -> PGm ()
+lock lockMode lockLevel key = PGm $ lock' lockMode lockLevel key
+
+tryLock :: (Lockable a) => LockMode -> LockLevel -> a -> PGm Bool
+tryLock lockMode lockLevel key = PGm $ tryLock' lockMode lockLevel key
+
+unlock :: (Lockable a) => LockMode -> a -> PGm Bool
+unlock lockMode key = PGm $ unlock' lockMode key
+
+unlockAll :: PGm ()
+unlockAll = PGm unlockAll'

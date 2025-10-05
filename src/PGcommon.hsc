@@ -51,6 +51,7 @@ module PGcommon
     palloca,
     pallocArray,
     pUseAsCString,
+    pWith,
     pWithArray,
     pWithArrayLen,
     pWithCString,
@@ -253,6 +254,9 @@ pUseAsCString bs action = do
   retVal <- action ptr
   pfree ptr
   return retVal
+
+pWith :: (Storable a) => a -> (Ptr a -> IO b) -> IO b
+pWith val = pWithArray [val]
 
 pWithArray :: (Storable a) => [a] -> (Ptr a -> IO b) -> IO b
 pWithArray vals = pWithArrayLen vals . const
