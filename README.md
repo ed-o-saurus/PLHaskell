@@ -23,10 +23,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-## Contact
-
-I wrote the project mostly for my own amusement and as a challenge. If you have any questions, comments, or issues, or if you find the project interesting or useful, please don't hesitate to contact me at ed@behn.us.
-
 ## Bugs and Features
 
 Bug reports and feature requests should be submitted in the Github issues page.
