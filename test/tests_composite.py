@@ -20,7 +20,7 @@ from psycopg.errors import InternalError
 from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestComposite(PLHaskellTestBase):
+class TestsComposite(PLHaskellTestBase):
     @staticmethod
     def type_setup(cur):
         cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")

@@ -19,7 +19,7 @@
 from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestInline(PLHaskellTestBase):
+class TestsInline(PLHaskellTestBase):
     @staticmethod
     def type_setup(cur):
         cur.execute("CREATE TABLE inline_test(i int, i_sq int)")

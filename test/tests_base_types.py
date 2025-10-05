@@ -20,7 +20,7 @@ from math import isnan
 from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestBaseTypes(PLHaskellTestBase):
+class TestsBaseTypes(PLHaskellTestBase):
     def test_echo_bytea(self):
         self.execute_file("sql/base_types/echo_bytea.sql")
 

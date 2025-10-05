@@ -19,7 +19,7 @@
 from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestArray(PLHaskellTestBase):
+class TestsArray(PLHaskellTestBase):
     @staticmethod
     def type_setup(cur):
         cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")

@@ -20,7 +20,7 @@ from psycopg.errors import InternalError
 from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestMsgs(PLHaskellTestBase):
+class TestsMsgs(PLHaskellTestBase):
     def test_fatal(self):
         self.execute_file("sql/msgs/msg_fatal.sql")
 
