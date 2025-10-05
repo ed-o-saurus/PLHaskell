@@ -38,6 +38,6 @@ AS $$
 
   make_length_bytea :: Maybe Int32 -> PGm (Maybe ByteString)
   make_length_bytea Nothing = return Nothing
-  make_length_bytea (Just n) = return $ Just (pack (make_length n))
+  make_length_bytea (Just n) = return $ Just $ pack $ make_length n
 $$
 LANGUAGE plhaskell;

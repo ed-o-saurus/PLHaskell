@@ -24,6 +24,6 @@ AS $$
     )
 
   nan :: PGm (Maybe Double)
-  nan = return (Just (0.0 / 0.0))
+  nan = return $ Just $ 0.0 / 0.0
 $$
 LANGUAGE plhaskell;

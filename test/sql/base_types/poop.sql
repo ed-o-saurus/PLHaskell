@@ -24,6 +24,6 @@ AS $$
     )
 
   poop :: PGm (Maybe Char)
-  poop = return (Just '\x0001F4A9')
+  poop = return $ Just '\x0001F4A9'
 $$
 LANGUAGE plhaskell;

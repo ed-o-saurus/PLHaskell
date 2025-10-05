@@ -28,7 +28,7 @@ AS $$
     )
 
   add :: Maybe Int32 -> Maybe Int32 -> PGm (Maybe Int32)
-  add (Just a) (Just b) = return (Just (a + b))
+  add (Just a) (Just b) = return $ Just $ a + b
   add a Nothing = return a
   add Nothing _ = return Nothing
 $$

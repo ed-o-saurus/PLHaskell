@@ -27,6 +27,6 @@ AS $$
     )
 
   shrug :: PGm (Maybe Text)
-  shrug = return (Just "¯\\_(ツ)_/¯")
+  shrug = return $ Just "¯\\_(ツ)_/¯"
 $$
 LANGUAGE plhaskell;
