@@ -19,7 +19,7 @@
 from plhaskell_test_base import PLHaskellTestBase
 
 
-class TestsUntrusted(PLHaskellTestBase):
+class TestUntrusted(PLHaskellTestBase):
     @staticmethod
     def type_setup(cur):
         cur.execute("CREATE TYPE n_p AS (n int, p int)")

@@ -1,5 +1,3 @@
-#!/usr/bin/sh
-
 # This is a "procedural language" extension of PostgreSQL
 # allowing the execution of code in Haskell within SQL code.
 #
@@ -18,4 +16,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-./bin/python3 -m unittest $@
+from plhaskell_test_base import PLHaskellTestBase
+
+
+class TestArray(PLHaskellTestBase):
+    @staticmethod
+    def type_setup(cur):
+        cur.execute("CREATE TYPE alpha AS (a text, b int, c float)")
+
+    def test_array(self):
+        self.execute_file("sql/common/mk_array.sql")
+        self.execute_file("sql/array/echo_int_array.sql")
+        self.execute_file("sql/array/array_test.sql")
+
+    def test_array_alpha(self):
+        self.execute_file("sql/common/alpha_func.sql")
+        self.execute_file("sql/array/echo_alpha_array.sql")
+        self.execute_file("sql/array/array_alpha_test.sql")

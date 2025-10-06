@@ -22,7 +22,7 @@ from datetime import date, time, datetime, timedelta
 from random import randrange, randint, uniform
 
 
-class TestsDatetime(PLHaskellTestBase):
+class TestDatetime(PLHaskellTestBase):
     @staticmethod
     def random_date():
         d = date.min + timedelta(days=randrange(1_461_000))

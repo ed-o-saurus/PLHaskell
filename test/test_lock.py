@@ -21,7 +21,7 @@ from psycopg import connect
 from random import randrange
 
 
-class TestsLock(PLHaskellTestBase):
+class TestLock(PLHaskellTestBase):
     def mk_keys_dict(self):
         return {
             "key": randrange(-(2**63), 2**63),

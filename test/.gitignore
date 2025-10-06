@@ -17,8 +17,3 @@
 ## along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __pycache__
-bin
-include
-lib
-lib64
-pyvenv.cfg
