@@ -4,19 +4,27 @@
 
 ```
 DO LANGUAGE plhaskell $$
-    import PGutils (PGm, report, notice)
+  import PGutils
+    ( PGm,
+      notice,
+      report,
+    )
 
-    _' :: PGm ()
-    _' = report notice "Hello, world!"
+  _' :: PGm ()
+  _' = report notice "Hello, world!"
 $$;
 ```
 
 ```
 DO LANGUAGE plhaskellu $$
-    import PGutils (unPGm, report, notice)
+  import PGutils
+    ( notice,
+      report,
+      unPGm,
+    )
 
-    _' :: IO ()
-    _' = unPGm $ report notice "Hello, world!"
+  _' :: IO ()
+  _' = unPGm $ report notice "Hello, world!"
 $$;
 ```
 
