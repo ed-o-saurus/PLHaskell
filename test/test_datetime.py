@@ -62,9 +62,9 @@ class TestDatetime(PLHaskellTestBase):
     def test_transaction_timestamp(self):
         self.execute_file("sql/datetime/get_transaction_timestamp.sql")
 
-        sleep(1)
-
         with self.conn.cursor() as cur:
+            sleep(1)
+
             cur.execute(
                 "SELECT (get_transaction_timestamp() = timezone('UTC', transaction_timestamp())) compare"
             )
