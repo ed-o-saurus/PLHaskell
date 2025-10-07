@@ -70,6 +70,17 @@ class TestDatetime(PLHaskellTestBase):
             )
             assert cur.fetchone()["compare"]
 
+    def test_clock_timestamp(self):
+        self.execute_file("sql/datetime/get_clock_timestamp.sql")
+
+        with self.conn.cursor() as cur:
+            sleep(1)
+
+            cur.execute(
+                "SELECT extract(seconds from (get_clock_timestamp() - timezone('UTC', clock_timestamp())));"
+            )
+            assert abs(cur.fetchone()["extract"]) < 0.001
+
     def test_mk_date(self):
         self.execute_file("sql/datetime/check_mk_date.sql")
 

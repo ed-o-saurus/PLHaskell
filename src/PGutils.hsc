@@ -92,6 +92,7 @@ module PGutils
     microseconds,
     transactionTimestampUTC,
     statementTimestampUTC,
+    clockTimestampUTC,
     LockMode (..),
     LockLevel (..),
     lock,
@@ -207,6 +208,7 @@ import PGdatetime
         TimestampPInfinity
       ),
     Weekday (..),
+    clockTimestampUTC',
     combineTimestamp,
     dateMinusDate,
     dateMinusInt,
@@ -693,6 +695,9 @@ transactionTimestampUTC = PGm transactionTimestampUTC'
 
 statementTimestampUTC :: PGm Timestamp
 statementTimestampUTC = PGm statementTimestampUTC'
+
+clockTimestampUTC :: PGm Timestamp
+clockTimestampUTC = PGm clockTimestampUTC'
 
 lock :: (Lockable a) => LockMode -> LockLevel -> a -> PGm ()
 lock lockMode lockLevel key = PGm $ lock' lockMode lockLevel key

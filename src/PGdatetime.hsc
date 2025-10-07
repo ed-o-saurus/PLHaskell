@@ -80,6 +80,7 @@ module PGdatetime
     microseconds,
     transactionTimestampUTC',
     statementTimestampUTC',
+    clockTimestampUTC',
   )
 where
 
@@ -435,6 +436,12 @@ foreign import ccall safe "access/xact.h GetCurrentStatementStartTimestamp"
 
 statementTimestampUTC' :: IO Timestamp
 statementTimestampUTC' = Timestamp <$> cStatementTimestampUTC
+
+foreign import ccall safe "utils/timestamp.h GetCurrentTimestamp"
+  cGetCurrentTimestampUTC :: IO Int64
+
+clockTimestampUTC' :: IO Timestamp
+clockTimestampUTC' = Timestamp <$> cGetCurrentTimestampUTC
 
 data Month = Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec deriving (Eq)
 

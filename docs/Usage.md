@@ -116,7 +116,7 @@ All time and date types are instances of the classes `Show` and `Read`. The `sho
 
 ### Accessing Current Time
 
-The PostgreSQL functions `transaction_timestamp` and `statement_timestamp` can be accessed from the functions `transactionTimestampUTC :: PGm Timestamp` and `statementTimestampUTC :: PGm Timestamp` respectively.
+The PostgreSQL functions `transaction_timestamp`, `statement_timestamp`, and `clock_timestamp` can be accessed from the functions `transactionTimestampUTC :: PGm Timestamp`, `statementTimestampUTC :: PGm Timestamp`, and `clockTimestampUTC :: PGm Timestamp` respectively.
 
 ## Advisory Locking
 
