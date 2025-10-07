@@ -12,6 +12,12 @@ They can be installed by running:
 
 **`$>`** `pip install -r test/requirements.txt`
 
+## Database Setup
+
+Before running tests, the user must create a database with the PL/Haskell extension installed. The user must also configure the standard PostgreSQL environment variables (`$PG*`).
+
+Each test will create a temporary schema named `plhaskell_test`.
+
 ## Running Tests
 
 Tests must be run from the `test` directory:
@@ -21,7 +27,3 @@ Tests must be run from the `test` directory:
 To run the tests:
 
 **`$>`** `pytest -v`
-
-## Test Schema
-
-Each test will create a temporary schema named `plhaskell_test`.
