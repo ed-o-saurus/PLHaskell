@@ -85,6 +85,17 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/check_mk_date.sql")
 
         with self.conn.cursor() as cur:
+            cur.execute(
+                """CREATE TABLE t (
+                        year int,
+                        month int,
+                        day int,
+                        expect_dow int,
+                        expect_doy int,
+                        expect_isoyear int,
+                        expect_isoweek int)"""
+            )
+
             for _ in range(100):
                 year, month, day = self.random_date()
 
@@ -94,7 +105,8 @@ class TestDatetime(PLHaskellTestBase):
                 expect_doy = int(f"{data:%j}")
 
                 cur.execute(
-                    "SELECT check_mk_date(%(year)s, %(month)s, %(day)s, %(expect_dow)s, %(expect_doy)s, %(expect_isoyear)s, %(expect_isoweek)s)",
+                    "INSERT INTO t(year, month, day, expect_dow, expect_doy, expect_isoyear, expect_isoweek) "
+                    "VALUES (%(year)s, %(month)s, %(day)s, %(expect_dow)s, %(expect_doy)s, %(expect_isoyear)s, %(expect_isoweek)s)",
                     {
                         "year": year,
                         "month": month,
@@ -105,17 +117,32 @@ class TestDatetime(PLHaskellTestBase):
                         "expect_isoweek": expect_isoweek,
                     },
                 )
-                assert cur.fetchone()["check_mk_date"]
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE not check_mk_date(year, month, day, expect_dow, expect_doy, expect_isoyear, expect_isoweek)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
 
     def test_mk_time(self):
         self.execute_file("sql/datetime/check_mk_time.sql")
 
         with self.conn.cursor() as cur:
+            cur.execute(
+                """CREATE TABLE t(
+                     hour int,
+                     minute int,
+                     second int,
+                     microsecond int)"""
+            )
+
             for _ in range(100):
                 hour, minute, second, microsecond = self.random_time()
 
                 cur.execute(
-                    "SELECT check_mk_time(%(hour)s, %(minute)s, %(second)s, %(microsecond)s)",
+                    "INSERT INTO t(hour, minute, second, microsecond) VALUES (%(hour)s, %(minute)s, %(second)s, %(microsecond)s)",
                     {
                         "hour": hour,
                         "minute": minute,
@@ -123,12 +150,35 @@ class TestDatetime(PLHaskellTestBase):
                         "microsecond": microsecond,
                     },
                 )
-                assert cur.fetchone()["check_mk_time"]
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE not check_mk_time(hour, minute, second, microsecond)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
 
     def test_mk_timestamp(self):
         self.execute_file("sql/datetime/check_mk_timestamp.sql")
 
         with self.conn.cursor() as cur:
+
+            cur.execute(
+                """CREATE TABLE t (
+                     year int,
+                     month int,
+                     day int,
+                     hour int,
+                     minute int,
+                     second int,
+                     microsecond int,
+                     expect_dow int,
+                     expect_doy int,
+                     expect_isoyear int,
+                     expect_isoweek int)"""
+            )
+
             for _ in range(100):
                 year, month, day = self.random_date()
                 hour, minute, second, microsecond = self.random_time()
@@ -139,7 +189,8 @@ class TestDatetime(PLHaskellTestBase):
                 expect_doy = int(f"{data:%j}")
 
                 cur.execute(
-                    "SELECT check_mk_timestamp(%(year)s, %(month)s, %(day)s, %(hour)s, %(minute)s, %(second)s, %(microsecond)s, %(expect_dow)s, %(expect_doy)s, %(expect_isoyear)s, %(expect_isoweek)s)",
+                    "INSERT INTO t(year, month, day, hour, minute, second, microsecond, expect_dow, expect_doy, expect_isoyear, expect_isoweek) "
+                    "VALUES (%(year)s, %(month)s, %(day)s, %(hour)s, %(minute)s, %(second)s, %(microsecond)s, %(expect_dow)s, %(expect_doy)s, %(expect_isoyear)s, %(expect_isoweek)s)",
                     {
                         "year": year,
                         "month": month,
@@ -154,12 +205,38 @@ class TestDatetime(PLHaskellTestBase):
                         "expect_isoweek": expect_isoweek,
                     },
                 )
-                assert cur.fetchone()["check_mk_timestamp"]
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE not check_mk_timestamp(year, month, day, hour, minute, second, microsecond, expect_dow, expect_doy, expect_isoyear, expect_isoweek)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
 
     def test_mk_interval(self):
         self.execute_file("sql/datetime/check_mk_interval.sql")
 
         with self.conn.cursor() as cur:
+            cur.execute(
+                """CREATE TABLE t (
+                    years int,
+                    months int,
+                    weeks int,
+                    days int,
+                    hours int,
+                    minutes int,
+                    seconds int,
+                    microseconds int,
+                    expect_years int,
+                    expect_months int,
+                    expect_days int,
+                    expect_hours int,
+                    expect_minutes int,
+                    expect_seconds int,
+                    expect_microseconds int)"""
+            )
+
             for _ in range(100):
                 years, months, weeks, days, hours, minutes, seconds, microseconds = (
                     self.random_interval()
@@ -186,8 +263,8 @@ class TestDatetime(PLHaskellTestBase):
                     expect_microseconds = -expect_microseconds
 
                 cur.execute(
-                    "SELECT check_mk_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s, %(microseconds)s,"
-                    "%(expect_years)s, %(expect_months)s, %(expect_days)s, %(expect_hours)s, %(expect_minutes)s, %(expect_seconds)s, %(expect_microseconds)s)",
+                    """INSERT INTO t(years, months, weeks, days, hours, minutes, seconds, microseconds, expect_years, expect_months, expect_days, expect_hours, expect_minutes, expect_seconds, expect_microseconds)
+                       VALUES (%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s, %(microseconds)s, %(expect_years)s, %(expect_months)s, %(expect_days)s, %(expect_hours)s, %(expect_minutes)s, %(expect_seconds)s, %(expect_microseconds)s)""",
                     {
                         "years": years,
                         "months": months,
@@ -206,7 +283,14 @@ class TestDatetime(PLHaskellTestBase):
                         "expect_microseconds": expect_microseconds,
                     },
                 )
-                assert cur.fetchone()["check_mk_interval"]
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE not check_mk_interval(years, months, weeks, days, hours, minutes, seconds, microseconds, expect_years, expect_months, expect_days, expect_hours, expect_minutes, expect_seconds, expect_microseconds)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
 
     def test_infinity(self):
         self.execute_file("sql/datetime/mk_inf_date.sql")
@@ -235,6 +319,13 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/separate_time.sql")
 
         with self.conn.cursor() as cur:
+            cur.execute(
+                """CREATE TABLE tab (
+                     d date,
+                     t time,
+                     ts timestamp)"""
+            )
+
             for _ in range(100):
                 year, month, day = self.random_date()
                 hour, minute, second, microsecond = self.random_time()
@@ -244,19 +335,33 @@ class TestDatetime(PLHaskellTestBase):
                 ts = datetime(year, month, day, hour, minute, second, microsecond)
 
                 cur.execute(
-                    "SELECT combine_timestamp(%(date)s, %(time)s)",
-                    {
-                        "date": d,
-                        "time": t,
-                    },
+                    "INSERT INTO tab(d, t, ts) VALUES (%(d)s, %(t)s, %(ts)s)",
+                    {"d": d, "t": t, "ts": ts},
                 )
-                self.assertEqual(cur.fetchone()["combine_timestamp"], ts)
 
-                cur.execute("SELECT separate_date(%(timestamp)s)", {"timestamp": ts})
-                self.assertEqual(cur.fetchone()["separate_date"], d)
+            cur.execute(
+                """SELECT count(*)
+                   FROM tab
+                   WHERE combine_timestamp(d, t) <> ts"""
+            )
 
-                cur.execute("SELECT separate_time(%(timestamp)s)", {"timestamp": ts})
-                self.assertEqual(cur.fetchone()["separate_time"], t)
+            assert cur.fetchone()["count"] == 0
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM tab
+                   WHERE separate_date(ts) <> d"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM tab
+                   WHERE separate_time(ts) <> t"""
+            )
+
+            assert cur.fetchone()["count"] == 0
 
     def test_compare_dates(self):
         self.execute_file("sql/datetime/compare_dates.sql")
