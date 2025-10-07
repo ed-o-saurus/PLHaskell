@@ -20,12 +20,14 @@ CREATE FUNCTION msg_debug1()
 RETURNS void IMMUTABLE
 AS $$
   import PGutils
-    ( PGm,
-      debug1,
+    ( ErrorLevel
+        ( Debug1
+        ),
+      PGm,
       report,
     )
 
   msg_debug1 :: PGm ()
-  msg_debug1 = report debug1 "Test"
+  msg_debug1 = report Debug1 "Test"
 $$
 LANGUAGE plhaskell;

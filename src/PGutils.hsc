@@ -31,7 +31,7 @@
 
 module PGutils
   ( PGm,
-    ErrorLevel,
+    ErrorLevel (..),
     Date
       ( DateNInfinity,
         DatePInfinity
@@ -290,46 +290,70 @@ data TupleTable
 
 newtype PGm a = PGm {unPGm :: IO a} deriving newtype (Functor, Applicative, Monad)
 
-newtype ErrorLevel = ErrorLevel CInt
+data ErrorLevel
+  = Fatal
+  | Exception
+  | Warning
+  | Notice
+  | Info
+  | Log
+  | Debug1
+  | Debug2
+  | Debug3
+  | Debug4
+  | Debug5
 
 debug5 :: ErrorLevel
-debug5 = ErrorLevel #{const DEBUG5}
+debug5 = Debug5
 
 debug4 :: ErrorLevel
-debug4 = ErrorLevel #{const DEBUG4}
+debug4 = Debug4
 
 debug3 :: ErrorLevel
-debug3 = ErrorLevel #{const DEBUG3}
+debug3 = Debug3
 
 debug2 :: ErrorLevel
-debug2 = ErrorLevel #{const DEBUG2}
+debug2 = Debug2
 
 debug1 :: ErrorLevel
-debug1 = ErrorLevel #{const DEBUG1}
+debug1 = Debug1
 
 log' :: ErrorLevel
-log' = ErrorLevel #{const LOG}
+log' = Log
 
 info :: ErrorLevel
-info = ErrorLevel #{const INFO}
+info = Info
 
 notice :: ErrorLevel
-notice = ErrorLevel #{const NOTICE}
+notice = Notice
 
 warning :: ErrorLevel
-warning = ErrorLevel #{const WARNING}
+warning = Warning
 
 exception :: ErrorLevel
-exception = ErrorLevel #{const ERROR}
+exception = Exception
 
 fatal :: ErrorLevel
-fatal = ErrorLevel #{const FATAL}
+fatal = Fatal
+
+errLevelCode :: ErrorLevel -> CInt
+errLevelCode Fatal = #{const FATAL}
+errLevelCode Exception = #{const ERROR}
+errLevelCode Warning = #{const WARNING}
+errLevelCode Notice = #{const NOTICE}
+errLevelCode Info = #{const INFO}
+errLevelCode Log = #{const LOG}
+errLevelCode Debug1 = #{const DEBUG1}
+errLevelCode Debug2 = #{const DEBUG2}
+errLevelCode Debug3 = #{const DEBUG3}
+errLevelCode Debug4 = #{const DEBUG4}
+errLevelCode Debug5 = #{const DEBUG5}
 
 foreign import capi safe "plhaskell.h plhaskell_report"
-  plhaskellReport :: ErrorLevel -> CString -> IO ()
+  plhaskellReport :: CInt -> CString -> IO ()
 
 report :: ErrorLevel -> Text -> PGm ()
-report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) (plhaskellReport elevel)
+report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) (plhaskellReport $ errLevelCode elevel)
 
 raise :: ErrorLevel -> Text -> a
 raise elevel msg = unsafePerformIO $ do

@@ -20,12 +20,14 @@ CREATE FUNCTION msg_fatal()
 RETURNS void IMMUTABLE
 AS $$
   import PGutils
-    ( PGm,
-      fatal,
+    ( ErrorLevel
+        ( Fatal
+        ),
+      PGm,
       report,
     )
 
   msg_fatal :: PGm ()
-  msg_fatal = report fatal "Test"
+  msg_fatal = report Fatal "Test"
 $$
 LANGUAGE plhaskell;

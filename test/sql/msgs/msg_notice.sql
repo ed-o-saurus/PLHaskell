@@ -20,12 +20,14 @@ CREATE FUNCTION msg_notice()
 RETURNS void IMMUTABLE
 AS $$
   import PGutils
-    ( PGm,
-      notice,
+    ( ErrorLevel
+        ( Notice
+        ),
+      PGm,
       report,
     )
 
   msg_notice :: PGm ()
-  msg_notice = report notice "Test"
+  msg_notice = report Notice "Test"
 $$
 LANGUAGE plhaskell;

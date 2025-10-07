@@ -168,23 +168,41 @@ Set returning functions can return sets of voids by the Haskell code returning t
 
 ## Reporting Messages and Raising Error
 
-To report a message or raise an error, use the function `report :: ErrorLevel -> Text -> PGm ()`. `ErrorLevel` is any of the following:
+To report a message or raise an error, use the function `report :: ErrorLevel -> Text -> PGm ()`.
 
-  Level   |
---------- |
-fatal     |
-exception |
-warning   |
-notice    |
-info      |
-log'      |
-debug1    |
-debug2    |
-debug3    |
-debug4    |
-debug5    |
+The constructors for `ErrorLevel` are the following:
+
+`ErrorLevel` |
+------------ |
+`Fatal`      |
+`Exception`  |
+`Warning`    |
+`Notice`     |
+`Info`       |
+`Log`        |
+`Debug1`     |
+`Debug2`     |
+`Debug3`     |
+`Debug4`     |
+`Debug5`     |
 
 In addition, the functions `raiseError :: Text -> a` and `raiseFatal :: Text -> a` stop execution and raise an error.
+
+### Alternate functions
+
+The following functions are available but deprecated:
+
+* `fatal :: ErrorLevel`
+* `exception :: ErrorLevel`
+* `warning :: ErrorLevel`
+* `notice :: ErrorLevel`
+* `info :: ErrorLevel`
+* `log' :: ErrorLevel`
+* `debug1 :: ErrorLevel`
+* `debug2 :: ErrorLevel`
+* `debug3 :: ErrorLevel`
+* `debug4 :: ErrorLevel`
+* `debug5 :: ErrorLevel`
 
 ## Queries
 

@@ -20,12 +20,14 @@ CREATE FUNCTION msg_exception()
 RETURNS void IMMUTABLE
 AS $$
   import PGutils
-    ( PGm,
-      exception,
+    ( ErrorLevel
+        ( Exception
+        ),
+      PGm,
       report,
     )
 
   msg_exception :: PGm ()
-  msg_exception = report exception "Test"
+  msg_exception = report Exception "Test"
 $$
 LANGUAGE plhaskell;
