@@ -89,6 +89,14 @@ install -m 0644 docs/Usage.md                %{buildroot}/%{_datadir}/doc/%{name
 
 %license %{_datadir}/licenses/%{name}/LICENSE
 %doc %{_datadir}/doc/%{name}/README.md
+%doc %{_datadir}/doc/%{name}/docs/Build_and_Install.md
+%doc %{_datadir}/doc/%{name}/docs/Examples.md
+%doc %{_datadir}/doc/%{name}/docs/GHC_Version.md
+%doc %{_datadir}/doc/%{name}/docs/Known_Bugs.md
+%doc %{_datadir}/doc/%{name}/docs/Maximum_Memory.md
+%doc %{_datadir}/doc/%{name}/docs/Package_Repositories.md
+%doc %{_datadir}/doc/%{name}/docs/Trust.md
+%doc %{_datadir}/doc/%{name}/docs/Usage.md
 
 %{_datadir}/pgsql/extension/%{name}.control
 %{_datadir}/pgsql/extension/%{name}--%{version}.sql
