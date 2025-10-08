@@ -61,7 +61,7 @@ cd PLHaskell
 mkdir -p %{buildroot}/%{_datadir}/licenses/%{name}
 install -m 0644 LICENSE %{buildroot}/%{_datadir}/licenses/%{name}/LICENSE
 
-mkdir -p %{buildroot}/%{_datadir}/doc/%{name}
+mkdir -p %{buildroot}/%{_datadir}/doc/%{name}/docs
 install -m 0644 README.md                    %{buildroot}/%{_datadir}/doc/%{name}/README.md
 install -m 0644 docs/Build_and_Install.md    %{buildroot}/%{_datadir}/doc/%{name}/docs/Build_and_Install.md
 install -m 0644 docs/Examples.md             %{buildroot}/%{_datadir}/doc/%{name}/docs/Examples.md
