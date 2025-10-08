@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from psycopg.errors import InternalError, OperationalError
+from psycopg.errors import DatabaseError
 from plhaskell_test_base import PLHaskellTestBase
 
 
@@ -25,14 +25,14 @@ class TestMsgs(PLHaskellTestBase):
         self.execute_file("sql/msgs/msg_fatal.sql")
 
         with self.conn.cursor() as cur:
-            with self.assertRaisesRegex(OperationalError, "Test"):
+            with self.assertRaisesRegex(DatabaseError, "Test"):
                 cur.execute("SELECT msg_fatal();")
 
     def test_exception(self):
         self.execute_file("sql/msgs/msg_exception.sql")
 
         with self.conn.cursor() as cur:
-            with self.assertRaisesRegex(InternalError, "Test"):
+            with self.assertRaisesRegex(DatabaseError, "Test"):
                 cur.execute("SELECT msg_exception();")
 
     def test_warning(self):
