@@ -62,7 +62,15 @@ mkdir -p %{buildroot}/%{_datadir}/licenses/%{name}
 install -m 0644 LICENSE %{buildroot}/%{_datadir}/licenses/%{name}/LICENSE
 
 mkdir -p %{buildroot}/%{_datadir}/doc/%{name}
-install -m 0644 README.md %{buildroot}/%{_datadir}/doc/%{name}/README.md
+install -m 0644 README.md                    %{buildroot}/%{_datadir}/doc/%{name}/README.md
+install -m 0644 docs/Build_and_Install.md    %{buildroot}/%{_datadir}/doc/%{name}/docs/Build_and_Install.md
+install -m 0644 docs/Examples.md             %{buildroot}/%{_datadir}/doc/%{name}/docs/Examples.md
+install -m 0644 docs/GHC_Version.md          %{buildroot}/%{_datadir}/doc/%{name}/docs/GHC_Version.md
+install -m 0644 docs/Known_Bugs.md           %{buildroot}/%{_datadir}/doc/%{name}/docs/Known_Bugs.md
+install -m 0644 docs/Maximum_Memory.md       %{buildroot}/%{_datadir}/doc/%{name}/docs/Maximum_Memory.md
+install -m 0644 docs/Package_Repositories.md %{buildroot}/%{_datadir}/doc/%{name}/docs/Package_Repositories.md
+install -m 0644 docs/Trust.md                %{buildroot}/%{_datadir}/doc/%{name}/docs/Trust.md
+install -m 0644 docs/Usage.md                %{buildroot}/%{_datadir}/doc/%{name}/docs/Usage.md
 
 %make_install
 
@@ -89,6 +97,8 @@ install -m 0644 README.md %{buildroot}/%{_datadir}/doc/%{name}/README.md
 %{_libdir}/pgsql/PGutils.dyn_hi
 %{_libdir}/pgsql/PGsupport.dyn_hi
 %{_libdir}/pgsql/PGarray.dyn_hi
+%{_libdir}/pgsql/PGdatetime.dyn_hi
+%{_libdir}/pgsql/PGlock.dyn_hi
 %{_libdir}/pgsql/PGcommon.dyn_hi
 
 %dir %{_libdir}/pgsql/plhaskell_pkg_db
