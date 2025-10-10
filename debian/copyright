@@ -41,7 +41,7 @@ Files:     .gitignore
            src/error_plh.h
            src/lock_plh.c
            src/lock_plh.h
-           src/plhaskell--4.0.sql
+           src/plhaskell--5.0.sql
            src/plhaskell.c
            src/plhaskell.control
            src/plhaskell.h
