@@ -6,7 +6,7 @@ The easiest way to install the project is to use the RPM package repository for 
 
 Add the repository:
 
-**`$>`** `sudo dnf config-manager --add-repo https://ed-o-saurus.github.io/repos/plhaskell/fedora/plhaskell.repo`
+**`$>`** `wget --quiet -O- https://ed-o-saurus.github.io/repos/plhaskell/fedora/plhaskell.repo | sudo tee /etc/yum.repos.d/plhaskell.repo > /dev/null`
 
 Update the repository information:
 
@@ -20,7 +20,7 @@ Install the package:
 
 Add the signing key to the apt keys:
 
-**`$>`** `wget --quiet -O- https://ed-o-saurus.github.io/keys/A9DD4516.asc | gpg --dearmor | sudo tee /usr/share/keyrings/plhaskell-keyring.gpg > /dev/null`
+**`$>`** `wget --quiet -O- https://ed-o-saurus.github.io/keys/A9DD4516.asc | sudo gpg --dearmor -o /usr/share/keyrings/plhaskell-keyring.gpg`
 
 Add the repository:
 
