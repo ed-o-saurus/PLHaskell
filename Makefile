@@ -54,7 +54,7 @@ define HS_BUILD =
 hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
 endef
 
-all : src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
+all : src/PGcommon.dyn_hi src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
 
 clean :
 	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/*.so src/*.conf src/*_hsc_make.c selinux/*.mod selinux/*.pp
