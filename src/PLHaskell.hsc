@@ -280,7 +280,6 @@ setUpEvalInt pCallInfo = do
   modFileName <- getModFileName pCallInfo
   loadModules [modFileName]
 
-  -- Name of function
   funcName <- getFuncName pCallInfo
   setImportsF
     [ ModuleImport "Prelude" NotQualified (ImportList ["Bool(False, True)", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "return", "($)", "(.)", "(>>=)"]),
