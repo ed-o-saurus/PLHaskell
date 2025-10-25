@@ -114,6 +114,10 @@ All time and date types are instances of the classes `Eq` and `Ord`.
 
 All time and date types are instances of the classes `Show` and `Read`. The `show` function returns an ISO representation of the type. The `read` function accepts the same formats as PostgreSQL's input functions.
 
+### `Enum`
+
+The `Date` type is an instance of the class `Enum`. The function `fromEnum` returns the number of days since Jan 1, 2000. `fromEnum` of infinite dates is not supported.
+
 ### Accessing Current Time
 
 The PostgreSQL functions `transaction_timestamp`, `statement_timestamp`, and `clock_timestamp` can be accessed from the functions `transactionTimestampUTC :: PGm Timestamp`, `statementTimestampUTC :: PGm Timestamp`, and `clockTimestampUTC :: PGm Timestamp` respectively.

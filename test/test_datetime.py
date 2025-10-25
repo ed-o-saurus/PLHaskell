@@ -730,6 +730,76 @@ class TestDatetime(PLHaskellTestBase):
             ):
                 assert row["check"]
 
+    def test_date_succ_pred(self):
+        self.execute_file("sql/datetime/date_succ.sql")
+        self.execute_file("sql/datetime/date_pred.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t(d1 date, d2 date)")
+
+            cur.execute("INSERT INTO t(d1, d2) VALUES('-infinity', '-infinity')")
+            cur.execute("INSERT INTO t(d1, d2) VALUES('+infinity', '+infinity')")
+
+            for _ in range(100):
+                year, month, day = self.random_date()
+                d = date(year, month, day)
+
+                cur.execute(
+                    "INSERT INTO t(d1, d2) VALUES(%(d1)s, %(d2)s)",
+                    {
+                        "d1": d,
+                        "d2": d + timedelta(days=1),
+                    },
+                )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE d2 <> date_succ(d1)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE d1 <> date_pred(d2)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+    def test_date_enum(self):
+        self.execute_file("sql/datetime/date_from_enum.sql")
+        self.execute_file("sql/datetime/date_to_enum.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t(d date, e int)")
+
+            for _ in range(100):
+                year, month, day = self.random_date()
+                d = date(year, month, day)
+
+                cur.execute(
+                    "INSERT INTO t(d, e) VALUES(%(d)s, %(e)s)",
+                    {"d": d, "e": (d - date(2000, 1, 1)).days},
+                )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE e <> date_from_enum(d)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE d <> date_to_enum(e)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
     def test_query_date(self):
         self.execute_file("sql/datetime/query_date.sql")
 

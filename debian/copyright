@@ -112,6 +112,10 @@ Files:     .gitignore
            test/sql/datetime/query_timestamp.sql
            test/sql/datetime/separate_date.sql
            test/sql/datetime/separate_time.sql
+           test/sql/datetime/date_succ.sql
+           test/sql/datetime/date_pred.sql
+           test/sql/datetime/date_from_enum.sql
+           test/sql/datetime/date_to_enum.sql
            test/sql/inline/inline.sql
            test/sql/lock/lock_test1.sql
            test/sql/lock/lock_test2.sql

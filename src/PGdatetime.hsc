@@ -84,6 +84,10 @@ module PGdatetime
   )
 where
 
+import Control.Exception
+  ( Exception,
+    throw,
+  )
 import Data.Functor
   ( (<$>),
   )
@@ -284,6 +288,26 @@ instance Ord Date where
   DateNInfinity <= (Date _date) = True
   (Date date1) <= (Date date2) = (date1 <= date2)
   _date1 <= _date2 = False
+
+data DateInfiniteEnumException = DateInfiniteEnumException
+  deriving (Show)
+
+instance Exception DateInfiniteEnumException
+
+instance Enum Date where
+  fromEnum DateNInfinity = throw DateInfiniteEnumException
+  fromEnum DatePInfinity = throw DateInfiniteEnumException
+  fromEnum (Date date) = fromIntegral date
+
+  toEnum date = Date $ fromIntegral date
+
+  succ DateNInfinity = DateNInfinity
+  succ DatePInfinity = DatePInfinity
+  succ (Date date) = Date (succ date)
+
+  pred DateNInfinity = DateNInfinity
+  pred DatePInfinity = DatePInfinity
+  pred (Date date) = Date (pred date)
 
 data Time = Time Int64
 
