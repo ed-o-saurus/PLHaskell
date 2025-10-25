@@ -560,13 +560,7 @@ class TestDatetime(PLHaskellTestBase):
                     "INSERT INTO t(d) VALUES(%(d)s)",
                     {
                         "d": datetime(
-                            year,
-                            month,
-                            day,
-                            hour,
-                            minute,
-                            second,
-                            microsecond,
+                            year, month, day, hour, minute, second, microsecond
                         ),
                     },
                 )
@@ -623,11 +617,7 @@ class TestDatetime(PLHaskellTestBase):
                 cur.execute(
                     "INSERT INTO t(d) VALUES(%(d)s)",
                     {
-                        "d": date(
-                            year,
-                            month,
-                            day,
-                        ),
+                        "d": date(year, month, day),
                     },
                 )
 
@@ -812,11 +802,7 @@ class TestDatetime(PLHaskellTestBase):
                 cur.execute(
                     "INSERT INTO t(d) VALUES(%(d)s)",
                     {
-                        "d": date(
-                            year,
-                            month,
-                            day,
-                        ),
+                        "d": date(year, month, day),
                     },
                 )
 
