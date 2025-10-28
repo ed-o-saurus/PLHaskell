@@ -26,7 +26,4 @@
 void set_tag_1key(LOCKTAG *tag, int64 key);
 void set_tag_2key(LOCKTAG *tag, int32 key1, int32 key2);
 
-// void get_array_elems(TypeInfo *pTypeInfo, ArrayType *array, int nelems,
-//                      Datum *elems, bool *nulls);
-
 #endif // __PLH_LOCK_H
