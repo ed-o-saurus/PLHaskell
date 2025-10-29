@@ -521,7 +521,7 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
                             bool set_schema_name) {
   HeapTuple typtup, reltup, atttup, nsptup;
   Datum typtype, typname, typlen, typbyval, typalign, typbasetype, typrelid,
-      typnamespace, typsubscript, typelem;
+      typnamespace, typsubscript, typelem, typisdefined;
   Datum relnatts;
   Datum atttypid;
   Datum nspname;
@@ -562,6 +562,14 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
     ereport(ERROR, errmsg_internal("pg_type.typname is NULL"));
 
   type_name = DatumGetCString(typname);
+
+  typisdefined =
+      SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typisdefined, &is_null);
+  if (is_null)
+    ereport(ERROR, errmsg_internal("pg_type.typisdefined is NULL"));
+
+  if (!DatumGetBool(typisdefined))
+    ereport(ERROR, errmsg("Type %s is not defined", type_name));
 
   typtype = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typtype, &is_null);
   if (is_null)
