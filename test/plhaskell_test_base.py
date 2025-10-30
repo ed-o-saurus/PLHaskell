@@ -32,6 +32,7 @@ class PLHaskellTestBase(TestCase):
         self.conn = connect(row_factory=dict_row)
 
         with self.conn.cursor() as cur:
+            cur.execute("SET lc_messages TO 'C'")
             cur.execute("DROP SCHEMA IF EXISTS plhaskell_test CASCADE")
             cur.execute("CREATE SCHEMA plhaskell_test")
             cur.execute("SET search_path TO plhaskell_test")
