@@ -31,9 +31,6 @@
 
 #include "HsFFI.h"
 
-#define USE_ISO_DATES 1
-#define INTSTYLE_POSTGRES 0
-
 #define VOID_TYPE 0
 #define BASE_TYPE 1
 #define COMPOSITE_TYPE 2

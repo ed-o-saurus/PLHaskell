@@ -18,6 +18,9 @@
 
 #include "datetime_plh.h"
 
+#define USE_ISO_DATES 1
+#define INTSTYLE_POSTGRES 0
+
 bool date_read(DateADT *date, char *buf) __attribute__((visibility("hidden")));
 bool date_read(DateADT *date, char *buf) {
   fsec_t fsec;
