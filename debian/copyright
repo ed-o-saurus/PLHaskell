@@ -157,7 +157,7 @@ Files:     .gitignore
            test/test_msgs.py
            test/test_query.py
            test/test_untrusted.py
-Copyright: 2025 Edward F. Behn, Jr.
+Copyright: 2026 Edward F. Behn, Jr.
 License:   GPL-3.0+
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
