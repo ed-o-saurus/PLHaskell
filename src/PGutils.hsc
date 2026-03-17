@@ -99,6 +99,9 @@ module PGutils
     tryLock,
     unlock,
     unlockAll,
+    Bound (..),
+    Range (..),
+    MultiRange,
   )
 where
 
@@ -184,12 +187,12 @@ import PGcommon
     getFields,
     getTypeOid,
     getValueType,
+    numRange,
     pUseAsCString,
     pWithArray,
     pWithArrayLen,
     pWithCString,
     pWithCString2,
-    range,
     voidDatum,
   )
 import PGdatetime
@@ -239,6 +242,11 @@ import PGlock
     tryLock',
     unlock',
     unlockAll',
+  )
+import PGrange
+  ( Bound (..),
+    MultiRange,
+    Range (..),
   )
 import PGsupport
   ( BaseType
@@ -554,7 +562,7 @@ getOids pTupleTable = do
   natts <- getNatts pTupleTable
   allocaArray (fromIntegral natts) $ \oids -> do
     cGetOids pTupleTable oids
-    mapM (peekElemOff oids) (range $ fromIntegral natts)
+    mapM (peekElemOff oids) (numRange $ fromIntegral natts)
 
 foreign import capi safe "plhaskell.h new_type_info"
   newTypeInfo :: Oid -> IO (Ptr TypeInfo)
@@ -619,7 +627,7 @@ getRows :: Ptr TupleTable -> Word64 -> IO [[QueryResultValue]]
 getRows pTupleTable processed = do
   oids <- getOids pTupleTable
   pTypeInfos <- mapM newTypeInfo oids
-  rows <- mapM (getRow pTupleTable pTypeInfos) $ range processed
+  rows <- mapM (getRow pTupleTable pTypeInfos) $ numRange processed
   mapM_ deleteTypeInfo pTypeInfos
   return rows
 

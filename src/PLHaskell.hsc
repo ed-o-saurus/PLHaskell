@@ -142,8 +142,8 @@ import PGcommon
     getTypeOid,
     getValueType,
     handler,
+    numRange,
     pWithCString,
-    range,
     voidDatum,
   )
 import Prelude
@@ -235,8 +235,8 @@ getArgTypeInfo pCallInfo i = do
 getSignature :: Ptr CallInfo -> Interpreter String
 getSignature pCallInfo = liftIO $ do
   nargs <- #{peek CallInfo, nargs} pCallInfo
-  argTypeNames <- mapM (getArgTypeInfo pCallInfo >=> getTypeName) $ range nargs
-  resultTypeName <- #{peek CallInfo, result} pCallInfo >>= getTypeName
+  argTypeNames <- mapM (getArgTypeInfo pCallInfo >=> getMTypeName) $ numRange nargs
+  resultTypeName <- #{peek CallInfo, result} pCallInfo >>= getMTypeName
 
   CBool trusted <- #{peek CallInfo, trusted} pCallInfo
   CBool returnSet <- #{peek CallInfo, return_set} pCallInfo
@@ -251,20 +251,33 @@ getSignature pCallInfo = liftIO $ do
         else return $ intercalate " -> " (argTypeNames ++ ["IO (" ++ resultTypeName ++ ")"])
   where
     -- Get Haskell type name based on TypeInfo
+    getMTypeName :: Ptr TypeInfo -> IO String
+    getMTypeName pTypeInfo = do
+      valueType <- getValueType pTypeInfo
+      case valueType of
+        #{const VOID_TYPE} -> return "()"
+        _ -> do
+          typeName <- getTypeName pTypeInfo
+          return $ "Maybe (" ++ typeName ++ ")"
     getTypeName :: Ptr TypeInfo -> IO String
     getTypeName pTypeInfo = do
       valueType <- getValueType pTypeInfo
       case valueType of
-        #{const VOID_TYPE} -> return "()"
         #{const BASE_TYPE} -> do
           typeOid <- getTypeOid pTypeInfo
-          return $ "Maybe " ++ baseName typeOid
+          return $ baseName typeOid
         #{const COMPOSITE_TYPE} -> do
-          names <- getFields pTypeInfo >>= (mapM getTypeName)
-          return $ "Maybe (" ++ intercalate ", " names ++ ")"
+          names <- getFields pTypeInfo >>= (mapM getMTypeName)
+          return $ intercalate ", " names
         #{const ARRAY_TYPE} -> do
+          elemName <- getElement pTypeInfo >>= getMTypeName
+          return $ "Array (" ++ elemName ++ ")"
+        #{const RANGE_TYPE} -> do
           elemName <- getElement pTypeInfo >>= getTypeName
-          return $ "Maybe (Array (" ++ elemName ++ "))"
+          return $ "Range (" ++ elemName ++ ")"
+        #{const MULTIRANGE_TYPE} -> do
+          elemName <- getElement pTypeInfo >>= getTypeName
+          return $ "MultiRange (" ++ elemName ++ ")"
         _ -> undefined
 
 foreign import capi safe "plhaskell.h error_func_sig"
@@ -295,6 +308,7 @@ setUpEvalInt pCallInfo = do
       ModuleImport "PGutils" NotQualified (ImportList ["PGm", "unPGm"]),
       ModuleImport "PGsupport" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
       ModuleImport "PGarray" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
+      ModuleImport "PGrange" NotQualified (ImportList ["Range", "MultiRange", "rangeMapM", "readRange", "writeRange", "multiRangeMapM", "readMultiRange", "writeMultiRange"]),
       ModuleImport "PGdatetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]
@@ -308,7 +322,7 @@ setUpEvalInt pCallInfo = do
 
   -- Number of arguments
   nargs <- liftIO $ #{peek CallInfo, nargs} pCallInfo
-  let argIndexes = range nargs
+  let argIndexes = numRange nargs
 
   -- Fill all decodeArg? values with functions to decode arguments
   mapM_ defineDecodeArg argIndexes
@@ -335,7 +349,7 @@ setUpEvalInt pCallInfo = do
             typeOid <- getTypeOid pTypeInfo
             return $ "(decode :: Maybe Datum -> IO (Maybe " ++ baseName typeOid ++ "))"
           #{const COMPOSITE_TYPE} -> do
-            fieldIndexes <- range <$> getCount pTypeInfo
+            fieldIndexes <- numRange <$> getCount pTypeInfo
             decodeFieldDefs <- getFields pTypeInfo >>= zipWithM decodeFieldDef [0 ..]
             let fieldDatumsList = "[" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
             let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
@@ -352,6 +366,12 @@ setUpEvalInt pCallInfo = do
           #{const ARRAY_TYPE} -> do
             decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
             return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> arrayMapM " ++ decodeResultDefElem ++ ")"
+          #{const RANGE_TYPE} -> do
+            decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
+            return $ "(maybeWrap $ readRange " ++ pTypeInfoAddr ++ " >=> rangeMapM " ++ decodeResultDefElem ++ ")"
+          #{const MULTIRANGE_TYPE} -> do
+            decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
+            return $ "(maybeWrap $ readMultiRange " ++ pTypeInfoAddr ++ " >=> multiRangeMapM " ++ decodeResultDefElem ++ ")"
           _ -> undefined
     -- Return a string representing a function to take the result from a Haskell value and return Maybe Datum
     -- returned code :: Maybe a -> IO (Maybe Datum)
@@ -369,7 +389,7 @@ setUpEvalInt pCallInfo = do
             typeOid <- getTypeOid pTypeInfo
             return $ "((encode " ++ pTypeInfoAddr ++ ") :: Maybe " ++ baseName typeOid ++ " -> IO (Maybe Datum))"
           #{const COMPOSITE_TYPE} -> do
-            fieldIndexes <- range <$> getCount pTypeInfo
+            fieldIndexes <- numRange <$> getCount pTypeInfo
             encodeFieldDefs <- getFields pTypeInfo >>= zipWithM encodeFieldDef [0 ..]
             let fieldDatumsList = " [" ++ (intercalate ", " (map (interpolate "fieldMDatum?") fieldIndexes)) ++ "]"
             let fieldsTuple = "(" ++ (intercalate ", " (map (interpolate "field?") fieldIndexes)) ++ ")"
@@ -385,6 +405,12 @@ setUpEvalInt pCallInfo = do
           #{const ARRAY_TYPE} -> do
             encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
             return $ "(maybeWrap $ arrayMapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
+          #{const RANGE_TYPE} -> do
+            encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
+            return $ "(maybeWrap $ rangeMapM " ++ encodeResultDefElem ++ " >=> writeRange " ++ pTypeInfoAddr ++ ")"
+          #{const MULTIRANGE_TYPE} -> do
+            encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
+            return $ "(maybeWrap $ multiRangeMapM " ++ encodeResultDefElem ++ " >=> writeMultiRange " ++ pTypeInfoAddr ++ ")"
           _ -> undefined
     defineDecodeArg i = do
       decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
@@ -433,6 +459,7 @@ checkSignature pCallInfo = execute $ do
       ModuleImport "Data.Text" NotQualified (ImportList ["Text"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm"]),
       ModuleImport "PGarray" NotQualified (ImportList ["Array"]),
+      ModuleImport "PGrange" NotQualified (ImportList ["Range", "MultiRange"]),
       ModuleImport "PGdatetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
       ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
     ]

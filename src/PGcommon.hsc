@@ -47,6 +47,7 @@ module PGcommon
     getTypeOid,
     getValueType,
     getFields,
+    pfree,
     palloc,
     palloca,
     pallocArray,
@@ -56,7 +57,7 @@ module PGcommon
     pWithArrayLen,
     pWithCString,
     pWithCString2,
-    range,
+    numRange,
     unNullableDatum,
     voidDatum,
   )
@@ -199,7 +200,7 @@ instance Storable NullableDatum where
 getFields :: Ptr TypeInfo -> IO [Ptr TypeInfo]
 getFields pTypeInfo = do
   count <- getCount pTypeInfo
-  mapM (\j -> #{peek TypeInfo, fields} pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (range count)
+  mapM (\j -> #{peek TypeInfo, fields} pTypeInfo >>= ((flip peekElemOff) . fromIntegral) j) (numRange count)
 
 getElement :: Ptr TypeInfo -> IO (Ptr TypeInfo)
 getElement = #{peek TypeInfo, element}
@@ -274,6 +275,6 @@ foreign import capi safe "error_plh.h handler"
 handler :: SomeException -> IO Datum
 handler exp = pWithCString (show exp) cHandler
 
-range :: (Integral a) => a -> [a]
-range 0 = []
-range n = [0 .. n - 1]
+numRange :: (Integral a) => a -> [a]
+numRange 0 = []
+numRange n = [0 .. n - 1]

@@ -28,6 +28,7 @@
 
 #include "access/tupdesc.h"
 #include "funcapi.h"
+#include "utils/typcache.h"
 
 #include "HsFFI.h"
 
@@ -35,10 +36,13 @@
 #define BASE_TYPE 1
 #define COMPOSITE_TYPE 2
 #define ARRAY_TYPE 3
+#define RANGE_TYPE 4
+#define MULTIRANGE_TYPE 5
 
 // Represents a value passed or returned by a function
 typedef struct TypeInfo {
-  uint16 value_type; // VOID_TYPE, BASE_TYPE, COMPOSITE_TYPE, or ARRAY_TYPE
+  uint16 value_type; // VOID_TYPE, BASE_TYPE, COMPOSITE_TYPE, ARRAY_TYPE, or
+                     // (MULTI)RANGE_TYPE
   Oid type_oid;      // OID of the type
   int16 type_len;
   bool type_byval;
@@ -54,11 +58,14 @@ typedef struct TypeInfo {
       struct TypeInfo **fields; // Fields of the composite type
     };
 
-    // ARRAY
-    struct TypeInfo *element; // Element type of array
+    struct // ARRAY, (MUTI)RANGE
+    {
+      struct TypeInfo *element; // Element type of array or (mutli)range
+      TypeCacheEntry *typcache;
+    };
   };
 
-  char *nspname; // Schema and type name of composite or element of array
+  char *nspname; // Schema and type name
   char *typname;
 } TypeInfo;
 

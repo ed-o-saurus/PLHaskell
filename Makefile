@@ -54,14 +54,14 @@ define HS_BUILD =
 hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
 endef
 
-all : src/PGcommon.dyn_hi src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
+all : src/PGcommon.dyn_hi src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/PGrange.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
 
 clean :
 	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/*.so src/*.conf src/*_hsc_make.c selinux/*.mod selinux/*.pp
 
 distclean: clean
 
-src/plhaskell.so : src/plhaskell.o src/array_plh.o src/datetime_plh.o src/error_plh.o src/lock_plh.o src/spi_plh.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGdatetime.o src/PGlock.o src/PGcommon.o
+src/plhaskell.so : src/plhaskell.o src/array_plh.o src/datetime_plh.o src/error_plh.o src/lock_plh.o src/range_plh.o src/spi_plh.o src/PLHaskell.o src/PGutils.o src/PGsupport.o src/PGarray.o src/PGdatetime.o src/PGlock.o src/PGrange.o src/PGcommon.o
 	ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp $^ -o $@ -dynamic -shared -L$(RTS_LIB_DIR) -L$(HINT_DYN_LIB_DIR) -L$(TEXT_DYN_LIB_DIR) -L$(BYTESTRING_DYN_LIB_DIR) -l$(RTS_NAME)-ghc$(GHC_VERSION) -l$(HINT_NAME)-ghc$(GHC_VERSION) -l$(TEXT_NAME)-ghc$(GHC_VERSION) -l$(BYTESTRING_NAME)-ghc$(GHC_VERSION) -optl-Wl,-rpath,$(RTS_LIB_DIR):$(HINT_DYN_LIB_DIR):$(TEXT_DYN_LIB_DIR):$(BYTESTRING_DYN_LIB_DIR)
 
 src/plhaskell.o : src/plhaskell.c src/PLHaskell_stub.h src/plhaskell.h src/spi_plh.h src/error_plh.h
@@ -79,13 +79,16 @@ src/error_plh.o : src/error_plh.c src/error_plh.h src/plhaskell.h
 src/lock_plh.o : src/lock_plh.c src/lock_plh.h src/plhaskell.h
 	$(call C_COMPILE)
 
+src/range_plh.o : src/range_plh.c src/range_plh.h src/plhaskell.h
+	$(call C_COMPILE)
+
 src/spi_plh.o : src/spi_plh.c src/spi_plh.h src/plhaskell.h
 	$(call C_COMPILE)
 
 src/PLHaskell.o src/PLHaskell_stub.h src/PLHaskell.hi : src/PLHaskell.hs src/PGcommon.hi src/plhaskell.h src/error_plh.h
 	$(call HS_COMPILE)
 
-src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGlock.hi src/PGcommon.hi src/plhaskell.h src/error_plh.h src/spi_plh.h
+src/PGutils.o src/PGutils.hi : src/PGutils.hs src/PGsupport.hi src/PGarray.hi src/PGdatetime.hi src/PGlock.hi src/PGrange.hi src/PGcommon.hi src/plhaskell.h src/error_plh.h src/spi_plh.h
 	$(call HS_COMPILE)
 
 src/PGsupport.o src/PGsupport.hi : src/PGsupport.hs src/PGcommon.hi src/plhaskell.h src/spi_plh.h
@@ -98,6 +101,9 @@ src/PGdatetime.o src/PGdatetime.hi : src/PGdatetime.hs src/PGcommon.hi src/datet
 	$(call HS_COMPILE)
 
 src/PGlock.o src/PGlock.hi : src/PGlock.hs src/PGcommon.hi src/lock_plh.h
+	$(call HS_COMPILE)
+
+src/PGrange.o src/PGrange.hi : src/PGrange.hs src/PGcommon.hi src/range_plh.h
 	$(call HS_COMPILE)
 
 src/PGcommon.o src/PGcommon.hi : src/PGcommon.hs src/error_plh.h
@@ -115,6 +121,9 @@ src/PGdatetime.hs : src/PGdatetime.hsc
 src/PGlock.hs : src/PGlock.hsc
 	$(call HS_BUILD)
 
+src/PGrange.hs : src/PGrange.hsc
+	$(call HS_BUILD)
+
 src/PGcommon.hs : src/PGcommon.hsc src/plhaskell.h
 	$(call HS_BUILD)
 
@@ -128,16 +137,16 @@ src/PGutils.hs : src/PGutils.hsc src/plhaskell.h
 	cp $^ $@
 
 src/pgutils-5.0.conf :
-	echo "name:            pgutils"                                               > $@
-	echo "version:         5.0"                                                  >> $@
-	echo "visibility:      public"                                               >> $@
-	echo "id:              pgutils-5.0"                                          >> $@
-	echo "key:             pgutils-5.0"                                          >> $@
-	echo "license:         GPL"                                                  >> $@
-	echo "synopsis:        PL/Haskell Utilities"                                 >> $@
-	echo "exposed:         True"                                                 >> $@
-	echo "exposed-modules: PGutils PGsupport PGarray PGdatetime PGlock PGcommon" >> $@
-	echo "import-dirs:     $(PG_PKG_LIB_DIR)"                                    >> $@
+	echo "name:            pgutils"                                                       > $@
+	echo "version:         5.0"                                                          >> $@
+	echo "visibility:      public"                                                       >> $@
+	echo "id:              pgutils-5.0"                                                  >> $@
+	echo "key:             pgutils-5.0"                                                  >> $@
+	echo "license:         GPL"                                                          >> $@
+	echo "synopsis:        PL/Haskell Utilities"                                         >> $@
+	echo "exposed:         True"                                                         >> $@
+	echo "exposed-modules: PGutils PGsupport PGarray PGdatetime PGlock PGrange PGcommon" >> $@
+	echo "import-dirs:     $(PG_PKG_LIB_DIR)"                                            >> $@
 
 ifeq ($(SELINUX),1)
 %.mod : %.te
@@ -152,7 +161,7 @@ endif
 
 install : export GHC_PACKAGE_PATH = $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 
-install : src/plhaskell.control src/plhaskell--5.0.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
+install : src/plhaskell.control src/plhaskell--5.0.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/PGrange.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell.control
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell--5.0.sql
 	install -m 0755 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/plhaskell.so
@@ -161,6 +170,7 @@ install : src/plhaskell.control src/plhaskell--5.0.sql src/PGutils.dyn_hi src/PG
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGarray.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGdatetime.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGlock.dyn_hi
+	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGrange.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGcommon.dyn_hi
 	install -m 0644 -D -t $(GHC_PACKAGE_PATH) src/pgutils-5.0.conf
 	ghc-pkg recache
@@ -175,6 +185,7 @@ uninstall :
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGarray.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGdatetime.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGlock.dyn_hi
+	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGrange.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGcommon.dyn_hi
 	-rm -fr $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 	-rm -f  $(DESTDIR)/usr/share/selinux/packages/plhaskell.pp

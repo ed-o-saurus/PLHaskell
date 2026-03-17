@@ -107,6 +107,7 @@ install -m 0644 docs/Usage.md                %{buildroot}/%{_datadir}/doc/%{name
 %{_libdir}/pgsql/PGarray.dyn_hi
 %{_libdir}/pgsql/PGdatetime.dyn_hi
 %{_libdir}/pgsql/PGlock.dyn_hi
+%{_libdir}/pgsql/PGrange.dyn_hi
 %{_libdir}/pgsql/PGcommon.dyn_hi
 
 %dir %{_libdir}/pgsql/plhaskell_pkg_db

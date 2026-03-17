@@ -295,6 +295,53 @@ $$
 LANGUAGE plhaskellu;
 ```
 
+## Range
+
+```
+CREATE FUNCTION my_lower(tsrange) RETURNS timestamp IMMUTABLE AS
+$$
+  import PGutils
+    ( Bound
+        ( ClosedBound,
+          OpenBound
+        ),
+      PGm,
+      Range
+        ( BoundRange
+        ),
+    )
+
+  my_lower :: Maybe (Range a) -> PGm (Maybe a)
+  my_lower Nothing = return Nothing
+  my_lower (Just (BoundRange (OpenBound b) _)) = return $ Just b
+  my_lower (Just (BoundRange (ClosedBound b) _)) = return $ Just b
+  my_lower (Just _) = return Nothing
+$$
+LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION my_lower(tsrange) RETURNS timestamp IMMUTABLE AS
+$$
+  import PGutils
+    ( Bound
+        ( ClosedBound,
+          OpenBound
+        ),
+      Range
+        ( BoundRange
+        ),
+    )
+
+  my_lower :: Maybe (Range a) -> IO (Maybe a)
+  my_lower Nothing = return Nothing
+  my_lower (Just (BoundRange (OpenBound b) _)) = return $ Just b
+  my_lower (Just (BoundRange (ClosedBound b) _)) = return $ Just b
+  my_lower (Just _) = return Nothing
+$$
+LANGUAGE plhaskellu;
+```
+
 ## Message
 
 The following demonstrate how to show a notice from within a function.

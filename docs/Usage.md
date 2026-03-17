@@ -160,6 +160,27 @@ The function `arrayMap :: (a -> b) -> Array a -> Array b` applies the provided f
 
 The function `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` applies a monadic action to the elements in an array in order.
 
+## (Multi)Ranges
+
+Ranges and multiranges can be passed to and returned from functions. Ranges are represented in Haskell by the `Range a` type which can be imported from the `PGutils` module. The constructors are the following:
+
+`Range a`                        |
+-------------------------------- |
+`EmtpyRange`                     |
+`BoundRange (Bound a) (Bound a)` |
+
+The bounds of `BoundRange` are the lower and upper bound respectively with the following constructors:
+
+`Bound a`       |
+----------------|
+`InfiniteBound` |
+`OpenBound a`   |
+`ClosedBound a` |
+
+### Multiranges
+
+ Mutiranges are represented in Haskell by the `MultiRange a` type which is defined by `type MultiRange a = [Range a]`.
+
 ## Inline Code
 
 The extension supports anonymous code blocks with the use of the `DO` keyword. Code is written the same way as in functions. The Haskell function to be run must be named `_'` and have signature `_' :: PGm ()` or `_' :: IO ()` depending on the language variant used.

@@ -27,6 +27,7 @@
 #include "catalog/pg_language_d.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_proc_d.h"
+#include "catalog/pg_range_d.h"
 #include "catalog/pg_tablespace_d.h"
 #include "storage/ipc.h"
 #include "utils/guc.h"
@@ -519,9 +520,9 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
 // Fill TypeInfo
 static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
                             bool set_schema_name) {
-  HeapTuple typtup, reltup, atttup, nsptup;
+  HeapTuple typtup, reltup, atttup, nsptup, rngtup;
   Datum typtype, typname, typlen, typbyval, typalign, typbasetype, typrelid,
-      typnamespace, typsubscript, typelem, typisdefined;
+      typnamespace, typsubscript, typelem, typisdefined, rngsubtype;
   Datum relnatts;
   Datum atttypid;
   Datum nspname;
@@ -685,12 +686,50 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
         ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
         errmsg("PL/Haskell does not support enumerated types (%s)", type_name));
     break;
-#ifdef TYPTYPE_MULTIRANGE
-  case TYPTYPE_MULTIRANGE:
-#endif
   case TYPTYPE_RANGE:
-    ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-            errmsg("PL/Haskell does not support range types (%s)", type_name));
+    p_type_info->value_type = RANGE_TYPE;
+
+    rngtup = SearchSysCache1(RANGETYPE, ObjectIdGetDatum(type_oid));
+    if (!HeapTupleIsValid(rngtup))
+      ereport(ERROR,
+              errmsg_internal("cache lookup failed for type %u", type_oid));
+
+    rngsubtype =
+        SysCacheGetAttr(RANGETYPE, rngtup, Anum_pg_range_rngsubtype, &is_null);
+    if (is_null)
+      ereport(ERROR, errmsg_internal("pg_range.rngsubtype is NULL"));
+
+    p_type_info->typcache = lookup_type_cache(type_oid, TYPECACHE_RANGE_INFO);
+
+    ReleaseSysCache(rngtup);
+
+    p_type_info->element = palloc0(sizeof(TypeInfo));
+    build_type_info(p_type_info->element, DatumGetObjectId(rngsubtype),
+                    set_schema_name);
+
+    break;
+  case TYPTYPE_MULTIRANGE:
+    p_type_info->value_type = MULTIRANGE_TYPE;
+
+    rngtup = SearchSysCache1(RANGEMULTIRANGE, ObjectIdGetDatum(type_oid));
+    if (!HeapTupleIsValid(rngtup))
+      ereport(ERROR,
+              errmsg_internal("cache lookup failed for type %u", type_oid));
+
+    rngsubtype = SysCacheGetAttr(RANGEMULTIRANGE, rngtup,
+                                 Anum_pg_range_rngsubtype, &is_null);
+    if (is_null)
+      ereport(ERROR, errmsg_internal("pg_range.rngsubtype is NULL"));
+
+    p_type_info->typcache =
+        lookup_type_cache(type_oid, TYPECACHE_MULTIRANGE_INFO)->rngtype;
+
+    ReleaseSysCache(rngtup);
+
+    p_type_info->element = palloc0(sizeof(TypeInfo));
+    build_type_info(p_type_info->element, DatumGetObjectId(rngsubtype),
+                    set_schema_name);
+
     break;
   case TYPTYPE_PSEUDO:
     ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -979,6 +1018,8 @@ void delete_type_info(TypeInfo *p_type_info) {
 
     break;
   case ARRAY_TYPE:
+  case RANGE_TYPE:
+  case MULTIRANGE_TYPE:
     delete_type_info(p_type_info->element);
 
     break;
