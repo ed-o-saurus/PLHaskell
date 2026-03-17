@@ -70,9 +70,6 @@ import Foreign.Marshal.Utils
   )
 import Foreign.Ptr
   ( Ptr,
-    WordPtr
-      ( WordPtr
-      ),
     nullPtr,
     plusPtr,
     ptrToWordPtr,

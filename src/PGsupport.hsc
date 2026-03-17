@@ -103,9 +103,6 @@ import Foreign.Marshal.Utils
 import Foreign.Ptr
   ( FunPtr,
     Ptr,
-    WordPtr
-      ( WordPtr
-      ),
     nullPtr,
     ptrToWordPtr,
   )
@@ -242,7 +239,7 @@ instance BaseType ByteString where
     useAsCStringLen
       result
       ( \(src, len) -> do
-          value <- Datum . ptrToWordPtr <$> palloc (fromIntegral (len + #{const VARHDRSZ}))
+          value <- Datum . fromIntegral . ptrToWordPtr <$> palloc (fromIntegral (len + #{const VARHDRSZ}))
           setVarSize value (fromIntegral len)
           pData <- getVarData value
           copyBytes pData src len

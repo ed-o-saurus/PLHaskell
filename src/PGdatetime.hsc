@@ -112,9 +112,6 @@ import Foreign.Marshal.Utils
   )
 import Foreign.Ptr
   ( Ptr,
-    WordPtr
-      ( WordPtr
-      ),
   )
 import Foreign.Storable
   ( Storable

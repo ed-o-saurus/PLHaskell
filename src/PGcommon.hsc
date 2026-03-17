@@ -75,6 +75,7 @@ import Data.Int
   )
 import Data.Word
   ( Word16,
+    Word64,
   )
 import Foreign.C.String
   ( CString,
@@ -102,11 +103,6 @@ import Foreign.Marshal.Utils
   )
 import Foreign.Ptr
   ( Ptr,
-    WordPtr
-      ( WordPtr
-      ),
-    nullPtr,
-    ptrToWordPtr,
   )
 import Foreign.Storable
   ( Storable,
@@ -152,7 +148,7 @@ import Prelude
 -- Dummy type to make pointers
 data TypeInfo
 
-newtype Datum = Datum WordPtr deriving newtype (Storable)
+newtype Datum = Datum Word64 deriving newtype (Storable)
 
 newtype Oid = Oid CUInt deriving newtype (Eq, Num, Storable)
 
@@ -161,7 +157,7 @@ assert True _action = return ()
 assert False action = action
 
 voidDatum :: Datum
-voidDatum = Datum $ ptrToWordPtr nullPtr
+voidDatum = Datum 0
 
 -- Extract the value type from TypeInfo
 getValueType :: Ptr TypeInfo -> IO Word16
