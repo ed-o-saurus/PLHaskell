@@ -286,7 +286,7 @@ listTo6Tuple [x0, x1, x2, x3, x4, x5] = (x0, x1, x2, x3, x4, x5)
 listTo6Tuple _ = undefined
 
 foreign import capi safe "utils/array.h DatumGetArrayTypeP"
-  getArrayType :: Datum -> Ptr ArrayType
+  getArrayType :: Datum -> IO (Ptr ArrayType)
 
 foreign import capi safe "utils/array.h ARR_NDIM"
   getNdim :: Ptr ArrayType -> IO CInt
@@ -318,7 +318,7 @@ foreign import capi safe "error_plh.h higher_dim_arrays"
 
 readArray :: Ptr TypeInfo -> Datum -> IO (Array (Maybe Datum))
 readArray pTypeInfo datum = do
-  let pArray = getArrayType datum
+  pArray <- getArrayType datum
   ndim <- fromIntegral <$> getNdim pArray
   lbs <- getLbsPtr pArray >>= peekArray ndim
   dims <- getDimsPtr pArray >>= peekArray ndim >>= mapM (return . fromIntegral)
