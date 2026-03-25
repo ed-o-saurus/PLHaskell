@@ -782,12 +782,6 @@ static void destroy_call_info(void *arg) {
     }
   }
 
-  if (p_call_info->mod_file_name) {
-    unlink(p_call_info->mod_file_name);
-    pfree(p_call_info->mod_file_name);
-    p_call_info->mod_file_name = NULL;
-  }
-
   if (first_p_call_info == p_call_info)
     first_p_call_info = p_call_info->next;
 
@@ -1051,14 +1045,6 @@ static void mod_exit(int _code, Datum arg) {
     }
 
   hs_exit();
-
-  for (CallInfo *p_call_info = first_p_call_info; p_call_info;
-       p_call_info = p_call_info->next)
-    if (p_call_info->mod_file_name) {
-      unlink(p_call_info->mod_file_name);
-      pfree(p_call_info->mod_file_name);
-      p_call_info->mod_file_name = NULL;
-    }
 }
 
 PG_FUNCTION_INFO_V1(ghc_version);

@@ -29,7 +29,8 @@
 module PLHaskell () where
 
 import Control.Exception
-  ( handle,
+  ( SomeException,
+    handle,
   )
 import Control.Monad
   ( mapM,
@@ -143,6 +144,9 @@ import PGcommon
     pWithCString,
     voidDatum,
   )
+import System.Directory
+  ( removeFile,
+  )
 import Prelude
   ( Bool
       ( False
@@ -159,6 +163,7 @@ import Prelude
     String,
     concat,
     concatMap,
+    const,
     fromIntegral,
     map,
     not,
@@ -169,6 +174,7 @@ import Prelude
     ($),
     (++),
     (.),
+    (>>),
     (>>=),
   )
 
@@ -426,24 +432,28 @@ foreign import ccall safe "&pkglib_path"
   pPkgLibPath :: CString
 
 -- Execute an interpreter monad and handle the result
-execute :: Interpreter () -> IO ()
-execute int = do
+execute :: Ptr CallInfo -> Interpreter () -> IO ()
+execute pCallInfo int = do
   pkgLibPath <- peekCString pPkgLibPath
   r <- unsafeRunInterpreterWithArgs ["-clear-package-db", "-package-db", pkgLibPath ++ "/plhaskell_pkg_db", "-global-package-db"] int
   case r of
-    Left (UnknownError msg) -> languageError msg
-    Left (WontCompile []) -> unknownComilerError
-    Left (WontCompile (err : _)) -> languageError $ errMsg err
-    Left (NotAllowed msg) -> languageError msg
-    Left (GhcException msg) -> languageError msg
-    Right () -> return ()
+    Left (UnknownError msg) -> removeModFile >> languageError msg
+    Left (WontCompile []) -> removeModFile >> unknownComilerError
+    Left (WontCompile (err : _)) -> removeModFile >> (languageError $ errMsg err)
+    Left (NotAllowed msg) -> removeModFile >> languageError msg
+    Left (GhcException msg) -> removeModFile >> languageError msg
+    Right () -> removeModFile >> return ()
+  where
+    removeModFile = handle ignore $ #{peek CallInfo, mod_file_name} pCallInfo >>= peekCString >>= removeFile
+    ignore :: SomeException -> IO ()
+    ignore = const $ return ()
 
 -- Check the type signature of the function against what is expected
 -- Raise and Error if they don't match
 foreign export capi "check_signature" checkSignature :: Ptr CallInfo -> IO ()
 
 checkSignature :: Ptr CallInfo -> IO ()
-checkSignature pCallInfo = execute $ do
+checkSignature pCallInfo = execute pCallInfo $ do
   set [languageExtensions := [OverloadedStrings, Safe], installedModulesInScope := False]
   modFileName <- getModFileName pCallInfo
   loadModules [modFileName]
@@ -470,7 +480,7 @@ checkSignature pCallInfo = execute $ do
 foreign export capi "mk_function" mkFunction :: Ptr CallInfo -> IO ()
 
 mkFunction :: Ptr CallInfo -> IO ()
-mkFunction pCallInfo = execute $ do
+mkFunction pCallInfo = execute pCallInfo $ do
   (argIndexes, funcName, trusted) <- setUpEvalInt pCallInfo
 
   -- Build the Function
@@ -491,7 +501,7 @@ mkFunction pCallInfo = execute $ do
 foreign export capi "mk_list" mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
 
 mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
-mkList pCallInfo pArgs = execute $ do
+mkList pCallInfo pArgs = execute pCallInfo $ do
   (argIndexes, funcName, trusted) <- setUpEvalInt pCallInfo
 
   -- Get the arguments
