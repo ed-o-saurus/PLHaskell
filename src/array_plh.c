@@ -52,7 +52,7 @@ void get_array_elems(TypeInfo *pTypeInfo, ArrayType *array, int nelems,
                     pTypeInfo->element->type_byval,
                     pTypeInfo->element->type_align, &elems_, &nulls_, &nelems_);
   if (nelems != nelems_)
-    ereport(ERROR, errmsg_internal("Element count mismatch"));
+    ereport(FATAL, errmsg_internal("Element count mismatch"));
 
   memcpy(elems, elems_, nelems * sizeof(Datum));
   memcpy(nulls, nulls_, nelems * sizeof(bool));

@@ -116,13 +116,13 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
   proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
   if (!HeapTupleIsValid(proctup))
-    ereport(ERROR,
+    ereport(FATAL,
             errmsg_internal("cache lookup failed for function %u", func_oid));
 
   proretset =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.proretset is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.proretset is NULL"));
 
   ReleaseSysCache(proctup);
 
@@ -139,7 +139,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       MemoryContextCallback *cb;
 
       if (!(rsi->allowedModes & SFRM_ValuePerCall))
-        ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+        ereport(FATAL, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
                 errmsg("Bad return mode"));
 
       rsi->returnMode = SFRM_ValuePerCall;
@@ -161,7 +161,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
       spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
       if (spi_code < 0)
-        ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+        ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
       // Setup the iterator and list
       prev_p_call_info = current_p_call_info;
@@ -171,7 +171,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
       spi_code = SPI_finish();
       if (spi_code < 0)
-        ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+        ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
       MemoryContextSwitchTo(old_context);
     }
@@ -181,7 +181,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
     spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
     if (spi_code < 0)
-      ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+      ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
     // Iterate the list
     prev_p_call_info = current_p_call_info;
@@ -191,7 +191,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
     spi_code = SPI_finish();
     if (spi_code < 0)
-      ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+      ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
     if (p_call_info->list) // Is there another result?
       rsi->isDone = ExprMultipleResult;
@@ -230,7 +230,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
     spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
     if (spi_code < 0)
-      ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+      ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
     // Run the function
     prev_p_call_info = current_p_call_info;
@@ -240,7 +240,7 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
 
     spi_code = SPI_finish();
     if (spi_code < 0)
-      ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+      ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
     return ret_val;
   }
@@ -265,13 +265,13 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS) {
 
   proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
   if (!HeapTupleIsValid(proctup))
-    ereport(ERROR,
+    ereport(FATAL,
             errmsg_internal("cache lookup failed for function %u", func_oid));
 
   proretset =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proretset, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.proretset is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.proretset is NULL"));
 
   ReleaseSysCache(proctup);
 
@@ -331,7 +331,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
            tempdirpath);
   modfile = fdopen(mkstemps(p_call_info->mod_file_name, 3), "w");
   if (!modfile)
-    ereport(ERROR, errmsg_internal("Unable to create temporary file (%s)",
+    ereport(FATAL, errmsg_internal("Unable to create temporary file (%s)",
                                    p_call_info->mod_file_name));
 
   fprintf(modfile, "module PGmodule (_') where\n");
@@ -349,7 +349,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
 
   spi_code = SPI_connect_ext(p_call_info->atomic ? 0 : SPI_OPT_NONATOMIC);
   if (spi_code < 0)
-    ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+    ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
   // Make and call the function
   prev_p_call_info = current_p_call_info;
@@ -360,7 +360,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
 
   spi_code = SPI_finish();
   if (spi_code < 0)
-    ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(spi_code)));
+    ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(spi_code)));
 
   PG_RETURN_VOID();
 }
@@ -383,19 +383,19 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
 
   proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(func_oid));
   if (!HeapTupleIsValid(proctup))
-    ereport(ERROR,
+    ereport(FATAL,
             errmsg_internal("cache lookup failed for function %u", func_oid));
 
   prolang = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prolang, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.prolang is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.prolang is NULL"));
 
   lantup = SearchSysCache1(LANGOID, prolang);
 
   lanpltrusted =
       SysCacheGetAttr(LANGOID, lantup, Anum_pg_language_lanpltrusted, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_language.lanpltrusted is NULL"));
+    ereport(FATAL, errmsg_internal("pg_language.lanpltrusted is NULL"));
 
   p_call_info->trusted = DatumGetBool(lanpltrusted);
 
@@ -404,7 +404,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
   provariadic =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provariadic, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.provariadic is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.provariadic is NULL"));
 
   if (DatumGetObjectId(provariadic) != 0)
     ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -412,7 +412,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
 
   prokind = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prokind, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.prokind is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.prokind is NULL"));
 
   if (DatumGetChar(prokind) != PROKIND_FUNCTION)
     ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -421,7 +421,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
   provolatile =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_provolatile, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.provolatile is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.provolatile is NULL"));
 
   p_call_info->spi_read_only =
       DatumGetChar(provolatile) != PROVOLATILE_VOLATILE;
@@ -429,7 +429,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
   p_call_info->nargs = DatumGetInt16(
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_pronargs, &is_null));
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.pronargs is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.pronargs is NULL"));
 
   p_call_info->args = palloc(p_call_info->nargs * sizeof(TypeInfo *));
 
@@ -441,12 +441,12 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
   prorettype =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prorettype, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.prorettype is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.prorettype is NULL"));
 
   proparallel =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proparallel, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.proparallel is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.proparallel is NULL"));
 
   if (DatumGetChar(proparallel) != PROPARALLEL_UNSAFE)
     ereport(ERROR, errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -458,20 +458,20 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
   proargtypes =
       SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proargtypes, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.proargtypes is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.proargtypes is NULL"));
 
   proargtypes_arr = DatumGetArrayTypeP(proargtypes);
 
   if (ARR_NDIM(proargtypes_arr) != 1)
-    ereport(ERROR, errmsg_internal("pg_proc.proargtypes has %d dimensions",
+    ereport(FATAL, errmsg_internal("pg_proc.proargtypes has %d dimensions",
                                    ARR_NDIM(proargtypes_arr)));
 
   if (ARR_LBOUND(proargtypes_arr)[0] != 0 ||
       ARR_DIMS(proargtypes_arr)[0] != p_call_info->nargs)
-    ereport(ERROR, errmsg_internal("pg_proc.proargtypes has unexpected size"));
+    ereport(FATAL, errmsg_internal("pg_proc.proargtypes has unexpected size"));
 
   if (ARR_NULLBITMAP(proargtypes_arr) != NULL)
-    ereport(ERROR, errmsg_internal("pg_proc.proargtypes has NULL element"));
+    ereport(FATAL, errmsg_internal("pg_proc.proargtypes has NULL element"));
 
   argtypes = (Oid *)ARR_DATA_PTR(proargtypes_arr);
   for (int16 i = 0; i < p_call_info->nargs; i++) {
@@ -481,7 +481,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
 
   proname = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proname, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.proname is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.proname is NULL"));
 
   p_call_info->func_name = palloc(NAMEDATALEN);
   memcpy(p_call_info->func_name, DatumGetName(proname)->data, NAMEDATALEN);
@@ -489,7 +489,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
   // Fill temp file with function source
   prosrc = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosrc, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.prosrc is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.prosrc is NULL"));
 
   src = DatumGetTextPP(prosrc);
 
@@ -499,7 +499,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
            tempdirpath);
   modfile = fdopen(mkstemps(p_call_info->mod_file_name, 3), "w");
   if (!modfile)
-    ereport(ERROR, errmsg_internal("Unable to create temporary file (%s)",
+    ereport(FATAL, errmsg_internal("Unable to create temporary file (%s)",
                                    p_call_info->mod_file_name));
 
   fprintf(modfile, "module PGmodule (%s) where\n", p_call_info->func_name);
@@ -539,20 +539,20 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 
   typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
   if (!HeapTupleIsValid(typtup))
-    ereport(ERROR,
+    ereport(FATAL,
             errmsg_internal("cache lookup failed for type %u", type_oid));
 
   typlen = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typlen, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typlen is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typlen is NULL"));
 
   typbyval = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typbyval, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typbyval is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typbyval is NULL"));
 
   typalign = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typalign, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typalign is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typalign is NULL"));
 
   p_type_info->type_len = DatumGetInt16(typlen);
   p_type_info->type_byval = DatumGetBool(typbyval);
@@ -560,28 +560,28 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 
   typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typname is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typname is NULL"));
 
   type_name = DatumGetCString(typname);
 
   typisdefined =
       SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typisdefined, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typisdefined is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typisdefined is NULL"));
 
   if (!DatumGetBool(typisdefined))
     ereport(ERROR, errmsg("Type %s is not defined", type_name));
 
   typtype = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typtype, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typtype is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typtype is NULL"));
 
   switch (DatumGetChar(typtype)) {
   case TYPTYPE_BASE:
     typsubscript =
         SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typsubscript, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_type.typsubscript is NULL"));
+      ereport(FATAL, errmsg_internal("pg_type.typsubscript is NULL"));
 
     if (DatumGetObjectId(typsubscript) ==
         array_subscript_handler_oid) // if type is an array type
@@ -591,7 +591,7 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
       typelem =
           SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typelem, &is_null);
       if (is_null)
-        ereport(ERROR, errmsg_internal("pg_type.typelem is NULL"));
+        ereport(FATAL, errmsg_internal("pg_type.typelem is NULL"));
 
       p_type_info->element = palloc0(sizeof(TypeInfo));
       build_type_info(p_type_info->element, DatumGetObjectId(typelem),
@@ -613,19 +613,19 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
     typrelid =
         SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typrelid, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_type.typrelid is NULL"));
+      ereport(FATAL, errmsg_internal("pg_type.typrelid is NULL"));
 
     class_oid = ObjectIdGetDatum(typrelid);
 
     reltup = SearchSysCache1(RELOID, ObjectIdGetDatum(class_oid));
     if (!HeapTupleIsValid(reltup))
-      ereport(ERROR,
+      ereport(FATAL,
               errmsg_internal("cache lookup failed for class %u", class_oid));
 
     relnatts =
         SysCacheGetAttr(RELOID, reltup, Anum_pg_class_relnatts, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_class.relnatts is NULL"));
+      ereport(FATAL, errmsg_internal("pg_class.relnatts is NULL"));
 
     p_type_info->natts = DatumGetInt16(relnatts);
 
@@ -634,14 +634,14 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
       atttup = SearchSysCache2(ATTNUM, ObjectIdGetDatum(class_oid),
                                Int16GetDatum(j + 1));
       if (!HeapTupleIsValid(atttup))
-        ereport(ERROR, errmsg_internal(
+        ereport(FATAL, errmsg_internal(
                            "cache lookup failed for attribute %u attnum %d",
                            class_oid, j + 1));
 
       atttypid =
           SysCacheGetAttr(ATTNUM, atttup, Anum_pg_attribute_atttypid, &is_null);
       if (is_null)
-        ereport(ERROR, errmsg_internal("pg_attribute.atttypid is NULL"));
+        ereport(FATAL, errmsg_internal("pg_attribute.atttypid is NULL"));
 
       // If the attribute is not dropped
       if ((attr_oid = DatumGetObjectId(atttypid))) {
@@ -675,7 +675,7 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
     typbasetype =
         SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typbasetype, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_type.typbasetype is NULL"));
+      ereport(FATAL, errmsg_internal("pg_type.typbasetype is NULL"));
 
     build_type_info(p_type_info, DatumGetObjectId(typbasetype),
                     set_schema_name);
@@ -691,13 +691,13 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 
     rngtup = SearchSysCache1(RANGETYPE, ObjectIdGetDatum(type_oid));
     if (!HeapTupleIsValid(rngtup))
-      ereport(ERROR,
+      ereport(FATAL,
               errmsg_internal("cache lookup failed for type %u", type_oid));
 
     rngsubtype =
         SysCacheGetAttr(RANGETYPE, rngtup, Anum_pg_range_rngsubtype, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_range.rngsubtype is NULL"));
+      ereport(FATAL, errmsg_internal("pg_range.rngsubtype is NULL"));
 
     p_type_info->typcache = lookup_type_cache(type_oid, TYPECACHE_RANGE_INFO);
 
@@ -713,13 +713,13 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 
     rngtup = SearchSysCache1(RANGEMULTIRANGE, ObjectIdGetDatum(type_oid));
     if (!HeapTupleIsValid(rngtup))
-      ereport(ERROR,
+      ereport(FATAL,
               errmsg_internal("cache lookup failed for type %u", type_oid));
 
     rngsubtype = SysCacheGetAttr(RANGEMULTIRANGE, rngtup,
                                  Anum_pg_range_rngsubtype, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_range.rngsubtype is NULL"));
+      ereport(FATAL, errmsg_internal("pg_range.rngsubtype is NULL"));
 
     p_type_info->typcache =
         lookup_type_cache(type_oid, TYPECACHE_MULTIRANGE_INFO)->rngtype;
@@ -736,7 +736,7 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
             errmsg("PL/Haskell does not support type %s", type_name));
     break;
   default:
-    ereport(ERROR, errmsg_internal("pg_type.typtype is invalid : %c",
+    ereport(FATAL, errmsg_internal("pg_type.typtype is invalid : %c",
                                    DatumGetChar(typtype)));
   }
 
@@ -746,13 +746,13 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 
     nsptup = SearchSysCache1(NAMESPACEOID, DatumGetObjectId(typnamespace));
     if (!HeapTupleIsValid(nsptup))
-      ereport(ERROR, errmsg_internal("cache lookup failed for namespace %u",
+      ereport(FATAL, errmsg_internal("cache lookup failed for namespace %u",
                                      DatumGetObjectId(typnamespace)));
 
     nspname = SysCacheGetAttr(NAMESPACEOID, nsptup, Anum_pg_namespace_nspname,
                               &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_namespace.nspname is NULL"));
+      ereport(FATAL, errmsg_internal("pg_namespace.nspname is NULL"));
 
     p_type_info->nspname = palloc(NAMEDATALEN);
     strcpy(p_type_info->nspname, DatumGetCString(nspname));
@@ -831,7 +831,7 @@ Datum write_composite(TypeInfo *p_type_info, Datum *field_values,
       SPI_returntuple(heap_form_tuple(p_type_info->tupdesc, values, is_nulls),
                       p_type_info->tupdesc);
   if (ret_val == NULL)
-    ereport(ERROR, errmsg_internal("%s", SPI_result_code_string(SPI_result)));
+    ereport(FATAL, errmsg_internal("%s", SPI_result_code_string(SPI_result)));
 
   return PointerGetDatum(ret_val);
 }
@@ -1065,7 +1065,7 @@ Oid get_oid(bool array, char *nspname, char *typname) {
   nspoid =
       SysCacheGetAttr(NAMESPACENAME, nsptup, Anum_pg_namespace_oid, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_namespace.oid is NULL"));
+    ereport(FATAL, errmsg_internal("pg_namespace.oid is NULL"));
 
   typtup = SearchSysCache2(TYPENAMENSP, CStringGetDatum(typname), nspoid);
   if (!HeapTupleIsValid(typtup))
@@ -1076,7 +1076,7 @@ Oid get_oid(bool array, char *nspname, char *typname) {
     ret_val =
         SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_typarray, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_type.typarray is NULL"));
+      ereport(FATAL, errmsg_internal("pg_type.typarray is NULL"));
 
     if (ret_val == InvalidOid)
       ereport(ERROR, errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -1084,7 +1084,7 @@ Oid get_oid(bool array, char *nspname, char *typname) {
   } else {
     ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
     if (is_null)
-      ereport(ERROR, errmsg_internal("pg_type.oid is NULL"));
+      ereport(FATAL, errmsg_internal("pg_type.oid is NULL"));
   }
 
   ReleaseSysCache(typtup);
@@ -1109,7 +1109,7 @@ Oid find_oid(bool array, char *typname) {
         ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_typarray,
                                   &is_null);
         if (is_null)
-          ereport(ERROR, errmsg_internal("pg_type.typarray is NULL"));
+          ereport(FATAL, errmsg_internal("pg_type.typarray is NULL"));
 
         if (ret_val == InvalidOid)
           ereport(ERROR, errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -1118,7 +1118,7 @@ Oid find_oid(bool array, char *typname) {
         ret_val =
             SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
         if (is_null)
-          ereport(ERROR, errmsg_internal("pg_type.oid is NULL"));
+          ereport(FATAL, errmsg_internal("pg_type.oid is NULL"));
       }
 
       ReleaseSysCache(typtup);
@@ -1162,13 +1162,13 @@ Oid get_function_id(char *procname, Oid *args) {
       PointerGetDatum(parameterTypes), ObjectIdGetDatum(PG_CATALOG_NAMESPACE));
 
   if (!HeapTupleIsValid(proctup))
-    ereport(ERROR,
+    ereport(FATAL,
             errmsg_internal("cache lookup failed for proc %s", procname));
 
   Datum procoid =
       SysCacheGetAttr(PROCNAMEARGSNSP, proctup, Anum_pg_proc_oid, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_proc.oid is NULL"));
+    ereport(FATAL, errmsg_internal("pg_proc.oid is NULL"));
 
   Oid functionId = DatumGetObjectId(procoid);
 

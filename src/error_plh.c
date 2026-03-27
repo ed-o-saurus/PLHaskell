@@ -39,13 +39,13 @@ void expected_type(Oid type_oid) {
 
   HeapTuple typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
   if (!HeapTupleIsValid(typtup))
-    ereport(ERROR,
+    ereport(FATAL,
             errmsg_internal("cache lookup failed for type %u", type_oid));
 
   Datum typname =
       SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
   if (is_null)
-    ereport(ERROR, errmsg_internal("pg_type.typname is NULL"));
+    ereport(FATAL, errmsg_internal("pg_type.typname is NULL"));
 
   ereport(ERROR,
           errmsg("Expected type \"%s\" in query", DatumGetCString(typname)));
