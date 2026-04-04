@@ -24,3 +24,7 @@ $$
 LANGUAGE plhaskell
 SET lc_messages TO 'C';
 ```
+
+## Multiple Set Returning Calls
+
+If a query calls a set returning function multiple times, the query can be prohibitively slow. There is currently no workaround.
