@@ -36,13 +36,15 @@ PG_PKG_LIB_DIR = $(shell pg_config --pkglibdir)
 
 RTS_INCLUDE_DIR = $(shell ghc-pkg --simple-output field rts include-dirs)
 
+PLHASKELL_VERSION = 5.0
+
 .NOTPARALLEL:
 
 .PHONY: all install clean distclean uninstall
 
 # touch is to force update of .hi file
 define HS_COMPILE =
-ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c $< -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-5.0
+ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c $< -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-$(PLHASKELL_VERSION)
 touch $@
 endef
 
@@ -54,7 +56,7 @@ define HS_BUILD =
 hsc2hs $< -I$(PG_INCLUDE_DIR) -I$(RTS_INCLUDE_DIR)
 endef
 
-all : src/PGcommon.dyn_hi src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/PGrange.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
+all : src/PGcommon.dyn_hi src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/PGrange.dyn_hi src/plhaskell.so src/pgutils.conf selinux/plhaskell.pp
 
 clean :
 	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/*.so src/*.conf src/*_hsc_make.c selinux/*.mod selinux/*.pp
@@ -136,12 +138,12 @@ src/PGutils.hs : src/PGutils.hsc src/plhaskell.h
 %.dyn_hi : %.hi
 	cp $^ $@
 
-src/pgutils-5.0.conf :
+src/pgutils.conf :
 	echo "name:            pgutils"                                                       > $@
-	echo "version:         5.0"                                                          >> $@
+	echo "version:         $(PLHASKELL_VERSION)"                                         >> $@
 	echo "visibility:      public"                                                       >> $@
-	echo "id:              pgutils-5.0"                                                  >> $@
-	echo "key:             pgutils-5.0"                                                  >> $@
+	echo "id:              pgutils-$(PLHASKELL_VERSION)"                                 >> $@
+	echo "key:             pgutils-$(PLHASKELL_VERSION)"                                 >> $@
 	echo "license:         GPL"                                                          >> $@
 	echo "synopsis:        PL/Haskell Utilities"                                         >> $@
 	echo "exposed:         True"                                                         >> $@
@@ -161,9 +163,9 @@ endif
 
 install : export GHC_PACKAGE_PATH = $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell_pkg_db
 
-install : src/plhaskell.control src/plhaskell--5.0.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/PGrange.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils-5.0.conf selinux/plhaskell.pp
+install : src/plhaskell.control src/plhaskell.sql src/PGutils.dyn_hi src/PGsupport.dyn_hi src/PGarray.dyn_hi src/PGdatetime.dyn_hi src/PGlock.dyn_hi src/PGrange.dyn_hi src/PGcommon.dyn_hi src/plhaskell.so src/pgutils.conf selinux/plhaskell.pp
 	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell.control
-	install -m 0644 -D -t $(DESTDIR)$(PG_SHARE_DIR)/extension src/plhaskell--5.0.sql
+	install -m 0644 -D src/plhaskell.sql $(DESTDIR)$(PG_SHARE_DIR)/extension/plhaskell--$(PLHASKELL_VERSION).sql
 	install -m 0755 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/plhaskell.so
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGutils.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGsupport.dyn_hi
@@ -172,13 +174,13 @@ install : src/plhaskell.control src/plhaskell--5.0.sql src/PGutils.dyn_hi src/PG
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGlock.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGrange.dyn_hi
 	install -m 0644 -D -t $(DESTDIR)$(PG_PKG_LIB_DIR) src/PGcommon.dyn_hi
-	install -m 0644 -D -t $(GHC_PACKAGE_PATH) src/pgutils-5.0.conf
+	install -m 0644 -D src/pgutils.conf $(GHC_PACKAGE_PATH)/pgutils-$(PLHASKELL_VERSION).conf
 	ghc-pkg recache
 	if [ -s selinux/plhaskell.pp ]; then install -m 0644 -D -t $(DESTDIR)/usr/share/selinux/packages selinux/plhaskell.pp; fi
 
 uninstall :
 	-rm -f  $(DESTDIR)$(PG_SHARE_DIR)/extension/plhaskell.control
-	-rm -f  $(DESTDIR)$(PG_SHARE_DIR)/extension/plhaskell--5.0.sql
+	-rm -f  $(DESTDIR)$(PG_SHARE_DIR)/extension/plhaskell--$(PLHASKELL_VERSION).sql
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/plhaskell.so
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGutils.dyn_hi
 	-rm -f  $(DESTDIR)$(PG_PKG_LIB_DIR)/PGsupport.dyn_hi
