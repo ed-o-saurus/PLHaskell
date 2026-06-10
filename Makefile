@@ -44,12 +44,12 @@ PLHASKELL_VERSION = 5.0
 
 # touch is to force update of .hi file
 define HS_COMPILE =
-ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -optc -fvisibility=hidden -isrc -c $< -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-$(PLHASKELL_VERSION)
+ghc -Wall -O1 -Werror -optc -Wall -optc -Werror -fforce-recomp -optc -fvisibility=hidden -isrc -c $< -dynamic -I$(PG_INCLUDE_DIR) -fPIC -package-name pgutils-$(PLHASKELL_VERSION)
 touch $@
 endef
 
 define C_COMPILE =
-ghc -Wall -O1 -Werror -optc -Wall -fforce-recomp -c $< -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
+ghc -Wall -O1 -Werror -optc -Wall -optc -Werror -fforce-recomp -c $< -I$(PG_INCLUDE_DIR) -I. -D_GNU_SOURCE -fPIC
 endef
 
 define HS_BUILD =
