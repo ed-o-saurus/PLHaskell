@@ -19,7 +19,11 @@
 #ifndef __PLHASKELL_H
 #define __PLHASKELL_H
 
+#undef HAVE_LIBZSTD
+
 #include "postgres.h"
+
+#undef HAVE_LIBZSTD
 
 // If version 16 of higher
 #if PG_VERSION_NUM >= 160000
