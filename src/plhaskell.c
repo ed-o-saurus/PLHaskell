@@ -45,7 +45,7 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 
 static void destroy_call_info(void *arg);
 
-static void enter(void);
+void _PG_init(void);
 static void gcDoneHook(const struct GCDetails_ *stats);
 
 static int rts_msg_fn(int elevel, const char *s, va_list ap);
@@ -837,8 +837,7 @@ Datum write_composite(TypeInfo *p_type_info, Datum *field_values,
 }
 
 // Called when the module is loaded
-static void enter(void) __attribute__((constructor));
-static void enter(void) {
+void _PG_init(void) {
   static int argc = 3;
   static char *argv[] = {
       "PLHaskell", "+RTS", // Configuration for the RTS
