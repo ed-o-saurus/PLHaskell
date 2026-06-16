@@ -1,4 +1,5 @@
 {-# LANGUAGE CApiFFI #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE Trustworthy #-}
 
 {- HLINT ignore "Redundant bracket" -}
@@ -107,6 +108,7 @@ import Prelude
       ( Just
       ),
     Monad,
+    Show,
     fromIntegral,
     mapM,
     maybe,
@@ -134,10 +136,12 @@ data Bound a
   = InfiniteBound
   | OpenBound a
   | ClosedBound a
+  deriving stock (Show)
 
 data Range a
   = EmptyRange
   | BoundRange (Bound a) (Bound a)
+  deriving stock (Show)
 
 rangeMapM :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> Range a -> m (Range b)
 rangeMapM _func EmptyRange = return EmptyRange
