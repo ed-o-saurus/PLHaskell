@@ -142,7 +142,8 @@ class TestDatetime(PLHaskellTestBase):
                 hour, minute, second, microsecond = self.random_time()
 
                 cur.execute(
-                    "INSERT INTO t(hour, minute, second, microsecond) VALUES (%(hour)s, %(minute)s, %(second)s, %(microsecond)s)",
+                    """INSERT INTO t(hour, minute, second, microsecond)
+                       VALUES (%(hour)s, %(minute)s, %(second)s, %(microsecond)s)""",
                     {
                         "hour": hour,
                         "minute": minute,
@@ -335,7 +336,8 @@ class TestDatetime(PLHaskellTestBase):
                 ts = datetime(year, month, day, hour, minute, second, microsecond)
 
                 cur.execute(
-                    "INSERT INTO tab(d, t, ts) VALUES (%(d)s, %(t)s, %(ts)s)",
+                    """INSERT INTO tab(d, t, ts)
+                       VALUES (%(d)s, %(t)s, %(ts)s)""",
                     {"d": d, "t": t, "ts": ts},
                 )
 
@@ -367,12 +369,17 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/compare_dates.sql")
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d date)")
-            cur.execute("INSERT INTO t(d) VALUES ('+infinity'), ('-infinity')")
+            cur.execute(
+                """INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')"""
+            )
 
             for _ in range(10):
                 year, month, day = self.random_date()
                 cur.execute(
-                    "INSERT INTO t(d) VALUES (%(d)s)", {"d": date(year, month, day)}
+                    """INSERT INTO t(d)
+                       VALUES (%(d)s)""",
+                    {"d": date(year, month, day)},
                 )
 
             for row in cur.execute("SELECT compare_dates(t1.d, t2.d) FROM t t1, t t2"):
@@ -397,7 +404,10 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/compare_timestamps.sql")
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d timestamp)")
-            cur.execute("INSERT INTO t(d) VALUES ('+infinity'), ('-infinity')")
+            cur.execute(
+                """INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')"""
+            )
 
             for _ in range(10):
                 year, month, day = self.random_date()
@@ -426,7 +436,8 @@ class TestDatetime(PLHaskellTestBase):
                     self.random_interval()
                 )
                 cur.execute(
-                    "INSERT INTO t(d) VALUES (make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))",
+                    """INSERT INTO t(d)
+                       VALUES (make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))""",
                     {
                         "years": years,
                         "months": months,
@@ -448,12 +459,17 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d date)")
-            cur.execute("INSERT INTO t(d) VALUES ('+infinity'), ('-infinity')")
+            cur.execute(
+                """INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')"""
+            )
 
             for _ in range(100):
                 year, month, day = self.random_date()
                 cur.execute(
-                    "INSERT INTO t(d) VALUES (%(d)s)", {"d": date(year, month, day)}
+                    """INSERT INTO t(d)
+                       VALUES (%(d)s)""",
+                    {"d": date(year, month, day)},
                 )
 
             for row in cur.execute("SELECT check_show_read_date(d, d::text) FROM t"):
@@ -480,7 +496,10 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d timestamp)")
-            cur.execute("INSERT INTO t(d) VALUES ('+infinity'), ('-infinity')")
+            cur.execute(
+                """INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')"""
+            )
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -510,7 +529,8 @@ class TestDatetime(PLHaskellTestBase):
                     self.random_interval()
                 )
                 cur.execute(
-                    "INSERT INTO t(d) VALUES (make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))",
+                    """INSERT INTO t(d)
+                       VALUES (make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))""",
                     {
                         "years": years,
                         "months": months,
@@ -589,7 +609,8 @@ class TestDatetime(PLHaskellTestBase):
                 ) = self.random_interval()
 
                 cur.execute(
-                    "INSERT INTO t(d) VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))",
+                    """INSERT INTO t(d)
+                       VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))""",
                     {
                         "years": years,
                         "months": months,
@@ -638,7 +659,9 @@ class TestDatetime(PLHaskellTestBase):
 
             for _ in range(10):
                 cur.execute(
-                    "INSERT INTO t1(d) VALUES(%(d)s)", {"d": uniform(-10.0, 10.0)}
+                    """INSERT INTO t1(d)
+                       VALUES(%(d)s)""",
+                    {"d": uniform(-10.0, 10.0)},
                 )
 
                 (
@@ -653,7 +676,8 @@ class TestDatetime(PLHaskellTestBase):
                 ) = self.random_interval()
 
                 cur.execute(
-                    "INSERT INTO t2(d) VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))",
+                    """INSERT INTO t2(d)
+                       VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))""",
                     {
                         "years": years,
                         "months": months,
@@ -678,7 +702,10 @@ class TestDatetime(PLHaskellTestBase):
             cur.execute("CREATE TABLE t1 (d date)")
             cur.execute("CREATE TABLE t2 (d interval)")
 
-            cur.execute("INSERT INTO t1(d) VALUES('-infinity'), ('+infinity')")
+            cur.execute(
+                """INSERT INTO t1(d)
+                   VALUES('-infinity'), ('+infinity')"""
+            )
 
             for _ in range(10):
                 year, month, day = self.random_date()
@@ -698,7 +725,8 @@ class TestDatetime(PLHaskellTestBase):
                 ) = self.random_interval()
 
                 cur.execute(
-                    "INSERT INTO t2(d) VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))",
+                    """INSERT INTO t2(d)
+                       VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))""",
                     {
                         "years": years,
                         "months": months,
@@ -727,15 +755,23 @@ class TestDatetime(PLHaskellTestBase):
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t(d1 date, d2 date)")
 
-            cur.execute("INSERT INTO t(d1, d2) VALUES('-infinity', '-infinity')")
-            cur.execute("INSERT INTO t(d1, d2) VALUES('+infinity', '+infinity')")
+            cur.execute(
+                """INSERT INTO t(d1, d2)
+                   VALUES('-infinity', '-infinity')"""
+            )
+
+            cur.execute(
+                """INSERT INTO t(d1, d2)
+                   VALUES('+infinity', '+infinity')"""
+            )
 
             for _ in range(100):
                 year, month, day = self.random_date()
                 d = date(year, month, day)
 
                 cur.execute(
-                    "INSERT INTO t(d1, d2) VALUES(%(d1)s, %(d2)s)",
+                    """INSERT INTO t(d1, d2)
+                       VALUES(%(d1)s, %(d2)s)""",
                     {
                         "d1": d,
                         "d2": d + timedelta(days=1),
@@ -770,7 +806,8 @@ class TestDatetime(PLHaskellTestBase):
                 d = date(year, month, day)
 
                 cur.execute(
-                    "INSERT INTO t(d, e) VALUES(%(d)s, %(e)s)",
+                    """INSERT INTO t(d, e)
+                       VALUES(%(d)s, %(e)s)""",
                     {"d": d, "e": (d - date(2000, 1, 1)).days},
                 )
 
@@ -795,7 +832,10 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d date)")
-            cur.execute("INSERT INTO t(d) VALUES ('+infinity'), ('-infinity')")
+            cur.execute(
+                """INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')"""
+            )
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -867,7 +907,8 @@ class TestDatetime(PLHaskellTestBase):
                 ) = self.random_interval()
 
                 cur.execute(
-                    "INSERT INTO t(d) VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))",
+                    """INSERT INTO t(d)
+                       VALUES(make_interval(%(years)s, %(months)s, %(weeks)s, %(days)s, %(hours)s, %(minutes)s, %(seconds)s))""",
                     {
                         "years": years,
                         "months": months,

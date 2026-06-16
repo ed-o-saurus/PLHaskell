@@ -59,15 +59,21 @@ class TestQuery(PLHaskellTestBase):
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE deltas(i int, d delta)")
             cur.execute(
-                "INSERT INTO deltas(i, d) VALUES (1, ((('Hello', 12, 3.4)::alpha, 76)::bravo, '()'::charlie)::delta)"
+                """INSERT INTO deltas(i, d)
+                   VALUES (1, ((('Hello', 12, 3.4)::alpha, 76)::bravo, '()'::charlie)::delta)"""
             )
             cur.execute(
-                "INSERT INTO deltas(i, d) VALUES (2, ((('world', 42, 1.0)::alpha, -12)::bravo, NULL::charlie)::delta)"
+                """INSERT INTO deltas(i, d)
+                   VALUES (2, ((('world', 42, 1.0)::alpha, -12)::bravo, NULL::charlie)::delta)"""
             )
             cur.execute(
-                "INSERT INTO deltas(i, d) VALUES (3, (NULL::bravo, '()'::charlie)::delta)"
+                """INSERT INTO deltas(i, d)
+                   VALUES (3, (NULL::bravo, '()'::charlie)::delta)"""
             )
-            cur.execute("INSERT INTO deltas(i, d) VALUES (4, NULL::delta)")
+            cur.execute(
+                """INSERT INTO deltas(i, d)
+                   VALUES (4, NULL::delta)"""
+            )
 
             cur.execute("SELECT query_composite()")
 

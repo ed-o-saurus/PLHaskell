@@ -23,8 +23,6 @@ from collections import defaultdict
 from psycopg.types.range import Range
 from psycopg.types.multirange import Multirange
 
-# from psycopg.types.multirange import Multirange
-
 
 class TestDatetime(PLHaskellTestBase):
     @staticmethod
@@ -282,7 +280,8 @@ class TestDatetime(PLHaskellTestBase):
 
             for _ in range(1000):
                 cur.execute(
-                    "INSERT INTO t(r1, r2, r3) VALUES(%(r1)s, %(r2)s, %(r3)s)",
+                    """INSERT INTO t(r1, r2, r3)
+                       VALUES(%(r1)s, %(r2)s, %(r3)s)""",
                     {
                         "r1": self.random_range(self.random_datetime),
                         "r2": self.random_range(self.random_datetime),
