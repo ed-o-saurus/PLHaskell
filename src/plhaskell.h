@@ -104,8 +104,8 @@ void read_composite(TypeInfo *p_type_info, Datum composite_datum,
 Datum write_composite(TypeInfo *p_type_info, Datum *field_values,
                       bool *field_is_nulls);
 
-Oid get_oid(bool array, char *nspname, char *typname);
-Oid find_oid(bool array, char *typname);
+Oid get_oid(uint16 search_type, char *nspname, char *typname);
+Oid find_oid(uint16 search_type, char *typname);
 
 Datum detoast_datum(Datum datum);
 

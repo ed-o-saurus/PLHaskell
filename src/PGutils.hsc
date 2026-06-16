@@ -703,12 +703,12 @@ foreign import capi safe "plhaskell.h find_oid"
   cFindOid :: CBool -> CString -> IO Oid
 
 getCompositeOid :: (Maybe Text, Text) -> IO Oid
-getCompositeOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid (fromBool False)
-getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid (fromBool False)
+getCompositeOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid #{const COMPOSITE_TYPE}
+getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid #{const COMPOSITE_TYPE}
 
 getArrayOid :: (Maybe Text, Text) -> IO Oid
-getArrayOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid (fromBool True)
-getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid (fromBool True)
+getArrayOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid #{const ARRAY_TYPE}
+getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid #{const ARRAY_TYPE}
 
 foreign import capi safe "spi_plh.h commit_rollback"
   commitRollback :: CBool -> CBool -> PGm ()
