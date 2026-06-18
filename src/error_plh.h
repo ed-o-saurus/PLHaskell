@@ -25,10 +25,8 @@
 void plhaskell_report(int elevel, char *msg);
 
 void bad_multi_dim_array();
-void expected_type(Oid type_oid);
-void expected_composite();
-void expected_array();
-void expected_type_in_query(TypeInfo *p_type_info);
+void expected_type(Oid type_oid, TypeInfo *pTypeInfo);
+void expected(uint16 value_type, TypeInfo *pTypeInfo);
 void incorrect_length(TypeInfo *p_type_info);
 void higher_dim_arrays();
 void unknown_compiler_error();

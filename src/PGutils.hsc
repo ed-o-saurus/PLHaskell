@@ -134,7 +134,8 @@ import Data.Text.Encoding
   ( encodeUtf8,
   )
 import Data.Word
-  ( Word64,
+  ( Word16,
+    Word64,
   )
 import Foreign.C.String
   ( CString,
@@ -415,16 +416,10 @@ getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
 
 foreign import capi safe "error_plh.h expected_type"
-  expectedType :: Oid -> IO ()
+  expectedType :: Oid -> Ptr TypeInfo -> IO ()
 
-foreign import capi safe "error_plh.h expected_composite"
-  expectedComposite :: IO ()
-
-foreign import capi safe "error_plh.h expected_array"
-  expectedArray :: IO ()
-
-foreign import capi safe "error_plh.h expected_type_in_query"
-  expectedTypeInQuery :: Ptr TypeInfo -> IO ()
+foreign import capi safe "error_plh.h expected"
+  expected :: Word16 -> Ptr TypeInfo -> IO ()
 
 foreign import capi safe "error_plh.h incorrect_length"
   incorrectLength :: Ptr TypeInfo -> IO ()
@@ -434,62 +429,62 @@ foreign import capi safe "error_plh.h incorrect_length"
 encode' :: Ptr TypeInfo -> QueryParam -> IO (Maybe Datum)
 encode' pTypeInfo (QueryParamByteA value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const BYTEAOID}) $ expectedType #{const BYTEAOID}
+  assert (oid == #{const BYTEAOID}) $ expectedType #{const BYTEAOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamText value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const TEXTOID}) $ expectedType #{const TEXTOID}
+  assert (oid == #{const TEXTOID}) $ expectedType #{const TEXTOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamChar value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const CHAROID}) $ expectedType #{const CHAROID}
+  assert (oid == #{const CHAROID}) $ expectedType #{const CHAROID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamBool value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const BOOLOID}) $ expectedType #{const BOOLOID}
+  assert (oid == #{const BOOLOID}) $ expectedType #{const BOOLOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamInt2 value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const INT2OID}) $ expectedType #{const INT2OID}
+  assert (oid == #{const INT2OID}) $ expectedType #{const INT2OID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamInt4 value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const INT4OID}) $ expectedType #{const INT4OID}
+  assert (oid == #{const INT4OID}) $ expectedType #{const INT4OID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamInt8 value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const INT8OID}) $ expectedType #{const INT8OID}
+  assert (oid == #{const INT8OID}) $ expectedType #{const INT8OID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamFloat4 value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const FLOAT4OID}) $ expectedType #{const FLOAT4OID}
+  assert (oid == #{const FLOAT4OID}) $ expectedType #{const FLOAT4OID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamFloat8 value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const FLOAT8OID}) $ expectedType #{const FLOAT8OID}
+  assert (oid == #{const FLOAT8OID}) $ expectedType #{const FLOAT8OID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamDate value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const DATEOID}) $ expectedType #{const DATEOID}
+  assert (oid == #{const DATEOID}) $ expectedType #{const DATEOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamTime value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const TIMEOID}) $ expectedType #{const TIMEOID}
+  assert (oid == #{const TIMEOID}) $ expectedType #{const TIMEOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamTimestamp value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const TIMESTAMPOID}) $ expectedType #{const TIMESTAMPOID}
+  assert (oid == #{const TIMESTAMPOID}) $ expectedType #{const TIMESTAMPOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamInterval value) = do
   oid <- getTypeOid pTypeInfo
-  assert (oid == #{const INTERVALOID}) $ expectedType #{const INTERVALOID}
+  assert (oid == #{const INTERVALOID}) $ expectedType #{const INTERVALOID} pTypeInfo
   encode pTypeInfo value
 encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
   valueType <- getValueType pTypeInfo
-  assert (valueType == #{const COMPOSITE_TYPE}) expectedComposite
+  assert (valueType == #{const COMPOSITE_TYPE}) $ expected #{const COMPOSITE_TYPE} pTypeInfo
   oid <- getTypeOid pTypeInfo
   oid' <- getCompositeOid schemaType
-  assert (oid == oid') $ expectedTypeInQuery pTypeInfo
+  assert (oid == oid') $ expectedType oid' pTypeInfo
   (flip maybeWrap) mFields $ \queryParamFields -> do
     count <- getCount pTypeInfo
     assert ((length queryParamFields) == (fromIntegral count)) $ incorrectLength pTypeInfo
@@ -497,10 +492,10 @@ encode' pTypeInfo (QueryParamComposite schemaType mFields) = do
     zipWithM encode' typeInfoFields queryParamFields >>= writeComposite pTypeInfo
 encode' pTypeInfo (QueryParamArray schemaType mElems) = do
   valueType <- getValueType pTypeInfo
-  assert (valueType == #{const ARRAY_TYPE}) expectedArray
+  assert (valueType == #{const ARRAY_TYPE}) $ expected #{const ARRAY_TYPE} pTypeInfo
   oid <- getTypeOid pTypeInfo
   oid' <- getArrayOid schemaType
-  assert (oid == oid') $ expectedTypeInQuery pTypeInfo
+  assert (oid == oid') $ expectedType oid' pTypeInfo
   (flip maybeWrap) mElems $ \queryParamElems -> do
     pElemTypeInfo <- getElement pTypeInfo
     arrayMapM (encode' pElemTypeInfo) queryParamElems >>= writeArray pTypeInfo

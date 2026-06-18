@@ -18,6 +18,7 @@
 
 #include "error_plh.h"
 
+#include "catalog/pg_namespace.h"
 #include "utils/syscache.h"
 
 // Used by Haskell
@@ -33,35 +34,123 @@ void bad_multi_dim_array() {
                         "matching dimensions."));
 }
 
-void expected_type(Oid type_oid) __attribute__((visibility("hidden")));
-void expected_type(Oid type_oid) {
+void expected_type(Oid type_oid, TypeInfo *pTypeInfo)
+    __attribute__((visibility("hidden")));
+void expected_type(Oid type_oid, TypeInfo *pTypeInfo) {
+  char received_name[2 * MAXNAMLEN + 6], excpected_name[2 * MAXNAMLEN + 6];
+  HeapTuple typtup, nsptup;
+  Datum typnamespace, typname, nspname;
   bool is_null;
 
-  HeapTuple typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
+  typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type_oid));
   if (!HeapTupleIsValid(typtup))
     ereport(FATAL,
             errmsg_internal("cache lookup failed for type %u", type_oid));
 
-  Datum typname =
-      SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
+  typnamespace =
+      SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typnamespace, &is_null);
+  if (is_null)
+    ereport(FATAL, errmsg_internal("pg_type.typnamespace is NULL"));
+
+  typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
   if (is_null)
     ereport(FATAL, errmsg_internal("pg_type.typname is NULL"));
 
-  ereport(ERROR,
-          errmsg("Expected type \"%s\" in query", DatumGetCString(typname)));
+  if (DatumGetObjectId(typnamespace) == PG_CATALOG_NAMESPACE) {
+    sprintf(received_name, "\"%s\"", DatumGetCString(typname));
+  } else {
+    nsptup = SearchSysCache1(NAMESPACEOID, DatumGetObjectId(typnamespace));
+    if (!HeapTupleIsValid(nsptup))
+      ereport(FATAL, errmsg_internal("cache lookup failed for namespace %u",
+                                     DatumGetObjectId(typnamespace)));
+
+    nspname = SysCacheGetAttr(NAMESPACEOID, nsptup, Anum_pg_namespace_nspname,
+                              &is_null);
+    if (is_null)
+      ereport(FATAL, errmsg_internal("pg_namespace.nspname is NULL"));
+
+    sprintf(received_name, "\"%s\".\"%s\"", DatumGetCString(nspname),
+            DatumGetCString(typname));
+  }
+
+  typtup = SearchSysCache1(TYPEOID, ObjectIdGetDatum(pTypeInfo->type_oid));
+  if (!HeapTupleIsValid(typtup))
+    ereport(FATAL,
+            errmsg_internal("cache lookup failed for type %u", type_oid));
+
+  typnamespace =
+      SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typnamespace, &is_null);
+  if (is_null)
+    ereport(FATAL, errmsg_internal("pg_type.typnamespace is NULL"));
+
+  typname = SysCacheGetAttr(TYPEOID, typtup, Anum_pg_type_typname, &is_null);
+  if (is_null)
+    ereport(FATAL, errmsg_internal("pg_type.typname is NULL"));
+
+  if (DatumGetObjectId(typnamespace) == PG_CATALOG_NAMESPACE) {
+    sprintf(excpected_name, "\"%s\"", DatumGetCString(typname));
+  } else {
+    nsptup = SearchSysCache1(NAMESPACEOID, DatumGetObjectId(typnamespace));
+    if (!HeapTupleIsValid(nsptup))
+      ereport(FATAL, errmsg_internal("cache lookup failed for namespace %u",
+                                     DatumGetObjectId(typnamespace)));
+
+    nspname = SysCacheGetAttr(NAMESPACEOID, nsptup, Anum_pg_namespace_nspname,
+                              &is_null);
+    if (is_null)
+      ereport(FATAL, errmsg_internal("pg_namespace.nspname is NULL"));
+
+    sprintf(excpected_name, "\"%s\".\"%s\"", DatumGetCString(nspname),
+            DatumGetCString(typname));
+  }
+
+  ereport(ERROR, errmsg("Query expected %s but received %s.", excpected_name,
+                        received_name));
 }
 
-void expected_composite() __attribute__((visibility("hidden")));
-void expected_composite() { ereport(ERROR, errmsg("Expected composite type")); }
-
-void expected_array() __attribute__((visibility("hidden")));
-void expected_array() { ereport(ERROR, errmsg("Expected array type")); }
-
-void expected_type_in_query(TypeInfo *p_type_info)
+void expected(uint16 value_type, TypeInfo *pTypeInfo)
     __attribute__((visibility("hidden")));
-void expected_type_in_query(TypeInfo *p_type_info) {
-  ereport(ERROR, errmsg("Expected type \"%s.%s\" in query",
-                        p_type_info->nspname, p_type_info->typname));
+void expected(uint16 value_type, TypeInfo *pTypeInfo) {
+  char *received_type = "", *expected_type = "";
+
+  switch (value_type) {
+  case BASE_TYPE:
+    received_type = "Base";
+    break;
+  case COMPOSITE_TYPE:
+    received_type = "Compisite";
+    break;
+  case ARRAY_TYPE:
+    received_type = "Array";
+    break;
+  case RANGE_TYPE:
+    received_type = "Range";
+    break;
+  case MULTIRANGE_TYPE:
+    received_type = "MultiRange";
+    break;
+  }
+
+  switch (pTypeInfo->value_type) {
+  case BASE_TYPE:
+    expected_type = "Base";
+    break;
+  case COMPOSITE_TYPE:
+    expected_type = "Compisite";
+    break;
+  case ARRAY_TYPE:
+    expected_type = "Array";
+    break;
+  case RANGE_TYPE:
+    expected_type = "Range";
+    break;
+  case MULTIRANGE_TYPE:
+    expected_type = "MultiRange";
+    break;
+  }
+
+  ereport(ERROR, errmsg("Query expected %s type but received %s type.",
+                        expected_type, received_type));
 }
 
 void incorrect_length(TypeInfo *p_type_info)
