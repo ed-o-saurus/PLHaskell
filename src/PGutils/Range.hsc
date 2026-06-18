@@ -23,11 +23,11 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#{include "plhaskell.h"}
+#{include "../plhaskell.h"}
 #{include "utils/rangetypes.h"}
 #{include "utils/multirangetypes.h"}
 
-module PGrange
+module PGutils.Range
   ( Bound
       ( InfiniteBound,
         ClosedBound,
@@ -80,7 +80,7 @@ import Foreign.Storable
     peekByteOff,
     pokeByteOff,
   )
-import PGcommon
+import PGutils.Common
   ( Oid
       ( Oid
       ),
@@ -92,7 +92,7 @@ import PGcommon
     pfree,
     voidDatum,
   )
-import PGsupport
+import PGutils.Support
   ( Datum
       ( Datum
       ),
@@ -263,7 +263,7 @@ foreign import ccall safe "utils/multirangetypes.h make_multirange"
 makeMultiRange :: Oid -> Ptr TypeCacheEntry -> Int -> Ptr (Ptr (Range Datum)) -> IO (Ptr (MultiRange Datum))
 makeMultiRange multiRangeOid pTypeCacheEntry len = cMakeMultiRange multiRangeOid pTypeCacheEntry (fromIntegral len)
 
-foreign import capi safe "range_plh.h MultirangeTypePGetDatum"
+foreign import capi safe "../range_plh.h MultirangeTypePGetDatum"
   multiRangePToDatum :: Ptr (MultiRange Datum) -> IO Datum
 
 writeMultiRange :: Ptr TypeInfo -> MultiRange Datum -> IO Datum

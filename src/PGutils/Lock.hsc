@@ -25,7 +25,7 @@
 #{include "postgres.h"}
 #{include "storage/lock.h"}
 
-module PGlock
+module PGutils.Lock
   ( LockMode (..),
     LockLevel (..),
     Lockable,
@@ -69,7 +69,7 @@ import Foreign.Storable
     poke,
     sizeOf,
   )
-import PGcommon
+import PGutils.Common
   ( pWith,
   )
 import Prelude
@@ -101,10 +101,10 @@ isSession :: LockLevel -> Bool
 isSession Transaction = False
 isSession Session = True
 
-foreign import capi safe "lock_plh.h set_tag_1key"
+foreign import capi safe "../lock_plh.h set_tag_1key"
   cSetTag1Key :: (Ptr LockTag) -> Int64 -> IO ()
 
-foreign import capi safe "lock_plh.h set_tag_2key"
+foreign import capi safe "../lock_plh.h set_tag_2key"
   cSetTag2Key :: (Ptr LockTag) -> Int32 -> Int32 -> IO ()
 
 data LockTag = LockTag1 Int64 | LockTag2 (Int32, Int32)

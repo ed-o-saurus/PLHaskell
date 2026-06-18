@@ -27,7 +27,7 @@
 #{include "utils/date.h"}
 #{include "utils/datetime.h"}
 
-module PGdatetime
+module PGutils.Datetime
   ( Date
       ( DateNInfinity,
         DatePInfinity
@@ -123,7 +123,7 @@ import Foreign.Storable
     peekByteOff,
     pokeByteOff,
   )
-import PGcommon
+import PGutils.Common
   ( Datum
       ( Datum
       ),
@@ -133,7 +133,7 @@ import PGcommon
     pallocArray,
     palloca,
   )
-import PGsupport
+import PGutils.Support
   ( BaseType
       ( read,
         write
@@ -255,13 +255,13 @@ instance BaseType Date where
   write (Date date) = dateADTGetDatum date
   write DatePInfinity = dateADTGetDatum maxBound
 
-foreign import capi safe "datetime_plh.h date_read"
+foreign import capi safe "../datetime_plh.h date_read"
   dateRead :: Ptr Int32 -> CString -> IO CBool
 
 instance Read Date where
   readPrec = mkReadPrec dateRead numToDate
 
-foreign import capi safe "datetime_plh.h date_show"
+foreign import capi safe "../datetime_plh.h date_show"
   dateShow :: Int32 -> CString -> IO ()
 
 instance Show Date where
@@ -318,13 +318,13 @@ instance BaseType Time where
   read datum = Time <$> datumGetTimeADT datum
   write (Time time) = timeADTGetDatum time
 
-foreign import capi safe "datetime_plh.h time_read"
+foreign import capi safe "../datetime_plh.h time_read"
   timeRead :: Ptr Int64 -> CString -> IO CBool
 
 instance Read Time where
   readPrec = mkReadPrec timeRead Time
 
-foreign import capi safe "datetime_plh.h time_show"
+foreign import capi safe "../datetime_plh.h time_show"
   timeShow :: Int64 -> CString -> IO ()
 
 instance Show Time where
@@ -364,13 +364,13 @@ instance BaseType Timestamp where
   write (Timestamp timestamp) = timestampGetDatum timestamp
   write TimestampPInfinity = timestampGetDatum maxBound
 
-foreign import capi safe "datetime_plh.h timestamp_read"
+foreign import capi safe "../datetime_plh.h timestamp_read"
   timestampRead :: Ptr Int64 -> CString -> IO CBool
 
 instance Read Timestamp where
   readPrec = mkReadPrec timestampRead numToTimestamp
 
-foreign import capi safe "datetime_plh.h timestamp_show"
+foreign import capi safe "../datetime_plh.h timestamp_show"
   timestampShow :: Int64 -> CString -> IO ()
 
 instance Show Timestamp where
@@ -419,13 +419,13 @@ instance Storable Interval where
     #{poke Interval, day} pInterval day'
     #{poke Interval, month} pInterval month'
 
-foreign import capi safe "datetime_plh.h interval_read"
+foreign import capi safe "../datetime_plh.h interval_read"
   intervalRead :: Ptr Interval -> CString -> IO CBool
 
 instance Read Interval where
   readPrec = mkReadPrec intervalRead id
 
-foreign import capi safe "datetime_plh.h interval_show"
+foreign import capi safe "../datetime_plh.h interval_show"
   intervalShow :: Ptr Interval -> CString -> IO ()
 
 instance Show Interval where

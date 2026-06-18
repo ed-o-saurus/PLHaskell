@@ -27,9 +27,9 @@
 -- This module implements functions to allocate memory using postgres' memory allocation.
 -- This prevents memory leaks in case of an ERROR event.
 
-#{include "plhaskell.h"}
+#{include "../plhaskell.h"}
 
-module PGcommon
+module PGutils.Common
   ( Datum
       ( Datum
       ),
@@ -265,7 +265,7 @@ pWithArrayLen vals action = do
     pokeArray ptr vals
     action len ptr
 
-foreign import capi safe "error_plh.h handler"
+foreign import capi safe "../error_plh.h handler"
   cHandler :: CString -> IO (Datum)
 
 handler :: SomeException -> IO Datum

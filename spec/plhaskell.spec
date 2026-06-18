@@ -103,12 +103,12 @@ install -m 0644 docs/Usage.md                %{buildroot}/%{_datadir}/doc/%{name
 
 %{_libdir}/pgsql/%{name}.so
 %{_libdir}/pgsql/PGutils.dyn_hi
-%{_libdir}/pgsql/PGsupport.dyn_hi
-%{_libdir}/pgsql/PGarray.dyn_hi
-%{_libdir}/pgsql/PGdatetime.dyn_hi
-%{_libdir}/pgsql/PGlock.dyn_hi
-%{_libdir}/pgsql/PGrange.dyn_hi
-%{_libdir}/pgsql/PGcommon.dyn_hi
+%{_libdir}/pgsql/PGutils/Support.dyn_hi
+%{_libdir}/pgsql/PGutils/Array.dyn_hi
+%{_libdir}/pgsql/PGutils/Datetime.dyn_hi
+%{_libdir}/pgsql/PGutils/Lock.dyn_hi
+%{_libdir}/pgsql/PGutils/Range.dyn_hi
+%{_libdir}/pgsql/PGutils/Common.dyn_hi
 
 %dir %{_libdir}/pgsql/plhaskell_pkg_db
 %{_libdir}/pgsql/plhaskell_pkg_db/pgutils-%{version}.conf

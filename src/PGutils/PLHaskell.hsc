@@ -22,7 +22,7 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#{include "plhaskell.h"}
+#{include "../plhaskell.h"}
 
 #{include "catalog/pg_type_d.h"}
 
@@ -124,7 +124,7 @@ import Language.Haskell.Interpreter
 import Language.Haskell.Interpreter.Unsafe
   ( unsafeRunInterpreterWithArgs,
   )
-import PGcommon
+import PGutils.Common
   ( Datum
       ( Datum
       ),
@@ -283,7 +283,7 @@ getSignature pCallInfo = liftIO $ do
           return $ "MultiRange (" ++ elemName ++ ")"
         _ -> undefined
 
-foreign import capi safe "plhaskell.h error_func_sig"
+foreign import capi safe "../plhaskell.h error_func_sig"
   cErrorFuncSig :: CString -> IO ()
 
 errorFuncSig :: String -> IO ()
@@ -307,20 +307,20 @@ setUpEvalInt pCallInfo = do
       ModuleImport "Foreign.Ptr" NotQualified (ImportList ["Ptr", "wordPtrToPtr"]),
       ModuleImport "Foreign.StablePtr" NotQualified (ImportList ["newStablePtr"]),
       ModuleImport "Foreign.Storable" NotQualified (ImportList ["peekElemOff", "poke"]),
-      ModuleImport "PGcommon" NotQualified (ImportList ["handler", "unNullableDatum"]),
+      ModuleImport "PGutils.Common" NotQualified (ImportList ["handler", "unNullableDatum"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm", "unPGm"]),
-      ModuleImport "PGsupport" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
-      ModuleImport "PGarray" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
-      ModuleImport "PGrange" NotQualified (ImportList ["Range", "MultiRange", "rangeMapM", "readRange", "writeRange", "multiRangeMapM", "readMultiRange", "writeMultiRange"]),
-      ModuleImport "PGdatetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
-      ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
+      ModuleImport "PGutils.Support" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
+      ModuleImport "PGutils.Array" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
+      ModuleImport "PGutils.Range" NotQualified (ImportList ["Range", "MultiRange", "rangeMapM", "readRange", "writeRange", "multiRangeMapM", "readMultiRange", "writeMultiRange"]),
+      ModuleImport "PGutils.Datetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
+      ModuleImport "PGutils.Func" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 
   CBool trusted <- liftIO $ #{peek CallInfo, trusted} pCallInfo
 
   -- Check signature
   signature <- getSignature pCallInfo
-  r <- typeChecks $ "PGmodule." ++ funcName ++ "::" ++ signature
+  r <- typeChecks $ "PGutils.Func." ++ funcName ++ "::" ++ signature
   liftIO $ assert r $ errorFuncSig $ funcName ++ " :: " ++ signature
 
   -- Number of arguments
@@ -419,10 +419,10 @@ setUpEvalInt pCallInfo = do
       decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
       runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
-foreign import capi safe "error_plh.h unknown_compiler_error"
+foreign import capi safe "../error_plh.h unknown_compiler_error"
   unknownComilerError :: IO ()
 
-foreign import capi safe "error_plh.h language_error"
+foreign import capi safe "../error_plh.h language_error"
   cLanguageError :: CInt -> CString -> IO ()
 
 languageError :: String -> IO ()
@@ -465,14 +465,14 @@ checkSignature pCallInfo = execute pCallInfo $ do
       ModuleImport "Data.Int" NotQualified (ImportList ["Int16", "Int32", "Int64"]),
       ModuleImport "Data.Text" NotQualified (ImportList ["Text"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm"]),
-      ModuleImport "PGarray" NotQualified (ImportList ["Array"]),
-      ModuleImport "PGrange" NotQualified (ImportList ["Range", "MultiRange"]),
-      ModuleImport "PGdatetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
-      ModuleImport "PGmodule" (QualifiedAs Nothing) (ImportList [funcName])
+      ModuleImport "PGutils.Array" NotQualified (ImportList ["Array"]),
+      ModuleImport "PGutils.Range" NotQualified (ImportList ["Range", "MultiRange"]),
+      ModuleImport "PGutils.Datetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
+      ModuleImport "PGutils.Func" (QualifiedAs Nothing) (ImportList [funcName])
     ]
 
   signature <- getSignature pCallInfo
-  r <- typeChecks $ "PGmodule." ++ funcName ++ "::" ++ signature
+  r <- typeChecks $ "PGutils.Func." ++ funcName ++ "::" ++ signature
   liftIO $ assert r $ errorFuncSig $ funcName ++ " :: " ++ signature
 
 -- Set the Function field of the CallInfo to a function that
@@ -488,8 +488,8 @@ mkFunction pCallInfo = execute pCallInfo $ do
   let argsNames = concatMap (interpolate " arg?") argIndexes
   let prog_call =
         if trusted
-          then "result <- unPGm $ PGmodule." ++ funcName ++ argsNames ++ ";"
-          else "result <-         PGmodule." ++ funcName ++ argsNames ++ ";"
+          then "result <- unPGm $ PGutils.Func." ++ funcName ++ argsNames ++ ";"
+          else "result <-         PGutils.Func." ++ funcName ++ argsNames ++ ";"
   let prog_encode_result = "encodeResult result >>= writeResult pResultIsNull"
   runStmt $ "function <- wrapFunction $ (\\pArgs pResultIsNull -> handle handler $ do {" ++ prog_decode_args ++ prog_call ++ prog_encode_result ++ "})"
 
@@ -511,8 +511,8 @@ mkList pCallInfo pArgs = execute pCallInfo $ do
   -- Set returnResultList to be a list of actions each of which loads a result into the result TypeInfo
   let argsNames = concatMap (interpolate " arg?") argIndexes
   if trusted
-    then runStmt $ "results <- unPGm $ PGmodule." ++ funcName ++ argsNames
-    else runStmt $ "results <-         PGmodule." ++ funcName ++ argsNames
+    then runStmt $ "results <- unPGm $ PGutils.Func." ++ funcName ++ argsNames
+    else runStmt $ "results <-         PGutils.Func." ++ funcName ++ argsNames
 
   runStmt "let returnResultList = mkResultList encodeResult results"
 

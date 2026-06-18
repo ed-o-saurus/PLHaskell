@@ -167,14 +167,14 @@ import Foreign.Storable
     peekByteOff,
     peekElemOff,
   )
-import PGarray
+import PGutils.Array
   ( Array (..),
     arrayMap,
     arrayMapM,
     readArray,
     writeArray,
   )
-import PGcommon
+import PGutils.Common
   ( Oid
       ( Oid
       ),
@@ -193,7 +193,7 @@ import PGcommon
     pWithCString2,
     voidDatum,
   )
-import PGdatetime
+import PGutils.Datetime
   ( Date
       ( DateNInfinity,
         DatePInfinity
@@ -232,7 +232,7 @@ import PGdatetime
     transactionTimestampUTC',
     years,
   )
-import PGlock
+import PGutils.Lock
   ( LockLevel (..),
     LockMode (..),
     Lockable,
@@ -241,12 +241,12 @@ import PGlock
     unlock',
     unlockAll',
   )
-import PGrange
+import PGutils.Range
   ( Bound (..),
     MultiRange,
     Range (..),
   )
-import PGsupport
+import PGutils.Support
   ( BaseType
       ( decode,
         encode

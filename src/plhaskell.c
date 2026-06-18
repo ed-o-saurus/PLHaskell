@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "plhaskell.h"
-#include "PLHaskell_stub.h"
+#include "PGutils/PLHaskell_stub.h"
 #include "error_plh.h"
 #include "spi_plh.h"
 
@@ -334,7 +334,7 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
     ereport(FATAL, errmsg_internal("Unable to create temporary file (%s)",
                                    p_call_info->mod_file_name));
 
-  fprintf(modfile, "module PGmodule (_') where\n");
+  fprintf(modfile, "module PGutils.Func (_') where\n");
   fputs(codeblock->source_text, modfile);
 
   fclose(modfile);
@@ -502,7 +502,7 @@ static void build_call_info(CallInfo *p_call_info, Oid func_oid,
     ereport(FATAL, errmsg_internal("Unable to create temporary file (%s)",
                                    p_call_info->mod_file_name));
 
-  fprintf(modfile, "module PGmodule (%s) where\n", p_call_info->func_name);
+  fprintf(modfile, "module PGutils.Func (%s) where\n", p_call_info->func_name);
   fwrite(VARDATA_ANY(src), VARSIZE_ANY_EXHDR(src), 1, modfile);
   fclose(modfile);
 

@@ -24,7 +24,7 @@
 
 #{include "postgres.h"}
 
-module PGsupport
+module PGutils.Support
   ( Datum
       ( Datum
       ),
@@ -110,7 +110,7 @@ import Foreign.Storable
   ( peek,
     poke,
   )
-import PGcommon
+import PGutils.Common
   ( Datum
       ( Datum
       ),
@@ -166,7 +166,7 @@ maybeWrap :: (a -> IO b) -> Maybe a -> IO (Maybe b)
 maybeWrap _ Nothing = return Nothing
 maybeWrap func (Just value) = Just <$> func value
 
-foreign import capi safe "spi_plh.h datum_SPI_copy"
+foreign import capi safe "../spi_plh.h datum_SPI_copy"
   datumSPICopy :: Ptr TypeInfo -> Datum -> IO Datum
 
 class BaseType a where
@@ -189,7 +189,7 @@ writeResult pIsNull (Just result) = do
   poke pIsNull (fromBool False)
   return result
 
-foreign import capi safe "plhaskell.h read_composite"
+foreign import capi safe "../plhaskell.h read_composite"
   cReadComposite :: Ptr TypeInfo -> Datum -> Ptr Datum -> Ptr CBool -> IO ()
 
 readComposite :: Ptr TypeInfo -> Datum -> IO [Maybe Datum]
@@ -201,7 +201,7 @@ readComposite pTypeInfo datum = do
     isNulls <- peekArray count pIsNulls
     return $ zipWith (\fieldDatum isNull -> (if (toBool isNull) then Nothing else Just fieldDatum)) datums isNulls
 
-foreign import capi safe "plhaskell.h write_composite"
+foreign import capi safe "../plhaskell.h write_composite"
   cWriteComposite :: Ptr TypeInfo -> Ptr Datum -> Ptr CBool -> IO Datum
 
 writeComposite :: Ptr TypeInfo -> [Maybe Datum] -> IO Datum
@@ -225,7 +225,7 @@ setVarSize datum len = cSetVarSize datum $ #{const VARHDRSZ} + len
 foreign import capi safe "postgres.h VARDATA_ANY"
   getVarData :: Datum -> IO (Ptr b)
 
-foreign import capi safe "plhaskell.h detoast_datum"
+foreign import capi safe "../plhaskell.h detoast_datum"
   detoastDatum :: Datum -> IO Datum
 
 instance BaseType ByteString where
@@ -323,7 +323,7 @@ foreign import ccall "wrapper"
 foreign import ccall safe "&CurrentMemoryContext"
   pCurrentMemoryContext :: Ptr MemoryContext
 
-foreign import ccall safe "plhaskell.h alloc_set_context_create_small_temp"
+foreign import ccall safe "../plhaskell.h alloc_set_context_create_small_temp"
   allocSetContextCreateSmallTemp :: MemoryContext -> IO MemoryContext
 
 foreign import ccall safe "palloc.h MemoryContextDelete"
@@ -339,7 +339,7 @@ withTempContext action = do
   memoryContextDelete newMemoryContext
   return retVal
 
-foreign import capi safe "plhaskell.h call_func"
+foreign import capi safe "../plhaskell.h call_func"
   cCallFunc :: Oid -> Int16 -> Ptr NullableDatum -> Ptr CBool -> IO Datum
 
 callFunc :: Ptr Oid -> [Maybe Datum] -> IO (Maybe Datum)
