@@ -58,7 +58,6 @@ endef
 
 all : src/PGutils/Common.dyn_hi src/PGutils.dyn_hi src/PGutils/Support.dyn_hi src/PGutils/Array.dyn_hi src/PGutils/Datetime.dyn_hi src/PGutils/Lock.dyn_hi src/PGutils/Range.dyn_hi src/plhaskell.so src/pgutils.conf selinux/plhaskell.pp
 
-#TODO : stub?
 clean :
 	rm -fv src/*.hi src/*.dyn_hi src/*_stub.h src/*.hs src/*.o src/PGutils/*.hi src/PGutils/*.dyn_hi src/PGutils/*_stub.h src/PGutils/*.hs src/PGutils/*.o src/*.so src/*.conf src/*_hsc_make.c src/PGutils/*_hsc_make.c selinux/*.mod selinux/*.pp
 
