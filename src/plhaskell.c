@@ -46,6 +46,9 @@ static void build_type_info(TypeInfo *p_type_info, Oid type_oid,
 static void destroy_call_info(void *arg);
 
 void _PG_init(void);
+
+bool package_path_check_hook(char **newval, void **_extra, GucSource _source);
+
 static void gcDoneHook(const struct GCDetails_ *stats);
 
 static int rts_msg_fn(int elevel, const char *s, va_list ap);
@@ -67,6 +70,9 @@ static CallInfo *first_p_call_info =
     NULL; // Points to list of all active CallInfos
 
 static int plhaskell_max_memory;
+static char *package_path;
+static char *package_path_untrusted;
+
 static Oid array_subscript_handler_oid;
 
 Oid make_date_oid;
@@ -166,7 +172,12 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       // Setup the iterator and list
       prev_p_call_info = current_p_call_info;
       current_p_call_info = p_call_info;
-      mk_list(p_call_info, fcinfo->args);
+
+      if (p_call_info->trusted)
+        mk_list(package_path, p_call_info, fcinfo->args);
+      else
+        mk_list(package_path_untrusted, p_call_info, fcinfo->args);
+
       current_p_call_info = prev_p_call_info;
 
       spi_code = SPI_finish();
@@ -186,7 +197,12 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
     // Iterate the list
     prev_p_call_info = current_p_call_info;
     current_p_call_info = p_call_info;
-    ret_val = iterate(p_call_info, &fcinfo->isnull);
+
+    if (p_call_info->trusted)
+      ret_val = iterate(package_path, p_call_info, &fcinfo->isnull);
+    else
+      ret_val = iterate(package_path_untrusted, p_call_info, &fcinfo->isnull);
+
     current_p_call_info = prev_p_call_info;
 
     spi_code = SPI_finish();
@@ -220,7 +236,12 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       // Make the function
       prev_p_call_info = current_p_call_info;
       current_p_call_info = p_call_info;
-      mk_function(p_call_info);
+
+      if (p_call_info->trusted)
+        mk_function(package_path, p_call_info);
+      else
+        mk_function(package_path_untrusted, p_call_info);
+
       current_p_call_info = prev_p_call_info;
 
       MemoryContextSwitchTo(old_context);
@@ -290,7 +311,12 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS) {
   // Raise error if the function's signature is incorrect
   prev_p_call_info = current_p_call_info;
   current_p_call_info = p_call_info;
-  check_signature(p_call_info);
+
+  if (p_call_info->trusted)
+    check_signature(package_path, p_call_info);
+  else
+    check_signature(package_path_untrusted, p_call_info);
+
   current_p_call_info = prev_p_call_info;
 
   PG_RETURN_VOID();
@@ -354,7 +380,12 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
   // Make and call the function
   prev_p_call_info = current_p_call_info;
   current_p_call_info = p_call_info;
-  mk_function(p_call_info);
+
+  if (p_call_info->trusted)
+    mk_function(package_path, p_call_info);
+  else
+    mk_function(package_path_untrusted, p_call_info);
+
   (*p_call_info->function)(NULL, &is_null);
   current_p_call_info = prev_p_call_info;
 
@@ -946,6 +977,26 @@ void _PG_init(void) {
   conf.gcDoneHook =
       gcDoneHook; // Called on every garbage collections to monitor memory usage
   hs_init_ghc(&argc, &pargv, conf);
+
+  DefineCustomStringVariable(
+      "plhaskell.package_path", gettext_noop("Package Path for PL/Haskell"),
+      gettext_noop(
+          "This is list of GHC package databases searched by PL/Haskell "
+          "to find an imported module."),
+      &package_path, ":", PGC_SUSET, 0, &package_path_check_hook, NULL, NULL);
+
+  DefineCustomStringVariable(
+      "plhaskell.package_path_untrusted",
+      gettext_noop("Package Path for untrusted PL/Haskell"),
+      gettext_noop("This is list of GHC package databases searched by "
+                   "untrusted PL/Haskell "
+                   "to find an imported module."),
+      &package_path_untrusted, ":", PGC_SUSET, 0, &package_path_check_hook,
+      NULL, NULL);
+}
+
+bool package_path_check_hook(char **newval, void **_extra, GucSource _source) {
+  return is_valid_package_path(*newval);
 }
 
 // Called on every garbage collection to monitor memory usage

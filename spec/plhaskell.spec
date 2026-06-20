@@ -67,7 +67,7 @@ install -m 0644 docs/Build_and_Install.md    %{buildroot}/%{_datadir}/doc/%{name
 install -m 0644 docs/Examples.md             %{buildroot}/%{_datadir}/doc/%{name}/docs/Examples.md
 install -m 0644 docs/GHC_Version.md          %{buildroot}/%{_datadir}/doc/%{name}/docs/GHC_Version.md
 install -m 0644 docs/Known_Bugs.md           %{buildroot}/%{_datadir}/doc/%{name}/docs/Known_Bugs.md
-install -m 0644 docs/Maximum_Memory.md       %{buildroot}/%{_datadir}/doc/%{name}/docs/Maximum_Memory.md
+install -m 0644 docs/Configuration.md        %{buildroot}/%{_datadir}/doc/%{name}/docs/Configuration.md
 install -m 0644 docs/Package_Repositories.md %{buildroot}/%{_datadir}/doc/%{name}/docs/Package_Repositories.md
 install -m 0644 docs/Trust.md                %{buildroot}/%{_datadir}/doc/%{name}/docs/Trust.md
 install -m 0644 docs/Usage.md                %{buildroot}/%{_datadir}/doc/%{name}/docs/Usage.md
@@ -93,7 +93,7 @@ install -m 0644 docs/Usage.md                %{buildroot}/%{_datadir}/doc/%{name
 %doc %{_datadir}/doc/%{name}/docs/Examples.md
 %doc %{_datadir}/doc/%{name}/docs/GHC_Version.md
 %doc %{_datadir}/doc/%{name}/docs/Known_Bugs.md
-%doc %{_datadir}/doc/%{name}/docs/Maximum_Memory.md
+%doc %{_datadir}/doc/%{name}/docs/Configuration.md
 %doc %{_datadir}/doc/%{name}/docs/Package_Repositories.md
 %doc %{_datadir}/doc/%{name}/docs/Trust.md
 %doc %{_datadir}/doc/%{name}/docs/Usage.md

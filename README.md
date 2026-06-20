@@ -37,7 +37,7 @@ This document assumes that the reader is familiar with PostgreSQL (specifically 
 * [Build and Install](docs/Build_and_Install.md)
 * [Trust](docs/Trust.md)
 * [Usage](docs/Usage.md)
-* [Maximum Memory](docs/Maximum_Memory.md)
+* [Configuration](docs/Configuration.md)
 * [GHC Version](docs/GHC_Version.md)
 * [Known Bugs](docs/Known_Bugs.md)
 * [Examples](docs/Examples.md)

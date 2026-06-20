@@ -149,7 +149,8 @@ import System.Directory
   )
 import Prelude
   ( Bool
-      ( False
+      ( False,
+        True
       ),
     Either
       ( Left,
@@ -165,6 +166,7 @@ import Prelude
     concatMap,
     const,
     fromIntegral,
+    length,
     map,
     not,
     null,
@@ -172,10 +174,14 @@ import Prelude
     show,
     undefined,
     ($),
+    (&&),
     (++),
+    (-),
     (.),
+    (==),
     (>>),
     (>>=),
+    (||),
   )
 
 -- Dummy type to make pointers
@@ -432,10 +438,11 @@ foreign import ccall safe "&pkglib_path"
   pPkgLibPath :: CString
 
 -- Execute an interpreter monad and handle the result
-execute :: Ptr CallInfo -> Interpreter () -> IO ()
-execute pCallInfo int = do
+execute :: CString -> Ptr CallInfo -> Interpreter () -> IO ()
+execute pPackagePath pCallInfo int = do
   pkgLibPath <- peekCString pPkgLibPath
-  r <- unsafeRunInterpreterWithArgs ["-clear-package-db", "-package-db", pkgLibPath ++ "/plhaskell_pkg_db", "-global-package-db"] int
+  packagePath <- peekCString pPackagePath
+  r <- unsafeRunInterpreterWithArgs (mkInterpreterArgs pkgLibPath packagePath) int
   case r of
     Left (UnknownError msg) -> removeModFile >> languageError msg
     Left (WontCompile []) -> removeModFile >> unknownComilerError
@@ -448,12 +455,26 @@ execute pCallInfo int = do
     ignore :: SomeException -> IO ()
     ignore = const $ return ()
 
+mkInterpreterArgs :: String -> String -> [String]
+mkInterpreterArgs pkgLibPath "" = ["-clear-package-db", "-package-db", pkgLibPath ++ "/plhaskell_pkg_db"]
+mkInterpreterArgs pkgLibPath ":" = ["-clear-package-db", "-package-db", pkgLibPath ++ "/plhaskell_pkg_db", "-global-package-db"]
+mkInterpreterArgs pkgLibPath q = ["-clear-package-db", "-package-db", pkgLibPath ++ "/plhaskell_pkg_db"] ++ (mkInterpreterArgs' $ splitOnColon q)
+  where
+    mkInterpreterArgs' [] = []
+    mkInterpreterArgs' ("" : zs) = "-global-package-db" : mkInterpreterArgs' zs
+    mkInterpreterArgs' (z : zs) = "-package-db" : interpolate' z : mkInterpreterArgs' zs
+    interpolate' z@('$' : _) = pkgLibPath ++ trim (length "$pkglibdir") z
+    interpolate' z = z
+    trim 0 t = t
+    trim n (_t : ts) = trim (n - 1) ts
+    trim _ "" = ""
+
 -- Check the type signature of the function against what is expected
 -- Raise and Error if they don't match
-foreign export capi "check_signature" checkSignature :: Ptr CallInfo -> IO ()
+foreign export capi "check_signature" checkSignature :: CString -> Ptr CallInfo -> IO ()
 
-checkSignature :: Ptr CallInfo -> IO ()
-checkSignature pCallInfo = execute pCallInfo $ do
+checkSignature :: CString -> Ptr CallInfo -> IO ()
+checkSignature pPackagePath pCallInfo = execute pPackagePath pCallInfo $ do
   set [languageExtensions := [OverloadedStrings, Safe], installedModulesInScope := False]
   modFileName <- getModFileName pCallInfo
   loadModules [modFileName]
@@ -477,10 +498,10 @@ checkSignature pCallInfo = execute pCallInfo $ do
 
 -- Set the Function field of the CallInfo to a function that
 -- will read the arguments, call the function, and write the result
-foreign export capi "mk_function" mkFunction :: Ptr CallInfo -> IO ()
+foreign export capi "mk_function" mkFunction :: CString -> Ptr CallInfo -> IO ()
 
-mkFunction :: Ptr CallInfo -> IO ()
-mkFunction pCallInfo = execute pCallInfo $ do
+mkFunction :: CString -> Ptr CallInfo -> IO ()
+mkFunction pPackagePath pCallInfo = execute pPackagePath pCallInfo $ do
   (argIndexes, funcName, trusted) <- setUpEvalInt pCallInfo
 
   -- Build the Function
@@ -498,10 +519,10 @@ mkFunction pCallInfo = execute pCallInfo $ do
   runStmt "poke pFunction function"
 
 -- Set the List field of the CallInfo to the list returns by the function
-foreign export capi "mk_list" mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
+foreign export capi "mk_list" mkList :: CString -> Ptr CallInfo -> Ptr NullableDatum -> IO ()
 
-mkList :: Ptr CallInfo -> Ptr NullableDatum -> IO ()
-mkList pCallInfo pArgs = execute pCallInfo $ do
+mkList :: CString -> Ptr CallInfo -> Ptr NullableDatum -> IO ()
+mkList pPackagePath pCallInfo pArgs = execute pPackagePath pCallInfo $ do
   (argIndexes, funcName, trusted) <- setUpEvalInt pCallInfo
 
   -- Get the arguments
@@ -521,10 +542,10 @@ mkList pCallInfo pArgs = execute pCallInfo $ do
   setPtr "pList" $ #{ptr CallInfo, list} pCallInfo
   runStmt "poke pList spList"
 
-foreign export capi "iterate" iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
+foreign export capi "iterate" iterate :: CString -> Ptr CallInfo -> Ptr CBool -> IO Datum
 
-iterate :: Ptr CallInfo -> Ptr CBool -> IO Datum
-iterate pCallInfo pResultIsNull = handle handler $ do
+iterate :: CString -> Ptr CallInfo -> Ptr CBool -> IO Datum
+iterate _pPackagePath pCallInfo pResultIsNull = handle handler $ do
   let pList = #{ptr CallInfo, list} pCallInfo
   spList <- peek pList
   returnResultList <- deRefStablePtr spList
@@ -535,3 +556,30 @@ iterate pCallInfo pResultIsNull = handle handler $ do
     (returnResult : tail) -> do
       (newStablePtr tail) >>= (poke pList)
       returnResult pResultIsNull
+
+splitOnColon :: String -> [String]
+splitOnColon "" = [""]
+splitOnColon (':' : xs) = "" : splitOnColon xs
+splitOnColon (x : xs) = case splitOnColon xs of
+  [] -> undefined -- splitOnColon never returns an empty list
+  y : ys -> (x : y) : ys
+
+isValidPackagePath :: String -> Bool
+isValidPackagePath "" = True
+isValidPackagePath ":" = True
+isValidPackagePath q = isValidPackagePath' $ splitOnColon q
+  where
+    isValidPackagePath' [] = undefined -- splitOnColon never returns an empty list
+    isValidPackagePath' [p] = isValidPath p
+    isValidPackagePath' [p, ""] = isValidPath p
+    isValidPackagePath' (p : ps) = isValidPath p && isValidPackagePath' ps
+    isValidPath "$pkglibdir" = True
+    isValidPath p = startsWith "$pkglibdir/" p || startsWith "/" p
+    startsWith "" _ = True
+    startsWith _ "" = False
+    startsWith (x : xs) (y : ys) = (x == y) && startsWith xs ys
+
+foreign export capi "is_valid_package_path" cIsValidPackagePath :: CString -> IO CBool
+
+cIsValidPackagePath :: CString -> IO CBool
+cIsValidPackagePath pQ = peekCString pQ >>= return . fromBool . isValidPackagePath
