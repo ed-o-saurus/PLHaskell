@@ -139,16 +139,23 @@ src/PGutils.hs : src/PGutils.hsc src/plhaskell.h
 	cp $^ $@
 
 src/pgutils.conf :
-	echo "name:            pgutils"                                                       > $@
-	echo "version:         $(PLHASKELL_VERSION)"                                         >> $@
-	echo "visibility:      public"                                                       >> $@
-	echo "id:              pgutils-$(PLHASKELL_VERSION)"                                 >> $@
-	echo "key:             pgutils-$(PLHASKELL_VERSION)"                                 >> $@
-	echo "license:         GPL"                                                          >> $@
-	echo "synopsis:        PL/Haskell Utilities"                                         >> $@
-	echo "exposed:         True"                                                         >> $@
-	echo "exposed-modules: PGutils PGutils.Support PGutils.Array PGutils.Datetime PGutils.Lock PGutils.Range PGutils.Common" >> $@
-	echo "import-dirs:     $(PG_PKG_LIB_DIR)"                                            >> $@
+	echo "name:        pgutils"                       > $@
+	echo "version:     $(PLHASKELL_VERSION)"         >> $@
+	echo "visibility:  public"                       >> $@
+	echo "id:          pgutils-$(PLHASKELL_VERSION)" >> $@
+	echo "key:         pgutils-$(PLHASKELL_VERSION)" >> $@
+	echo "license:     GPL"                          >> $@
+	echo "synopsis:    PL/Haskell Utilities"         >> $@
+	echo "exposed:     True"                         >> $@
+	echo "exposed-modules:"                          >> $@
+	echo "    PGutils"                               >> $@
+	echo "    PGutils.Array"                         >> $@
+	echo "    PGutils.Common"                        >> $@
+	echo "    PGutils.Datetime"                      >> $@
+	echo "    PGutils.Lock"                          >> $@
+	echo "    PGutils.Range"                         >> $@
+	echo "    PGutils.Support"                       >> $@
+	echo "import-dirs: $(PG_PKG_LIB_DIR)"            >> $@
 
 ifeq ($(SELINUX),1)
 %.mod : %.te
