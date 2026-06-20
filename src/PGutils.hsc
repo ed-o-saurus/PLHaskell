@@ -102,6 +102,10 @@ module PGutils
     Bound (..),
     Range (..),
     MultiRange,
+    rangeMap,
+    rangeMapM,
+    multiRangeMap,
+    multiRangeMapM,
   )
 where
 
@@ -245,6 +249,10 @@ import PGutils.Range
   ( Bound (..),
     MultiRange,
     Range (..),
+    multiRangeMap,
+    multiRangeMapM,
+    rangeMap,
+    rangeMapM,
   )
 import PGutils.Support
   ( BaseType

@@ -38,10 +38,14 @@ module PGutils.Range
         BoundRange
       ),
     MultiRange,
+    rangeMap,
     rangeMapM,
+    rangeMapMm,
     readRange,
     writeRange,
+    multiRangeMap,
     multiRangeMapM,
+    multiRangeMapMm,
     readMultiRange,
     writeMultiRange,
   )
@@ -110,6 +114,7 @@ import Prelude
     Monad,
     Show,
     fromIntegral,
+    map,
     mapM,
     maybe,
     return,
@@ -143,21 +148,28 @@ data Range a
   | BoundRange (Bound a) (Bound a)
   deriving stock (Show)
 
-rangeMapM :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> Range a -> m (Range b)
+rangeMap :: (a -> b) -> Range a -> Range b
+rangeMap _func EmptyRange = EmptyRange
+rangeMap func (BoundRange low up) = BoundRange (boundMap low) (boundMap up)
+  where
+    boundMap InfiniteBound = InfiniteBound
+    boundMap (OpenBound val) = OpenBound $ func val
+    boundMap (ClosedBound val) = ClosedBound $ func val
+
+rangeMapM :: forall a b m. (Monad m) => (a -> m b) -> Range a -> m (Range b)
 rangeMapM _func EmptyRange = return EmptyRange
 rangeMapM func (BoundRange low up) = do
   low' <- boundMapM low
   up' <- boundMapM up
   return $ BoundRange low' up'
   where
-    boundMapM :: Bound a -> m (Bound b)
     boundMapM InfiniteBound = return InfiniteBound
-    boundMapM (OpenBound val) = OpenBound <$> func' val
-    boundMapM (ClosedBound val) = ClosedBound <$> func' val
-    func' :: a -> m b
-    func' val = do
-      mVal <- func $ Just val
-      maybe undefined return mVal
+    boundMapM (OpenBound val) = OpenBound <$> func val
+    boundMapM (ClosedBound val) = ClosedBound <$> func val
+
+-- func (Just val) must always return a Just
+rangeMapMm :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> Range a -> m (Range b)
+rangeMapMm func = rangeMapM (\val -> (func $ Just val) >>= maybe undefined return)
 
 foreign import capi safe "utils/rangetypes.h range_deserialize"
   rangeDeserialize :: Ptr TypeCacheEntry -> Ptr (Range Datum) -> Ptr (Bound Datum) -> Ptr (Bound Datum) -> Ptr CBool -> IO ()
@@ -240,8 +252,14 @@ writeRange pTypeInfo range = writeRange' pTypeInfo range >>= rangeTypePGetDatum
 
 type MultiRange a = [Range a]
 
-multiRangeMapM :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> MultiRange a -> m (MultiRange b)
+multiRangeMap :: (a -> b) -> MultiRange a -> MultiRange b
+multiRangeMap func = map $ rangeMap func
+
+multiRangeMapM :: forall a b m. (Monad m) => (a -> m b) -> MultiRange a -> m (MultiRange b)
 multiRangeMapM func = mapM $ rangeMapM func
+
+multiRangeMapMm :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> MultiRange a -> m (MultiRange b)
+multiRangeMapMm func = mapM $ rangeMapMm func
 
 foreign import capi safe "utils/multirangetypes.h multirange_get_range"
   multiRangeGetRange :: Ptr TypeCacheEntry -> Ptr (MultiRange Datum) -> CInt -> IO (Ptr (Range Datum))

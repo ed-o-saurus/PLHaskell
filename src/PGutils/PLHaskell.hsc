@@ -317,7 +317,7 @@ setUpEvalInt pCallInfo = do
       ModuleImport "PGutils" NotQualified (ImportList ["PGm", "unPGm"]),
       ModuleImport "PGutils.Support" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
       ModuleImport "PGutils.Array" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
-      ModuleImport "PGutils.Range" NotQualified (ImportList ["Range", "MultiRange", "rangeMapM", "readRange", "writeRange", "multiRangeMapM", "readMultiRange", "writeMultiRange"]),
+      ModuleImport "PGutils.Range" NotQualified (ImportList ["Range", "MultiRange", "rangeMapMm", "readRange", "writeRange", "multiRangeMapMm", "readMultiRange", "writeMultiRange"]),
       ModuleImport "PGutils.Datetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
       ModuleImport "PGutils.Func" (QualifiedAs Nothing) (ImportList [funcName])
     ]
@@ -377,10 +377,10 @@ setUpEvalInt pCallInfo = do
             return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> arrayMapM " ++ decodeResultDefElem ++ ")"
           #{const RANGE_TYPE} -> do
             decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
-            return $ "(maybeWrap $ readRange " ++ pTypeInfoAddr ++ " >=> rangeMapM " ++ decodeResultDefElem ++ ")"
+            return $ "(maybeWrap $ readRange " ++ pTypeInfoAddr ++ " >=> rangeMapMm " ++ decodeResultDefElem ++ ")"
           #{const MULTIRANGE_TYPE} -> do
             decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
-            return $ "(maybeWrap $ readMultiRange " ++ pTypeInfoAddr ++ " >=> multiRangeMapM " ++ decodeResultDefElem ++ ")"
+            return $ "(maybeWrap $ readMultiRange " ++ pTypeInfoAddr ++ " >=> multiRangeMapMm " ++ decodeResultDefElem ++ ")"
           _ -> undefined
     -- Return a string representing a function to take the result from a Haskell value and return Maybe Datum
     -- returned code :: Maybe a -> IO (Maybe Datum)
@@ -416,10 +416,10 @@ setUpEvalInt pCallInfo = do
             return $ "(maybeWrap $ arrayMapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
           #{const RANGE_TYPE} -> do
             encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
-            return $ "(maybeWrap $ rangeMapM " ++ encodeResultDefElem ++ " >=> writeRange " ++ pTypeInfoAddr ++ ")"
+            return $ "(maybeWrap $ rangeMapMm " ++ encodeResultDefElem ++ " >=> writeRange " ++ pTypeInfoAddr ++ ")"
           #{const MULTIRANGE_TYPE} -> do
             encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
-            return $ "(maybeWrap $ multiRangeMapM " ++ encodeResultDefElem ++ " >=> writeMultiRange " ++ pTypeInfoAddr ++ ")"
+            return $ "(maybeWrap $ multiRangeMapMm " ++ encodeResultDefElem ++ " >=> writeMultiRange " ++ pTypeInfoAddr ++ ")"
           _ -> undefined
     defineDecodeArg i = do
       decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
