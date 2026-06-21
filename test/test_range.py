@@ -332,3 +332,49 @@ class TestRange(PLHaskellTestBase):
 
         for i in range(1000):
             assert d1[i] == d2[i]
+
+    def test_query_retrieve_tsrange(self):
+        self.execute_file("sql/range/retrieve_tsrange.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t (i int, r tsrange)")
+
+            for i in range(1000):
+                cur.execute(
+                    "INSERT INTO t(i, r) VALUES(%(i)s, %(r)s)",
+                    {
+                        "i": i,
+                        "r": self.random_range(self.random_datetime),
+                    },
+                )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE r != retrieve_tsrange(i)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+    def test_query_retrieve_tsmultirange(self):
+        self.execute_file("sql/range/retrieve_tsmultirange.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t (i int, mr tsmultirange)")
+
+            for i in range(1000):
+                cur.execute(
+                    "INSERT INTO t(i, mr) VALUES(%(i)s, %(mr)s)",
+                    {
+                        "i": i,
+                        "mr": self.random_multirange(self.random_datetime),
+                    },
+                )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t
+                   WHERE mr != retrieve_tsmultirange(i)"""
+            )
+
+            assert cur.fetchone()["count"] == 0

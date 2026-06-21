@@ -245,6 +245,8 @@ import PGutils.Range
   ( Bound (..),
     MultiRange (..),
     Range (..),
+    readMultiRange,
+    readRange,
   )
 import PGutils.Support
   ( BaseType
@@ -517,6 +519,8 @@ data QueryResultValue
   | QueryResultValueInterval (Maybe Interval)
   | QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])
   | QueryResultValueArray (Text, Text) (Maybe (Array QueryResultValue))
+  | QueryResultValueRange (Text, Text) (Maybe (Range QueryResultValue))
+  | QueryResultValueMultiRange (Text, Text) (Maybe (MultiRange QueryResultValue))
   deriving stock (Show)
 
 -- Various query results
@@ -608,6 +612,18 @@ decode' pTypeInfo mDatum = do
       case mDatum of
         Nothing -> return $ QueryResultValueArray schemaType Nothing
         Just datum -> (QueryResultValueArray schemaType) . Just <$> (readArray pTypeInfo datum >>= mapM (decode' pElemTypeInfo))
+    #{const RANGE_TYPE} -> do
+      pElemTypeInfo <- getElement pTypeInfo
+      schemaType <- getSchemaType pTypeInfo
+      case mDatum of
+        Nothing -> return $ QueryResultValueRange schemaType Nothing
+        Just datum -> (QueryResultValueRange schemaType) . Just <$> (readRange pTypeInfo datum >>= mapM ((decode' pElemTypeInfo) . Just))
+    #{const MULTIRANGE_TYPE} -> do
+      pElemTypeInfo <- getElement pTypeInfo
+      schemaType <- getSchemaType pTypeInfo
+      case mDatum of
+        Nothing -> return $ QueryResultValueMultiRange schemaType Nothing
+        Just datum -> (QueryResultValueMultiRange schemaType) . Just <$> (readMultiRange pTypeInfo datum >>= mapM ((decode' pElemTypeInfo) . Just))
     _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]

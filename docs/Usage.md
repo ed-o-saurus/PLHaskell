@@ -284,25 +284,29 @@ The constructor indicates the type of query run. The `Word64` field is the numbe
 
 The constructors for `QueryResultValue` are the following:
 
-`QueryResultValue`                                                        |
-------------------------------------------------------------------------- |
-`QueryResultValueByteA                  (Maybe ByteString)`               |
-`QueryResultValueText                   (Maybe Text)`                     |
-`QueryResultValueChar                   (Maybe Char)`                     |
-`QueryResultValueBool                   (Maybe Bool)`                     |
-`QueryResultValueInt2                   (Maybe Int16)`                    |
-`QueryResultValueInt4                   (Maybe Int32)`                    |
-`QueryResultValueInt8                   (Maybe Int64)`                    |
-`QueryResultValueFloat4                 (Maybe Float)`                    |
-`QueryResultValueFloat8                 (Maybe Double)`                   |
-`QueryResultValueDate                   (Maybe Date)`                     |
-`QueryResultValueTime                   (Maybe Time)`                     |
-`QueryResultValueTimestamp              (Maybe Timestamp)`                |
-`QueryResultValueInterval               (Maybe Interval)`                 |
-`QueryResultValueComposite (Text, Text) (Maybe [QueryResultValue])`       |
-`QueryResultValueArray     (Text, Text) (Maybe (Array QueryResultValue))` |
+`QueryResultValue`                                                              |
+------------------------------------------------------------------------------- |
+`QueryResultValueByteA                   (Maybe ByteString)`                    |
+`QueryResultValueText                    (Maybe Text)`                          |
+`QueryResultValueChar                    (Maybe Char)`                          |
+`QueryResultValueBool                    (Maybe Bool)`                          |
+`QueryResultValueInt2                    (Maybe Int16)`                         |
+`QueryResultValueInt4                    (Maybe Int32)`                         |
+`QueryResultValueInt8                    (Maybe Int64)`                         |
+`QueryResultValueFloat4                  (Maybe Float)`                         |
+`QueryResultValueFloat8                  (Maybe Double)`                        |
+`QueryResultValueDate                    (Maybe Date)`                          |
+`QueryResultValueTime                    (Maybe Time)`                          |
+`QueryResultValueTimestamp               (Maybe Timestamp)`                     |
+`QueryResultValueInterval                (Maybe Interval)`                      |
+`QueryResultValueComposite  (Text, Text) (Maybe [QueryResultValue])`            |
+`QueryResultValueArray      (Text, Text) (Maybe (Array QueryResultValue))`      |
+`QueryResultValueRange      (Text, Text) (Maybe (Range QueryResultValue))`      |
+`QueryResultValueMultiRange (Text, Text) (Maybe (MultiRange QueryResultValue))` |
 
-The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and name of the composite type. The `(Text, Text)` tuple in the `QueryResultValueArray` constructor is the schema and name of the element type.
+The `(Text, Text)` tuple in the `QueryResultValueComposite` constructor is the schema and name of the composite type. The `(Text, Text)` tuple in the `QueryResultValueArray` constructor is the schema and name of the element type. The `(Text, Text)` tuple in the `QueryResultValueRange` and `QueryResultValueMultiRange` constructors are the schema and name of the (multi)range type.
+
+Note that the elements of (multi)range values always have the constructor `Just`. This is due to the fact that ranges do not support NULL bounds.
 
 ### Commit and Rollback
 
