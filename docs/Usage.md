@@ -162,7 +162,11 @@ The functions `arrayMap :: (a -> b) -> Array a -> Array b` and `arrayMapM :: Mon
 
 ## (Multi)Ranges
 
-Ranges and multiranges can be passed to and returned from functions. Ranges are represented in Haskell by the `Range a` type which can be imported from the `PGutils` module. The constructors are the following:
+Ranges and multiranges can be passed to and returned from functions.
+
+### Ranges
+
+Ranges are represented in Haskell by the `Range a` type which can be imported from the `PGutils` module. The constructors are the following:
 
 `Range a`                        |
 -------------------------------- |
