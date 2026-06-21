@@ -156,7 +156,7 @@ The `Int32` values represent the lower bounds of the array indexes and the lists
 
 ### Array Mapping Functions
 
-An `Arrays` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
+An `Array` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
 
 The functions `arrayMap :: (a -> b) -> Array a -> Array b` and `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` are deprecated and will be removed in a future release.
 
@@ -181,9 +181,13 @@ The bounds of `BoundRange` are the lower and upper bound respectively with the f
 `OpenBound a`   |
 `ClosedBound a` |
 
+A `Range` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
+
 ### Multiranges
 
 Mutiranges are represented in Haskell by the `MultiRange a` type with the constructor `MultiRange [Range a]`.
+
+A `MultiRange` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
 
 ## Inline Code
 
