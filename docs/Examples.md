@@ -342,6 +342,41 @@ $$
 LANGUAGE plhaskellu;
 ```
 
+```
+CREATE FUNCTION combine_tsranges(tsrange, tsrange, tsrange) RETURNS tsmultirange IMMUTABLE AS
+$$
+  import PGutils
+    ( PGm,
+      Range,
+      MultiRange (
+        MultiRange
+      )
+    )
+
+  combine_tsranges :: Maybe (Range a) -> Maybe (Range a) -> Maybe (Range a) -> PGm (Maybe (MultiRange a))
+  combine_tsranges (Just r1) (Just r2) (Just r3) = return $ Just $ MultiRange [r1, r2, r3]
+  combine_tsranges _ _ _ = return Nothing
+$$
+LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION combine_tsranges(tsrange, tsrange, tsrange) RETURNS tsmultirange IMMUTABLE AS
+$$
+  import PGutils
+    ( Range,
+      MultiRange (
+        MultiRange
+      )
+    )
+
+  combine_tsranges :: Maybe (Range a) -> Maybe (Range a) -> Maybe (Range a) -> IO (Maybe (MultiRange a))
+  combine_tsranges (Just r1) (Just r2) (Just r3) = return $ Just $ MultiRange [r1, r2, r3]
+  combine_tsranges _ _ _ = return Nothing
+$$
+LANGUAGE plhaskellu;
+```
+
 ## Message
 
 The following demonstrate how to show a notice from within a function.

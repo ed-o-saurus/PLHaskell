@@ -22,11 +22,15 @@ CREATE FUNCTION combine_tsranges(tsrange
 RETURNS tsmultirange IMMUTABLE
 AS $$
   import PGutils
-    ( PGm,
+    ( MultiRange
+        ( MultiRange
+        ),
+      PGm,
+      Range,
     )
 
-  combine_tsranges :: Maybe a -> Maybe a -> Maybe a -> PGm (Maybe [a])
-  combine_tsranges (Just r1) (Just r2) (Just r3) = return $ Just [r1, r2, r3]
+  combine_tsranges :: Maybe (Range a) -> Maybe (Range a) -> Maybe (Range a) -> PGm (Maybe (MultiRange a))
+  combine_tsranges (Just r1) (Just r2) (Just r3) = return $ Just $ MultiRange [r1, r2, r3]
   combine_tsranges _ _ _ = return Nothing
 $$
 LANGUAGE plhaskell;

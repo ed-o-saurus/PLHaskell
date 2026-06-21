@@ -37,7 +37,6 @@ AS $$
       QueryResults
         ( SelectResults
         ),
-      arrayMap,
       query,
       raiseError,
     )
@@ -50,6 +49,6 @@ AS $$
   query_array_select = do
     SelectResults _processed [_header] [[QueryResultValueArray (_schema, name) a]] <- query "SELECT a FROM query_arrays" []
     assert (name == "int4") "Bad type name"
-    return (fmap (arrayMap (\(QueryResultValueInt4 i) -> i)) a)
+    return (fmap (fmap (\(QueryResultValueInt4 i) -> i)) a)
 $$
 LANGUAGE plhaskell;

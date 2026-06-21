@@ -101,11 +101,7 @@ module PGutils
     unlockAll,
     Bound (..),
     Range (..),
-    MultiRange,
-    rangeMap,
-    rangeMapM,
-    multiRangeMap,
-    multiRangeMapM,
+    MultiRange (..),
   )
 where
 
@@ -247,12 +243,8 @@ import PGutils.Lock
   )
 import PGutils.Range
   ( Bound (..),
-    MultiRange,
+    MultiRange (..),
     Range (..),
-    multiRangeMap,
-    multiRangeMapM,
-    rangeMap,
-    rangeMapM,
   )
 import PGutils.Support
   ( BaseType
@@ -506,7 +498,7 @@ encode' pTypeInfo (QueryParamArray schemaType mElems) = do
   assert (oid == oid') $ expectedType oid' pTypeInfo
   (flip maybeWrap) mElems $ \queryParamElems -> do
     pElemTypeInfo <- getElement pTypeInfo
-    arrayMapM (encode' pElemTypeInfo) queryParamElems >>= writeArray pTypeInfo
+    mapM (encode' pElemTypeInfo) queryParamElems >>= writeArray pTypeInfo
 
 -- Value returned by query
 data QueryResultValue
@@ -615,7 +607,7 @@ decode' pTypeInfo mDatum = do
       schemaType <- getSchemaType pElemTypeInfo
       case mDatum of
         Nothing -> return $ QueryResultValueArray schemaType Nothing
-        Just datum -> (QueryResultValueArray schemaType) . Just <$> (readArray pTypeInfo datum >>= arrayMapM (decode' pElemTypeInfo))
+        Just datum -> (QueryResultValueArray schemaType) . Just <$> (readArray pTypeInfo datum >>= mapM (decode' pElemTypeInfo))
     _ -> undefined
 
 getRow :: Ptr TupleTable -> [Ptr TypeInfo] -> Word64 -> IO [QueryResultValue]

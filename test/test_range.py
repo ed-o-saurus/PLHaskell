@@ -24,7 +24,7 @@ from psycopg.types.range import Range
 from psycopg.types.multirange import Multirange
 
 
-class TestDatetime(PLHaskellTestBase):
+class TestRange(PLHaskellTestBase):
     @staticmethod
     def random_range(factory):
         range_type = randrange(10)

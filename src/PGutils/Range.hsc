@@ -37,14 +37,10 @@ module PGutils.Range
       ( EmptyRange,
         BoundRange
       ),
-    MultiRange,
-    rangeMap,
-    rangeMapM,
+    MultiRange (..),
     rangeMapMm,
     readRange,
     writeRange,
-    multiRangeMap,
-    multiRangeMapM,
     multiRangeMapMm,
     readMultiRange,
     writeMultiRange,
@@ -106,6 +102,8 @@ import Prelude
       ( False,
         True
       ),
+    Foldable,
+    Functor,
     IO,
     Int,
     Maybe
@@ -113,8 +111,8 @@ import Prelude
       ),
     Monad,
     Show,
+    Traversable,
     fromIntegral,
-    map,
     mapM,
     maybe,
     return,
@@ -141,35 +139,16 @@ data Bound a
   = InfiniteBound
   | OpenBound a
   | ClosedBound a
-  deriving stock (Show)
+  deriving stock (Show, Functor, Foldable, Traversable)
 
 data Range a
   = EmptyRange
   | BoundRange (Bound a) (Bound a)
-  deriving stock (Show)
-
-rangeMap :: (a -> b) -> Range a -> Range b
-rangeMap _func EmptyRange = EmptyRange
-rangeMap func (BoundRange low up) = BoundRange (boundMap low) (boundMap up)
-  where
-    boundMap InfiniteBound = InfiniteBound
-    boundMap (OpenBound val) = OpenBound $ func val
-    boundMap (ClosedBound val) = ClosedBound $ func val
-
-rangeMapM :: forall a b m. (Monad m) => (a -> m b) -> Range a -> m (Range b)
-rangeMapM _func EmptyRange = return EmptyRange
-rangeMapM func (BoundRange low up) = do
-  low' <- boundMapM low
-  up' <- boundMapM up
-  return $ BoundRange low' up'
-  where
-    boundMapM InfiniteBound = return InfiniteBound
-    boundMapM (OpenBound val) = OpenBound <$> func val
-    boundMapM (ClosedBound val) = ClosedBound <$> func val
+  deriving stock (Show, Functor, Foldable, Traversable)
 
 -- func (Just val) must always return a Just
 rangeMapMm :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> Range a -> m (Range b)
-rangeMapMm func = rangeMapM (\val -> (func $ Just val) >>= maybe undefined return)
+rangeMapMm func = mapM (\val -> (func $ Just val) >>= maybe undefined return)
 
 foreign import capi safe "utils/rangetypes.h range_deserialize"
   rangeDeserialize :: Ptr TypeCacheEntry -> Ptr (Range Datum) -> Ptr (Bound Datum) -> Ptr (Bound Datum) -> Ptr CBool -> IO ()
@@ -250,16 +229,11 @@ writeRange' pTypeInfo (BoundRange lowerBound upperBound) = do
 writeRange :: Ptr TypeInfo -> Range Datum -> IO Datum
 writeRange pTypeInfo range = writeRange' pTypeInfo range >>= rangeTypePGetDatum
 
-type MultiRange a = [Range a]
-
-multiRangeMap :: (a -> b) -> MultiRange a -> MultiRange b
-multiRangeMap func = map $ rangeMap func
-
-multiRangeMapM :: forall a b m. (Monad m) => (a -> m b) -> MultiRange a -> m (MultiRange b)
-multiRangeMapM func = mapM $ rangeMapM func
+data MultiRange a = MultiRange [Range a]
+  deriving stock (Show, Functor, Foldable, Traversable)
 
 multiRangeMapMm :: forall a b m. (Monad m) => (Maybe a -> m (Maybe b)) -> MultiRange a -> m (MultiRange b)
-multiRangeMapMm func = mapM $ rangeMapMm func
+multiRangeMapMm func (MultiRange ranges) = MultiRange <$> mapM (rangeMapMm func) ranges
 
 foreign import capi safe "utils/multirangetypes.h multirange_get_range"
   multiRangeGetRange :: Ptr TypeCacheEntry -> Ptr (MultiRange Datum) -> CInt -> IO (Ptr (Range Datum))
@@ -273,7 +247,7 @@ readMultiRange pTypeInfo datum = do
   pMultiRange <- datumGetMultirangeTypeP datum
   rangeCount <- #{peek MultirangeType, rangeCount} pMultiRange :: IO (Word32)
   pRanges <- mapM (multiRangeGetRange pTypeCacheEntry pMultiRange . fromIntegral) (numRange rangeCount)
-  mapM (readRange' pTypeInfo) pRanges
+  (mapM (readRange' pTypeInfo) pRanges) >>= (return . MultiRange)
 
 foreign import ccall safe "utils/multirangetypes.h make_multirange"
   cMakeMultiRange :: Oid -> Ptr TypeCacheEntry -> Int32 -> Ptr (Ptr (Range Datum)) -> IO (Ptr (MultiRange Datum))
@@ -285,9 +259,9 @@ foreign import capi safe "../range_plh.h MultirangeTypePGetDatum"
   multiRangePToDatum :: Ptr (MultiRange Datum) -> IO Datum
 
 writeMultiRange :: Ptr TypeInfo -> MultiRange Datum -> IO Datum
-writeMultiRange pTypeInfo multiRange = do
+writeMultiRange pTypeInfo (MultiRange ranges) = do
   pTypeCacheEntry <- getTypeCacheEntry pTypeInfo
   typeOid <- getTypeOid pTypeInfo
-  pRanges <- mapM (writeRange' pTypeInfo) multiRange
+  pRanges <- mapM (writeRange' pTypeInfo) ranges
   pMultiRange <- pWithArrayLen pRanges $ makeMultiRange typeOid pTypeCacheEntry
   multiRangePToDatum pMultiRange

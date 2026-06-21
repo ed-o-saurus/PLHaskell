@@ -71,7 +71,9 @@ import PGutils.Common
     voidDatum,
   )
 import Prelude
-  ( IO,
+  ( Foldable,
+    Functor,
+    IO,
     Int,
     Maybe
       ( Just,
@@ -80,7 +82,9 @@ import Prelude
     Monad,
     Num,
     Show,
+    Traversable,
     concat,
+    fmap,
     fromIntegral,
     length,
     map,
@@ -108,25 +112,13 @@ data Array a
   | Array4D (Int32, Int32, Int32, Int32) [[[[a]]]]
   | Array5D (Int32, Int32, Int32, Int32, Int32) [[[[[a]]]]]
   | Array6D (Int32, Int32, Int32, Int32, Int32, Int32) [[[[[[a]]]]]]
-  deriving stock (Show)
+  deriving stock (Show, Functor, Foldable, Traversable)
 
 arrayMapM :: (Monad m) => (a -> m b) -> Array a -> m (Array b)
-arrayMapM _ ArrayEmpty = return ArrayEmpty
-arrayMapM func (Array1D lbs elems) = mapM func elems >>= return <$> Array1D lbs
-arrayMapM func (Array2D lbs elems) = (mapM . mapM) func elems >>= return <$> Array2D lbs
-arrayMapM func (Array3D lbs elems) = (mapM . mapM . mapM) func elems >>= return <$> Array3D lbs
-arrayMapM func (Array4D lbs elems) = (mapM . mapM . mapM . mapM) func elems >>= return <$> Array4D lbs
-arrayMapM func (Array5D lbs elems) = (mapM . mapM . mapM . mapM . mapM) func elems >>= return <$> Array5D lbs
-arrayMapM func (Array6D lbs elems) = (mapM . mapM . mapM . mapM . mapM . mapM) func elems >>= return <$> Array6D lbs
+arrayMapM = mapM
 
 arrayMap :: (a -> b) -> Array a -> Array b
-arrayMap _ ArrayEmpty = ArrayEmpty
-arrayMap func (Array1D lbs elems) = Array1D lbs $ map func elems
-arrayMap func (Array2D lbs elems) = Array2D lbs $ (map . map) func elems
-arrayMap func (Array3D lbs elems) = Array3D lbs $ (map . map . map) func elems
-arrayMap func (Array4D lbs elems) = Array4D lbs $ (map . map . map . map) func elems
-arrayMap func (Array5D lbs elems) = Array5D lbs $ (map . map . map . map . map) func elems
-arrayMap func (Array6D lbs elems) = Array6D lbs $ (map . map . map . map . map . map) func elems
+arrayMap = fmap
 
 arrayDims1 :: [a] -> Int
 arrayDims1 = length

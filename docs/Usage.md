@@ -156,9 +156,9 @@ The `Int32` values represent the lower bounds of the array indexes and the lists
 
 ### Array Mapping Functions
 
-The function `arrayMap :: (a -> b) -> Array a -> Array b` applies the provided function to all elements in an array.
+An `Arrays` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
 
-The function `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` applies a monadic action to the elements in an array in order.
+The functions `arrayMap :: (a -> b) -> Array a -> Array b` and `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` are deprecated and will be removed in a future release.
 
 ## (Multi)Ranges
 
@@ -179,7 +179,7 @@ The bounds of `BoundRange` are the lower and upper bound respectively with the f
 
 ### Multiranges
 
- Mutiranges are represented in Haskell by the `MultiRange a` type which is defined by `type MultiRange a = [Range a]`.
+Mutiranges are represented in Haskell by the `MultiRange a` type with the constructor `MultiRange [Range a]`.
 
 ## Inline Code
 

@@ -304,7 +304,7 @@ setUpEvalInt pCallInfo = do
 
   funcName <- getFuncName pCallInfo
   setImportsF
-    [ ModuleImport "Prelude" NotQualified (ImportList ["Bool(False, True)", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "return", "($)", "(.)", "(>>=)"]),
+    [ ModuleImport "Prelude" NotQualified (ImportList ["Bool(False, True)", "Char", "Double", "Float", "IO", "Maybe(Just, Nothing)", "return", "($)", "(.)", "(>>=)", "mapM"]),
       ModuleImport "Control.Exception" NotQualified (ImportList ["handle"]),
       ModuleImport "Control.Monad" NotQualified (ImportList ["(>=>)"]),
       ModuleImport "Data.ByteString" NotQualified (ImportList ["ByteString"]),
@@ -316,7 +316,7 @@ setUpEvalInt pCallInfo = do
       ModuleImport "PGutils.Common" NotQualified (ImportList ["handler", "unNullableDatum"]),
       ModuleImport "PGutils" NotQualified (ImportList ["PGm", "unPGm"]),
       ModuleImport "PGutils.Support" NotQualified (ImportList ["Datum", "BaseType (encode, decode)", "encodeVoid", "maybeWrap", "readComposite", "wrapFunction", "writeResult", "mkResultList", "writeComposite"]),
-      ModuleImport "PGutils.Array" NotQualified (ImportList ["Array", "arrayMapM", "readArray", "writeArray"]),
+      ModuleImport "PGutils.Array" NotQualified (ImportList ["Array", "readArray", "writeArray"]),
       ModuleImport "PGutils.Range" NotQualified (ImportList ["Range", "MultiRange", "rangeMapMm", "readRange", "writeRange", "multiRangeMapMm", "readMultiRange", "writeMultiRange"]),
       ModuleImport "PGutils.Datetime" NotQualified (ImportList ["Date", "Time", "Timestamp", "Interval"]),
       ModuleImport "PGutils.Func" (QualifiedAs Nothing) (ImportList [funcName])
@@ -374,7 +374,7 @@ setUpEvalInt pCallInfo = do
                 ++ ";})"
           #{const ARRAY_TYPE} -> do
             decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
-            return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> arrayMapM " ++ decodeResultDefElem ++ ")"
+            return $ "(maybeWrap $ readArray " ++ pTypeInfoAddr ++ " >=> mapM " ++ decodeResultDefElem ++ ")"
           #{const RANGE_TYPE} -> do
             decodeResultDefElem <- getElement pTypeInfo >>= makeDecodeArgDef
             return $ "(maybeWrap $ readRange " ++ pTypeInfoAddr ++ " >=> rangeMapMm " ++ decodeResultDefElem ++ ")"
@@ -413,7 +413,7 @@ setUpEvalInt pCallInfo = do
                 ++ "})"
           #{const ARRAY_TYPE} -> do
             encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
-            return $ "(maybeWrap $ arrayMapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
+            return $ "(maybeWrap $ mapM " ++ encodeResultDefElem ++ " >=> writeArray " ++ pTypeInfoAddr ++ ")"
           #{const RANGE_TYPE} -> do
             encodeResultDefElem <- getElement pTypeInfo >>= makeEncodeResultDef
             return $ "(maybeWrap $ rangeMapMm " ++ encodeResultDefElem ++ " >=> writeRange " ++ pTypeInfoAddr ++ ")"

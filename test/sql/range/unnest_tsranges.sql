@@ -20,11 +20,15 @@ CREATE FUNCTION unnest_tsranges(tsmultirange)
 RETURNS SETOF tsrange IMMUTABLE
 AS $$
   import PGutils
-    ( PGm,
+    ( MultiRange
+        ( MultiRange
+        ),
+      PGm,
+      Range,
     )
 
-  unnest_tsranges :: Maybe [a] -> PGm [Maybe a]
-  unnest_tsranges (Just mr) = return $ map Just mr
+  unnest_tsranges :: Maybe (MultiRange a) -> PGm [Maybe (Range a)]
+  unnest_tsranges (Just (MultiRange mr)) = return $ map Just mr
   unnest_tsranges Nothing = return []
 $$
 LANGUAGE plhaskell;
