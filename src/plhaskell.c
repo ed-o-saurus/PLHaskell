@@ -1105,7 +1105,7 @@ Oid get_oid(uint16 search_type, char *nspname, char *typname)
 Oid get_oid(uint16 search_type, char *nspname, char *typname) {
   bool is_null;
   HeapTuple nsptup, typtup;
-  Datum nspoid, ret_val = InvalidOid;
+  Datum nspoid, ret_val = ObjectIdGetDatum(InvalidOid);
 
   nsptup = SearchSysCache1(NAMESPACENAME, CStringGetDatum(nspname));
   if (!HeapTupleIsValid(nsptup))
@@ -1135,7 +1135,7 @@ Oid get_oid(uint16 search_type, char *nspname, char *typname) {
     if (is_null)
       ereport(FATAL, errmsg_internal("pg_type.typarray is NULL"));
 
-    if (ret_val == InvalidOid)
+    if (DatumGetObjectId(ret_val) == InvalidOid)
       ereport(ERROR, errcode(ERRCODE_UNDEFINED_OBJECT),
               errmsg("type \"%s.%s[]\" does not exist", nspname, typname));
 
@@ -1153,7 +1153,7 @@ Oid find_oid(uint16 search_type, char *typname)
 Oid find_oid(uint16 search_type, char *typname) {
   bool is_null;
   HeapTuple typtup;
-  Datum ret_val = InvalidOid;
+  Datum ret_val = ObjectIdGetDatum(InvalidOid);
   ListCell *nslc;
 
   List *namespacelist = fetch_search_path(true);
@@ -1176,7 +1176,7 @@ Oid find_oid(uint16 search_type, char *typname) {
         if (is_null)
           ereport(FATAL, errmsg_internal("pg_type.typarray is NULL"));
 
-        if (ret_val == InvalidOid)
+        if (DatumGetObjectId(ret_val) == InvalidOid)
           ereport(ERROR, errcode(ERRCODE_UNDEFINED_OBJECT),
                   errmsg("type \"%s[]\" does not exist", typname));
 
