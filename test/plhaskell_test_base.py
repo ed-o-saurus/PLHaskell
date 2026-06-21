@@ -20,6 +20,7 @@ from random import seed
 from unittest import TestCase
 from psycopg import connect
 from psycopg.rows import dict_row
+from pathlib import Path
 
 
 class PLHaskellTestBase(TestCase):
@@ -63,5 +64,5 @@ class PLHaskellTestBase(TestCase):
 
     def execute_file(self, file):
         with self.conn.cursor() as cur:
-            with open(file, "rt") as file:
+            with (Path(__file__).parent / file).open("rt") as file:
                 cur.execute(file.read())
