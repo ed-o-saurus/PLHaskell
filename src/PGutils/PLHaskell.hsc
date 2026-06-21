@@ -147,6 +147,9 @@ import PGutils.Common
 import System.Directory
   ( removeFile,
   )
+import Text.Read
+  ( readMaybe,
+  )
 import Prelude
   ( Bool
       ( False,
@@ -157,6 +160,7 @@ import Prelude
         Right
       ),
     IO,
+    Int,
     Maybe
       ( Just,
         Nothing
@@ -439,17 +443,27 @@ execute :: CString -> Ptr CallInfo -> Interpreter () -> IO ()
 execute pPackagePath pCallInfo int = do
   pkgLibPath <- peekCString pPkgLibPath
   packagePath <- peekCString pPackagePath
+  modFileName <- #{peek CallInfo, mod_file_name} pCallInfo >>= peekCString
+  funcName <- #{peek CallInfo, func_name} pCallInfo >>= peekCString
   r <- unsafeRunInterpreterWithArgs (mkInterpreterArgs pkgLibPath packagePath) int
   case r of
-    Left (UnknownError msg) -> removeModFile >> languageError msg
-    Left (WontCompile errs) -> removeModFile >> (languageError $ show $ map errMsg errs)
-    Left (NotAllowed msg) -> removeModFile >> languageError msg
-    Left (GhcException msg) -> removeModFile >> languageError msg
+    Left (UnknownError msg) -> removeModFile >> (languageError $ cleanErr modFileName funcName msg)
+    Left (WontCompile errs) -> removeModFile >> (languageError $ concat $ map (cleanErr modFileName funcName . errMsg) errs)
+    Left (NotAllowed msg) -> removeModFile >> (languageError $ cleanErr modFileName funcName msg)
+    Left (GhcException msg) -> removeModFile >> (languageError $ cleanErr modFileName funcName msg)
     Right () -> removeModFile >> return ()
   where
     removeModFile = handle ignore $ #{peek CallInfo, mod_file_name} pCallInfo >>= peekCString >>= removeFile
     ignore :: SomeException -> IO ()
     ignore = const $ return ()
+    cleanErr :: String -> String -> String -> String
+    cleanErr modFileName funcName err = '\n' : (intercalate ":" $ subFuncName modFileName funcName $ splitOnColon err)
+    subFuncName modFileName funcName (fileName : t) = if (fileName == modFileName) then funcName : (subLineNum t) else fileName : (subLineNum t)
+    subFuncName _modFileName _funcName [] = []
+    subLineNum (lineNum : t) = case (readMaybe lineNum :: Maybe Int) of
+      Nothing -> lineNum : t
+      Just lineNum' -> (show (lineNum' - 1)) : t
+    subLineNum [] = []
 
 mkInterpreterArgs :: String -> String -> [String]
 mkInterpreterArgs pkgLibPath "" = ["-clear-package-db", "-package-db", pkgLibPath ++ "/plhaskell_pkg_db"]
