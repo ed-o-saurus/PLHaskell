@@ -425,9 +425,6 @@ setUpEvalInt pCallInfo = do
       decodeArg <- liftIO $ getArgTypeInfo pCallInfo i >>= makeDecodeArgDef
       runStmt $ interpolate ("let decodeArg? = " ++ decodeArg) i
 
-foreign import capi safe "../error_plh.h unknown_compiler_error"
-  unknownComilerError :: IO ()
-
 foreign import capi safe "../error_plh.h language_error"
   cLanguageError :: CInt -> CString -> IO ()
 
@@ -445,8 +442,7 @@ execute pPackagePath pCallInfo int = do
   r <- unsafeRunInterpreterWithArgs (mkInterpreterArgs pkgLibPath packagePath) int
   case r of
     Left (UnknownError msg) -> removeModFile >> languageError msg
-    Left (WontCompile []) -> removeModFile >> unknownComilerError
-    Left (WontCompile (err : _)) -> removeModFile >> (languageError $ errMsg err)
+    Left (WontCompile errs) -> removeModFile >> (languageError $ show $ map errMsg errs)
     Left (NotAllowed msg) -> removeModFile >> languageError msg
     Left (GhcException msg) -> removeModFile >> languageError msg
     Right () -> removeModFile >> return ()

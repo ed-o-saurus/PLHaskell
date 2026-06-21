@@ -166,11 +166,6 @@ void higher_dim_arrays() {
           errmsg("PL/Haskell does not support more than 6D arrays"));
 }
 
-void unknown_compiler_error() __attribute__((visibility("hidden")));
-void unknown_compiler_error() {
-  ereport(ERROR, errmsg("PL/Haskell : Unknown Compiler Error"));
-}
-
 void error_func_sig(char *func_sig) __attribute__((visibility("hidden")));
 void error_func_sig(char *func_sig) {
   ereport(ERROR, errmsg("Expected Signature : %s", func_sig));

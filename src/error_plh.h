@@ -29,7 +29,6 @@ void expected_type(Oid type_oid, TypeInfo *pTypeInfo);
 void expected(uint16 value_type, TypeInfo *pTypeInfo);
 void incorrect_length(TypeInfo *p_type_info);
 void higher_dim_arrays();
-void unknown_compiler_error();
 void error_func_sig(char *func_sig);
 void language_error(int elevel, char *msg);
 
