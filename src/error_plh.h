@@ -31,6 +31,7 @@ void incorrect_length(TypeInfo *p_type_info);
 void higher_dim_arrays();
 void error_func_sig(char *func_sig);
 void language_error(int elevel, char *msg);
+Datum null_bound();
 
 Datum handler(char *msg);
 

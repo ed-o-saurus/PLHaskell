@@ -1124,6 +1124,8 @@ Oid get_oid(uint16 search_type, char *nspname, char *typname) {
 
   switch (search_type) {
   case COMPOSITE_TYPE:
+  case RANGE_TYPE:
+  case MULTIRANGE_TYPE:
     ret_val = SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
     if (is_null)
       ereport(FATAL, errmsg_internal("pg_type.oid is NULL"));
@@ -1164,6 +1166,8 @@ Oid find_oid(uint16 search_type, char *typname) {
 
       switch (search_type) {
       case COMPOSITE_TYPE:
+      case RANGE_TYPE:
+      case MULTIRANGE_TYPE:
         ret_val =
             SysCacheGetAttr(TYPENAMENSP, typtup, Anum_pg_type_oid, &is_null);
         if (is_null)

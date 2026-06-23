@@ -207,6 +207,12 @@ void language_error(int elevel, char *msg) {
   }
 }
 
+Datum null_bound() __attribute__((visibility("hidden")));
+Datum null_bound() {
+  ereport(ERROR, errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+          errmsg("NULL(Nothing) bounds are not supported"));
+}
+
 Datum handler(char *msg) __attribute__((visibility("hidden")));
 Datum handler(char *msg) {
   extern CallInfo *current_p_call_info;

@@ -378,3 +378,63 @@ class TestRange(PLHaskellTestBase):
             )
 
             assert cur.fetchone()["count"] == 0
+
+    def test_query_insert_tsrange(self):
+        self.execute_file("sql/range/insert_tsrange.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t1 (i int, r tsrange)")
+            cur.execute("CREATE TABLE t2 (i int, r tsrange)")
+
+            d = {}
+            for i in range(1000):
+                cur.execute(
+                    "INSERT INTO t1(i, r) VALUES(%(i)s, %(r)s)",
+                    {
+                        "i": i,
+                        "r": self.random_range(self.random_datetime),
+                    },
+                )
+
+            cur.execute(
+                """SELECT insert_tsrange(i, r)
+                   FROM t1"""
+            )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t1 JOIN t2 USING(i)
+                   WHERE t1.r != t2.r"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+    def test_query_insert_tsmultirange(self):
+        self.execute_file("sql/range/insert_tsmultirange.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t1 (i int, mr tsmultirange)")
+            cur.execute("CREATE TABLE t2 (i int, mr tsmultirange)")
+
+            d = {}
+            for i in range(1000):
+                cur.execute(
+                    "INSERT INTO t1(i, mr) VALUES(%(i)s, %(mr)s)",
+                    {
+                        "i": i,
+                        "mr": self.random_multirange(self.random_datetime),
+                    },
+                )
+
+            cur.execute(
+                """SELECT insert_tsmultirange(i, mr)
+                   FROM t1"""
+            )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t1 JOIN t2 USING(i)
+                   WHERE t1.mr != t2.mr"""
+            )
+
+            assert cur.fetchone()["count"] == 0

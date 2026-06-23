@@ -245,25 +245,29 @@ Queries in stable and immutable functions are executed in read-only mode, while 
 
 Any type that can be passed to PL/Haskell functions can be used as a parameter by using the appropriate constructor for the type `QueryParam`. The constructors are the following:
 
-`QueryParam`                                                        |
-------------------------------------------------------------------- |
-`QueryParamByteA                        (Maybe ByteString)`         |
-`QueryParamText                         (Maybe Text)`               |
-`QueryParamChar                         (Maybe Char)`               |
-`QueryParamBool                         (Maybe Bool)`               |
-`QueryParamInt2                         (Maybe Int16)`              |
-`QueryParamInt4                         (Maybe Int32)`              |
-`QueryParamInt8                         (Maybe Int64)`              |
-`QueryParamFloat4                       (Maybe Float)`              |
-`QueryParamFloat8                       (Maybe Double)`             |
-`QueryParamDate                         (Maybe Date)`               |
-`QueryParamTime                         (Maybe Time)`               |
-`QueryParamTimestamp                    (Maybe Timestamp)`          |
-`QueryParamInterval                     (Maybe Interval)`           |
-`QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])`       |
-`QueryParamArray     (Maybe Text, Text) (Maybe (Array QueryParam))` |
+`QueryParam`                                                              |
+------------------------------------------------------------------------- |
+`QueryParamByteA                         (Maybe ByteString)`              |
+`QueryParamText                          (Maybe Text)`                    |
+`QueryParamChar                          (Maybe Char)`                    |
+`QueryParamBool                          (Maybe Bool)`                    |
+`QueryParamInt2                          (Maybe Int16)`                   |
+`QueryParamInt4                          (Maybe Int32)`                   |
+`QueryParamInt8                          (Maybe Int64)`                   |
+`QueryParamFloat4                        (Maybe Float)`                   |
+`QueryParamFloat8                        (Maybe Double)`                  |
+`QueryParamDate                          (Maybe Date)`                    |
+`QueryParamTime                          (Maybe Time)`                    |
+`QueryParamTimestamp                     (Maybe Timestamp)`               |
+`QueryParamInterval                      (Maybe Interval)`                |
+`QueryParamComposite  (Maybe Text, Text) (Maybe [QueryParam])`            |
+`QueryParamArray      (Maybe Text, Text) (Maybe (Array QueryParam))`      |
+`QueryParamRange      (Maybe Text, Text) (Maybe (Range QueryParam))`      |
+`QueryParamMultiRange (Maybe Text, Text) (Maybe (MultiRange QueryParam))` |
 
-The `(Maybe Text, Text)` tuple in the `QueryParamComposite` constructor is the schema and name of the composite type. The `(Maybe Text, Text)` tuple in the `QueryParamArray` constructor is the schema and name of the element type. If `Nothing` is used as the schema, the first matching type in the search path is used.
+The `(Maybe Text, Text)` tuple in the `QueryParamComposite`, `QueryParamRange`, and `QueryParamMultiRange` constructors is the schema and name of the composite or range type. The `(Maybe Text, Text)` tuple in the `QueryParamArray` constructor is the schema and name of the element type. If `Nothing` is used as the schema, the first matching type in the search path is used.
+
+Note that all bounds of a `QueryParamRange` or `QueryParamMultiRange` must not be `Nothing`.
 
 The constructors for `QueryResults` are the following:
 

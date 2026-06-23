@@ -247,6 +247,8 @@ import PGutils.Range
     Range (..),
     readMultiRange,
     readRange,
+    writeMultiRange,
+    writeRange,
   )
 import PGutils.Support
   ( BaseType
@@ -394,6 +396,8 @@ data QueryParam
   | QueryParamInterval (Maybe Interval)
   | QueryParamComposite (Maybe Text, Text) (Maybe [QueryParam])
   | QueryParamArray (Maybe Text, Text) (Maybe (Array QueryParam))
+  | QueryParamRange (Maybe Text, Text) (Maybe (Range QueryParam))
+  | QueryParamMultiRange (Maybe Text, Text) (Maybe (MultiRange QueryParam))
 
 getNatts :: Ptr TupleTable -> IO Int16
 getNatts = #{peek SPITupleTable, tupdesc} >=> #{peek TupleDescData, natts}
@@ -416,6 +420,8 @@ getOid (QueryParamTimestamp _) = return #{const TIMESTAMPOID}
 getOid (QueryParamInterval _) = return #{const INTERVALOID}
 getOid (QueryParamComposite schemaType _) = getCompositeOid schemaType
 getOid (QueryParamArray schemaType _) = getArrayOid schemaType
+getOid (QueryParamRange schemaType _) = getRangeOid schemaType
+getOid (QueryParamMultiRange schemaType _) = getMultiRangeOid schemaType
 
 foreign import capi safe "error_plh.h expected_type"
   expectedType :: Oid -> Ptr TypeInfo -> IO ()
@@ -501,6 +507,31 @@ encode' pTypeInfo (QueryParamArray schemaType mElems) = do
   (flip maybeWrap) mElems $ \queryParamElems -> do
     pElemTypeInfo <- getElement pTypeInfo
     mapM (encode' pElemTypeInfo) queryParamElems >>= writeArray pTypeInfo
+encode' pTypeInfo (QueryParamRange schemaType mElems) = do
+  valueType <- getValueType pTypeInfo
+  assert (valueType == #{const RANGE_TYPE}) $ expected #{const RANGE_TYPE} pTypeInfo
+  oid <- getTypeOid pTypeInfo
+  oid' <- getRangeOid schemaType
+  assert (oid == oid') $ expectedType oid' pTypeInfo
+  (flip maybeWrap) mElems $ \queryParamElems -> do
+    pElemTypeInfo <- getElement pTypeInfo
+    mapM (encode' pElemTypeInfo) queryParamElems >>= mapM stripMaybe >>= writeRange pTypeInfo
+encode' pTypeInfo (QueryParamMultiRange schemaType mElems) = do
+  valueType <- getValueType pTypeInfo
+  assert (valueType == #{const MULTIRANGE_TYPE}) $ expected #{const MULTIRANGE_TYPE} pTypeInfo
+  oid <- getTypeOid pTypeInfo
+  oid' <- getMultiRangeOid schemaType
+  assert (oid == oid') $ expectedType oid' pTypeInfo
+  (flip maybeWrap) mElems $ \queryParamElems -> do
+    pElemTypeInfo <- getElement pTypeInfo
+    mapM (encode' pElemTypeInfo) queryParamElems >>= mapM stripMaybe >>= writeMultiRange pTypeInfo
+
+foreign import capi safe "error_plh.h null_bound"
+  nullBound :: IO (Datum)
+
+stripMaybe :: Maybe Datum -> IO (Datum)
+stripMaybe (Just datum) = return datum
+stripMaybe Nothing = nullBound
 
 -- Value returned by query
 data QueryResultValue
@@ -720,6 +751,14 @@ getCompositeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack
 getArrayOid :: (Maybe Text, Text) -> IO Oid
 getArrayOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid #{const ARRAY_TYPE}
 getArrayOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid #{const ARRAY_TYPE}
+
+getRangeOid :: (Maybe Text, Text) -> IO Oid
+getRangeOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid #{const RANGE_TYPE}
+getRangeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid #{const RANGE_TYPE}
+
+getMultiRangeOid :: (Maybe Text, Text) -> IO Oid
+getMultiRangeOid (Nothing, typname) = pWithCString (unpack typname) $ cFindOid #{const MULTIRANGE_TYPE}
+getMultiRangeOid (Just nspname, typname) = pWithCString2 (unpack nspname) (unpack typname) $ cGetOid #{const MULTIRANGE_TYPE}
 
 foreign import capi safe "spi_plh.h commit_rollback"
   commitRollback :: CBool -> CBool -> PGm ()
