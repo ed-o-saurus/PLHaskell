@@ -174,37 +174,7 @@ void error_func_sig(char *func_sig) {
 void language_error(int elevel, char *msg)
     __attribute__((visibility("hidden")));
 void language_error(int elevel, char *msg) {
-  char *filename_location;
-  extern CallInfo *current_p_call_info;
-
-  // Strip trailing new-line if necessary
-  if (strlen(msg) > 1 && msg[strlen(msg) - 1] == '\n')
-    msg[strlen(msg) - 1] = '\0';
-
-  filename_location = strstr(msg, current_p_call_info->mod_file_name);
-
-  if (!filename_location)
-    ereport(elevel, errmsg_internal("%s", msg));
-  else {
-    int filename_length = strlen(current_p_call_info->mod_file_name);
-    *filename_location = '\0';
-
-    if (filename_location[filename_length] == ':' &&
-        isdigit(filename_location[filename_length + 1])) {
-      char *i;
-      for (i = filename_location + filename_length + 1; isdigit(*i); i++)
-        ;
-
-      // Reduce line number by one to account for added line of code in file
-      ereport(elevel,
-              errmsg_internal("%s%s:%d%s", msg, current_p_call_info->func_name,
-                              atoi(filename_location + filename_length + 1) - 1,
-                              i));
-    } else
-      ereport(elevel,
-              errmsg_internal("%s%s%s", msg, current_p_call_info->func_name,
-                              filename_location + filename_length));
-  }
+  ereport(elevel, errmsg_internal("%s", msg));
 }
 
 Datum null_bound() __attribute__((visibility("hidden")));
