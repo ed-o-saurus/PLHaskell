@@ -77,7 +77,7 @@ class TestDatetime(PLHaskellTestBase):
             sleep(1)
 
             cur.execute(
-                "SELECT extract(seconds from (get_clock_timestamp() - timezone('UTC', clock_timestamp())));"
+                "SELECT extract(seconds from (get_clock_timestamp() - timezone('UTC', clock_timestamp())))"
             )
             assert abs(cur.fetchone()["extract"]) < 0.001
 
