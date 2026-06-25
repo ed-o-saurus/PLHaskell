@@ -31,7 +31,7 @@ If a query calls a set returning function multiple times, the query can be prohi
 
 ## Bad `runpath`
 
-In Fedora 44, there is a bug that causes dependent haskell shared libraries not to load. The workaround is to set the environment variable `$LD_LIBRARY_PATH` to include `/usr/lib64/ghc-9.10.3/lib/x86_64-linux-ghc-9.10.3-inplace` in PostgreSQL.
+In Fedora 44, there is a bug that causes dependent Haskell shared libraries not to load. The workaround is to set the environment variable `$LD_LIBRARY_PATH` to include `/usr/lib64/ghc-9.10.3/lib/x86_64-linux-ghc-9.10.3-inplace` in PostgreSQL.
 
 ### Systemd modification
 
