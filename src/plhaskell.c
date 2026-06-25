@@ -173,10 +173,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       prev_p_call_info = current_p_call_info;
       current_p_call_info = p_call_info;
 
-      if (p_call_info->trusted)
-        mk_list(package_path, p_call_info, fcinfo->args);
-      else
-        mk_list(package_path_untrusted, p_call_info, fcinfo->args);
+      mk_list(p_call_info->trusted ? package_path : package_path_untrusted,
+              p_call_info, fcinfo->args);
 
       current_p_call_info = prev_p_call_info;
 
@@ -198,10 +196,9 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
     prev_p_call_info = current_p_call_info;
     current_p_call_info = p_call_info;
 
-    if (p_call_info->trusted)
-      ret_val = iterate(package_path, p_call_info, &fcinfo->isnull);
-    else
-      ret_val = iterate(package_path_untrusted, p_call_info, &fcinfo->isnull);
+    ret_val =
+        iterate(p_call_info->trusted ? package_path : package_path_untrusted,
+                p_call_info, &fcinfo->isnull);
 
     current_p_call_info = prev_p_call_info;
 
@@ -237,10 +234,8 @@ Datum plhaskell_call_handler(PG_FUNCTION_ARGS) {
       prev_p_call_info = current_p_call_info;
       current_p_call_info = p_call_info;
 
-      if (p_call_info->trusted)
-        mk_function(package_path, p_call_info);
-      else
-        mk_function(package_path_untrusted, p_call_info);
+      mk_function(p_call_info->trusted ? package_path : package_path_untrusted,
+                  p_call_info);
 
       current_p_call_info = prev_p_call_info;
 
@@ -312,10 +307,8 @@ Datum plhaskell_validator(PG_FUNCTION_ARGS) {
   prev_p_call_info = current_p_call_info;
   current_p_call_info = p_call_info;
 
-  if (p_call_info->trusted)
-    check_signature(package_path, p_call_info);
-  else
-    check_signature(package_path_untrusted, p_call_info);
+  check_signature(p_call_info->trusted ? package_path : package_path_untrusted,
+                  p_call_info);
 
   current_p_call_info = prev_p_call_info;
 
@@ -381,10 +374,8 @@ Datum plhaskell_inline_handler(PG_FUNCTION_ARGS) {
   prev_p_call_info = current_p_call_info;
   current_p_call_info = p_call_info;
 
-  if (p_call_info->trusted)
-    mk_function(package_path, p_call_info);
-  else
-    mk_function(package_path_untrusted, p_call_info);
+  mk_function(p_call_info->trusted ? package_path : package_path_untrusted,
+              p_call_info);
 
   (*p_call_info->function)(NULL, &is_null);
   current_p_call_info = prev_p_call_info;
