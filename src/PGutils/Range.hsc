@@ -38,6 +38,8 @@ module PGutils.Range
         BoundRange
       ),
     MultiRange (..),
+    contains,
+    containsMulti,
     rangeMapMm,
     readRange,
     writeRange,
@@ -110,6 +112,7 @@ import Prelude
       ( Just
       ),
     Monad,
+    Ord,
     Show,
     Traversable,
     fromIntegral,
@@ -118,8 +121,14 @@ import Prelude
     return,
     undefined,
     ($),
+    (&&),
     (.),
+    (<),
+    (<=),
+    (>),
+    (>=),
     (>>=),
+    (||),
   )
 
 -- Dummy type to make pointer
@@ -265,3 +274,18 @@ writeMultiRange pTypeInfo (MultiRange ranges) = do
   pRanges <- mapM (writeRange' pTypeInfo) ranges
   pMultiRange <- pWithArrayLen pRanges $ makeMultiRange typeOid pTypeCacheEntry
   multiRangePToDatum pMultiRange
+
+contains :: (Ord a) => Range a -> a -> Bool
+contains EmptyRange _ = False
+contains (BoundRange lowerBound upperBound) x = (containsLower lowerBound) && (containsUpper upperBound)
+  where
+    containsLower InfiniteBound = True
+    containsLower (OpenBound b) = (x > b)
+    containsLower (ClosedBound b) = (x >= b)
+    containsUpper InfiniteBound = True
+    containsUpper (OpenBound b) = (x < b)
+    containsUpper (ClosedBound b) = (x <= b)
+
+containsMulti :: (Ord a) => MultiRange a -> a -> Bool
+containsMulti (MultiRange []) _ = False
+containsMulti (MultiRange (mr : mrs)) x = (contains mr x) || (containsMulti (MultiRange mrs) x)

@@ -436,3 +436,55 @@ class TestRange(PLHaskellTestBase):
             )
 
             assert cur.fetchone()["count"] == 0
+
+    def test_contains_tsrange(self):
+        self.execute_file("sql/range/contains_tsrange.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t1 (r tsrange)")
+            cur.execute("CREATE TABLE t2 (ts timestamp)")
+
+            for _ in range(1000):
+                cur.execute(
+                    "INSERT INTO t1(r) VALUES(%(r)s)",
+                    {"r": self.random_range(self.random_datetime)},
+                )
+
+            for _ in range(10):
+                cur.execute(
+                    "INSERT INTO t2(ts) VALUES(%(ts)s)", {"ts": self.random_datetime()}
+                )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t1, t2
+                   WHERE (r @> ts) != contains_tsrange(r, ts)"""
+            )
+
+            assert cur.fetchone()["count"] == 0
+
+    def test_contains_tsmultirange(self):
+        self.execute_file("sql/range/contains_tsmultirange.sql")
+
+        with self.conn.cursor() as cur:
+            cur.execute("CREATE TABLE t1 (mr tsmultirange)")
+            cur.execute("CREATE TABLE t2 (ts timestamp)")
+
+            for _ in range(1000):
+                cur.execute(
+                    "INSERT INTO t1(mr) VALUES(%(r)s)",
+                    {"r": self.random_multirange(self.random_datetime)},
+                )
+
+            for _ in range(10):
+                cur.execute(
+                    "INSERT INTO t2(ts) VALUES(%(ts)s)", {"ts": self.random_datetime()}
+                )
+
+            cur.execute(
+                """SELECT count(*)
+                   FROM t1, t2
+                   WHERE (mr @> ts) != contains_tsmultirange(mr, ts)"""
+            )
+
+            assert cur.fetchone()["count"] == 0

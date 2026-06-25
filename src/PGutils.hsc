@@ -102,6 +102,8 @@ module PGutils
     Bound (..),
     Range (..),
     MultiRange (..),
+    contains,
+    containsMulti,
   )
 where
 
@@ -245,6 +247,8 @@ import PGutils.Range
   ( Bound (..),
     MultiRange (..),
     Range (..),
+    contains,
+    containsMulti,
     readMultiRange,
     readRange,
     writeMultiRange,
