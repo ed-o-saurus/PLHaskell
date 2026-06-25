@@ -386,7 +386,6 @@ class TestRange(PLHaskellTestBase):
             cur.execute("CREATE TABLE t1 (i int, r tsrange)")
             cur.execute("CREATE TABLE t2 (i int, r tsrange)")
 
-            d = {}
             for i in range(1000):
                 cur.execute(
                     "INSERT INTO t1(i, r) VALUES(%(i)s, %(r)s)",
@@ -416,7 +415,6 @@ class TestRange(PLHaskellTestBase):
             cur.execute("CREATE TABLE t1 (i int, mr tsmultirange)")
             cur.execute("CREATE TABLE t2 (i int, mr tsmultirange)")
 
-            d = {}
             for i in range(1000):
                 cur.execute(
                     "INSERT INTO t1(i, mr) VALUES(%(i)s, %(mr)s)",
