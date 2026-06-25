@@ -35,6 +35,7 @@ import Control.Exception
 import Control.Monad
   ( mapM,
     mapM_,
+    void,
     zipWithM,
     (>=>),
   )
@@ -46,6 +47,7 @@ import Data.Int
   )
 import Data.List
   ( intercalate,
+    isPrefixOf,
   )
 import Data.Maybe
   ( fromMaybe,
@@ -448,10 +450,10 @@ execute pPackagePath pCallInfo int = do
   r <- unsafeRunInterpreterWithArgs (mkInterpreterArgs pkgLibPath packagePath) int
   case r of
     Left (UnknownError msg) -> removeModFile >> (languageError $ cleanErr modFileName funcName msg)
-    Left (WontCompile errs) -> removeModFile >> (languageError $ concat $ map (cleanErr modFileName funcName . errMsg) errs)
+    Left (WontCompile errs) -> removeModFile >> (languageError $ concatMap (cleanErr modFileName funcName . errMsg) errs)
     Left (NotAllowed msg) -> removeModFile >> (languageError $ cleanErr modFileName funcName msg)
     Left (GhcException msg) -> removeModFile >> (languageError $ cleanErr modFileName funcName msg)
-    Right () -> removeModFile >> return ()
+    Right () -> void removeModFile
   where
     removeModFile = handle ignore $ #{peek CallInfo, mod_file_name} pCallInfo >>= peekCString >>= removeFile
     ignore :: SomeException -> IO ()
@@ -584,12 +586,9 @@ isValidPackagePath q = isValidPackagePath' $ splitOnColon q
     isValidPackagePath' [p, ""] = isValidPath p
     isValidPackagePath' (p : ps) = isValidPath p && isValidPackagePath' ps
     isValidPath "$pkglibdir" = True
-    isValidPath p = startsWith "$pkglibdir/" p || startsWith "/" p
-    startsWith "" _ = True
-    startsWith _ "" = False
-    startsWith (x : xs) (y : ys) = (x == y) && startsWith xs ys
+    isValidPath p = isPrefixOf "$pkglibdir/" p || isPrefixOf "/" p
 
 foreign export capi "is_valid_package_path" cIsValidPackagePath :: CString -> IO CBool
 
 cIsValidPackagePath :: CString -> IO CBool
-cIsValidPackagePath pQ = peekCString pQ >>= return . fromBool . isValidPackagePath
+cIsValidPackagePath pQ = (fromBool . isValidPackagePath) <$> peekCString pQ

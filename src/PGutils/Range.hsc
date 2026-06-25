@@ -256,7 +256,7 @@ readMultiRange pTypeInfo datum = do
   pMultiRange <- datumGetMultirangeTypeP datum
   rangeCount <- #{peek MultirangeType, rangeCount} pMultiRange :: IO (Word32)
   pRanges <- mapM (multiRangeGetRange pTypeCacheEntry pMultiRange . fromIntegral) (numRange rangeCount)
-  (mapM (readRange' pTypeInfo) pRanges) >>= (return . MultiRange)
+  MultiRange <$> mapM (readRange' pTypeInfo) pRanges
 
 foreign import ccall safe "utils/multirangetypes.h make_multirange"
   cMakeMultiRange :: Oid -> Ptr TypeCacheEntry -> Int32 -> Ptr (Ptr (Range Datum)) -> IO (Ptr (MultiRange Datum))
