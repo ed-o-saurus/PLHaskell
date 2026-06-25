@@ -76,7 +76,7 @@ class HasDate a where
   dayOfYear :: a -> Int32
   iso :: a -> (Int32, Int32)
 ```
- The functions `year` , `month`, and `day` extract those fields. The function `dayOfWeek` returns the day of the week.  The type `Weekday` has constructors with names of standard English day abbreviations (`Sun`, `Mon`, `Tue`, `Wen`, `Thu`, `Fri`, `Sat`). The function `dayOfYear` returns the day of the calendar year. The function `iso` returns a tuple of the [ISO standard](https://en.wikipedia.org/wiki/ISO_week_date) year and week.
+ The functions `year`, `month`, and `day` extract those fields. The function `dayOfWeek` returns the day of the week.  The type `Weekday` has constructors with names of standard English day abbreviations (`Sun`, `Mon`, `Tue`, `Wen`, `Thu`, `Fri`, `Sat`). The function `dayOfYear` returns the day of the calendar year. The function `iso` returns a tuple of the [ISO standard](https://en.wikipedia.org/wiki/ISO_week_date) year and week.
 
 The types `Time` and `Timestamp` are instances of the class `HasTime`.
 
