@@ -44,6 +44,6 @@ Environment=LD_LIBRARY_PATH=/usr/lib64/ghc-9.10.3/lib/x86_64-linux-ghc-9.10.3-in
 
 Run
 
-**`$>`** `systemctl daemon-reload`
+**`$>`** `sudo systemctl daemon-reload`
 
-**`$>`** `systemctl restart postgresql.service`
+**`$>`** `sudo systemctl restart postgresql.service`
