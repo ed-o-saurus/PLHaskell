@@ -297,6 +297,8 @@ LANGUAGE plhaskellu;
 
 ## Range
 
+The following return the lower bound of a range.
+
 ```
 CREATE FUNCTION my_lower(tsrange) RETURNS timestamp IMMUTABLE AS
 $$
@@ -342,6 +344,8 @@ $$
 LANGUAGE plhaskellu;
 ```
 
+The following combine ranges into a multirange.
+
 ```
 CREATE FUNCTION combine_tsranges(tsrange, tsrange, tsrange) RETURNS tsmultirange IMMUTABLE AS
 $$
@@ -375,6 +379,65 @@ $$
   combine_tsranges _ _ _ = return Nothing
 $$
 LANGUAGE plhaskellu;
+```
+
+The following determine the number of elements in an array contained by a multirange.
+
+```
+CREATE FUNCTION range_count(timestamp[], tsmultirange) RETURNS integer IMMUTABLE AS
+$$
+  import Data.Int
+    ( Int32,
+    )
+  import PGutils
+    ( Array,
+      MultiRange,
+      PGm,
+      containsMulti,
+    )
+
+  acc :: MultiRange a -> Maybe a -> Int32 -> Int32
+  acc mr = undefined
+
+  range_count :: (Ord a) => Maybe (Array (Maybe a)) -> Maybe (MultiRange a) -> PGm (Maybe (Int32))
+  range_count (Just tsa) (Just mr) = return $ Just $ foldr acc 0 tsa
+    where
+      acc Nothing v = v
+      acc (Just x) v =
+        if (mr `containsMulti` x)
+          then v + 1
+          else v
+  range_count _ _ = return Nothing
+$$
+LANGUAGE plhaskell;
+```
+
+```
+CREATE FUNCTION range_count(timestamp[], tsmultirange) RETURNS integer IMMUTABLE AS
+$$
+  import Data.Int
+    ( Int32,
+    )
+  import PGutils
+    ( Array,
+      MultiRange,
+      containsMulti,
+    )
+
+  acc :: MultiRange a -> Maybe a -> Int32 -> Int32
+  acc mr = undefined
+
+  range_count :: (Ord a) => Maybe (Array (Maybe a)) -> Maybe (MultiRange a) -> IO (Maybe (Int32))
+  range_count (Just tsa) (Just mr) = return $ Just $ foldr acc 0 tsa
+    where
+      acc Nothing v = v
+      acc (Just x) v =
+        if (mr `containsMulti` x)
+          then v + 1
+          else v
+  range_count _ _ = return Nothing
+$$
+LANGUAGE plhaskell;
 ```
 
 ## Message

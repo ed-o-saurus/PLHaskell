@@ -183,11 +183,15 @@ The bounds of `BoundRange` are the lower and upper bound respectively with the f
 
 A `Range` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
 
+The function `contains :: (Ord a) => Range a -> a -> Bool` tells if a range contains a value.
+
 ### Multiranges
 
 Mutiranges are represented in Haskell by the `MultiRange a` type with the constructor `MultiRange [Range a]`.
 
 A `MultiRange` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
+
+The function `containsMulti :: (Ord a) => MultiRange a -> a -> Bool` tells if a multirange contains a value.
 
 ## Inline Code
 
