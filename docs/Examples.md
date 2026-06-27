@@ -400,9 +400,6 @@ $$
       containsMulti,
     )
 
-  acc :: MultiRange a -> Maybe a -> Int32 -> Int32
-  acc mr = undefined
-
   range_count :: (Ord a) => Maybe (Array (Maybe a)) -> Maybe (MultiRange a) -> PGm (Maybe (Int32))
   range_count (Just tsa) (Just mr) = return $ Just $ foldr acc 0 tsa
     where
@@ -427,9 +424,6 @@ $$
       MultiRange,
       containsMulti,
     )
-
-  acc :: MultiRange a -> Maybe a -> Int32 -> Int32
-  acc mr = undefined
 
   range_count :: (Ord a) => Maybe (Array (Maybe a)) -> Maybe (MultiRange a) -> IO (Maybe (Int32))
   range_count (Just tsa) (Just mr) = return $ Just $ foldr acc 0 tsa
