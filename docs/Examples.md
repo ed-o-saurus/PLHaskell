@@ -5,26 +5,30 @@
 ```
 DO LANGUAGE plhaskell $$
   import PGutils
-    ( PGm,
-      notice,
+    ( ErrorLevel
+        ( Notice
+        ),
+      PGm,
       report,
     )
 
   _' :: PGm ()
-  _' = report notice "Hello, world!"
+  _' = report Notice "Hello, world!"
 $$;
 ```
 
 ```
 DO LANGUAGE plhaskellu $$
   import PGutils
-    ( notice,
+    ( ErrorLevel
+        ( Notice
+        ),
       report,
       unPGm,
     )
 
   _' :: IO ()
-  _' = unPGm $ report notice "Hello, world!"
+  _' = unPGm $ report Notice "Hello, world!"
 $$;
 ```
 
@@ -451,14 +455,16 @@ $$
     ( Int32,
     )
   import PGutils
-    ( PGm,
-      notice,
+    ( ErrorLevel
+        ( Notice
+        ),
+      PGm,
       report,
     )
 
   forty_two :: PGm (Maybe Int32)
   forty_two = do
-    report notice "Don't Panic"
+    report Notice "Don't Panic"
     return $ Just 42
 $$
 LANGUAGE plhaskell;
@@ -471,14 +477,16 @@ $$
     ( Int32,
     )
   import PGutils
-    ( notice,
+    ( ErrorLevel
+        ( Notice
+        ),
       report,
       unPGm,
     )
 
   forty_two :: IO (Maybe Int32)
   forty_two = do
-    unPGm $ report notice "Don't Panic"
+    unPGm $ report Notice "Don't Panic"
     return $ Just 42
 $$
 LANGUAGE plhaskellu;

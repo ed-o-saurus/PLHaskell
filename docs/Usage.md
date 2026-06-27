@@ -225,22 +225,6 @@ The constructors for `ErrorLevel` are the following:
 
 In addition, the functions `raiseError :: Text -> a` and `raiseFatal :: Text -> a` stop execution and raise an error.
 
-### Alternate functions
-
-The following functions are available but deprecated:
-
-* `fatal :: ErrorLevel`
-* `exception :: ErrorLevel`
-* `warning :: ErrorLevel`
-* `notice :: ErrorLevel`
-* `info :: ErrorLevel`
-* `log' :: ErrorLevel`
-* `debug1 :: ErrorLevel`
-* `debug2 :: ErrorLevel`
-* `debug3 :: ErrorLevel`
-* `debug4 :: ErrorLevel`
-* `debug5 :: ErrorLevel`
-
 ## Queries
 
 Queries can be performed from inside PL/Haskell with the function `query :: Text -> [QueryParam] -> PGm QueryResults`. The first argument is the query itself. The second argument is a list of values to be substituted into the query using the expressions `$`*`n`*. This should be used rather than constructing a query string directly to prevent [SQL injection attacks](https://xkcd.com/327/).

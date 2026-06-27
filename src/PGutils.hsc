@@ -49,18 +49,7 @@ module PGutils
     arrayMap,
     arrayMapM,
     commit,
-    debug5,
-    debug4,
-    debug3,
-    debug2,
-    debug1,
-    log',
-    info,
-    notice,
-    warning,
-    exception,
     report,
-    fatal,
     raiseError,
     raiseFatal,
     rollback,
@@ -317,39 +306,6 @@ data ErrorLevel
   | Debug4
   | Debug5
 
-debug5 :: ErrorLevel
-debug5 = Debug5
-
-debug4 :: ErrorLevel
-debug4 = Debug4
-
-debug3 :: ErrorLevel
-debug3 = Debug3
-
-debug2 :: ErrorLevel
-debug2 = Debug2
-
-debug1 :: ErrorLevel
-debug1 = Debug1
-
-log' :: ErrorLevel
-log' = Log
-
-info :: ErrorLevel
-info = Info
-
-notice :: ErrorLevel
-notice = Notice
-
-warning :: ErrorLevel
-warning = Warning
-
-exception :: ErrorLevel
-exception = Exception
-
-fatal :: ErrorLevel
-fatal = Fatal
-
 errLevelCode :: ErrorLevel -> CInt
 errLevelCode Fatal = #{const FATAL}
 errLevelCode Exception = #{const ERROR}
@@ -367,7 +323,7 @@ foreign import capi safe "plhaskell.h plhaskell_report"
   plhaskellReport :: CInt -> CString -> IO ()
 
 report :: ErrorLevel -> Text -> PGm ()
-report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) (plhaskellReport $ errLevelCode elevel)
+report elevel msg = PGm $ pUseAsCString (encodeUtf8 msg) $ plhaskellReport $ errLevelCode elevel
 
 raise :: ErrorLevel -> Text -> a
 raise elevel msg = unsafePerformIO $ do
@@ -375,10 +331,10 @@ raise elevel msg = unsafePerformIO $ do
   undefined -- Never reached
 
 raiseError :: Text -> a
-raiseError = raise exception
+raiseError = raise Exception
 
 raiseFatal :: Text -> a
-raiseFatal = raise fatal
+raiseFatal = raise Fatal
 
 instance MonadFail PGm where
   fail = raiseError . pack
