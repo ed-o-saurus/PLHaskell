@@ -11,15 +11,17 @@ $$
     ( Int32,
     )
   import PGutils
-    ( PGm,
-      notice,
+    ( ErrorLevel
+        ( Notice
+        ),
+      PGm,
       report,
     )
 
   forty_two :: PGm (Maybe Int32)
   forty_two = do
-    report notice "Don't Panic"
-    return (Just 42)
+    report Notice "Don't Panic"
+    return $ Just 42
 $$
 LANGUAGE plhaskell
 SET lc_messages TO 'C';
