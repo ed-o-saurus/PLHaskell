@@ -87,11 +87,9 @@ class TestRange(PLHaskellTestBase):
                     {"r": self.random_range(lambda: randrange(-(2**31), 2**31))},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE r != echo(r)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE r != echo(r)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -107,11 +105,9 @@ class TestRange(PLHaskellTestBase):
                     {"r": self.random_range(lambda: randrange(-(2**63), 2**63))},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE r != echo(r)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE r != echo(r)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -127,11 +123,9 @@ class TestRange(PLHaskellTestBase):
                     {"r": self.random_range(self.random_date)},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE r != echo(r)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE r != echo(r)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -147,11 +141,9 @@ class TestRange(PLHaskellTestBase):
                     {"r": self.random_range(self.random_datetime)},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE r != echo(r)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE r != echo(r)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -172,16 +164,14 @@ class TestRange(PLHaskellTestBase):
                     {"r": self.random_range(self.random_datetime)},
                 )
 
-            cur.execute(
-                """SELECT lower(r), haskell_lower(r),
-                          upper(r), haskell_upper(r),
-                          isempty(r), haskell_isempty(r),
-                          lower_inc(r), haskell_lower_inc(r),
-                          upper_inc(r), haskell_upper_inc(r),
-                          lower_inf(r), haskell_lower_inf(r),
-                          upper_inf(r), haskell_upper_inf(r)
-                   FROM t"""
-            )
+            cur.execute("""SELECT lower(r), haskell_lower(r),
+                                  upper(r), haskell_upper(r),
+                                  isempty(r), haskell_isempty(r),
+                                  lower_inc(r), haskell_lower_inc(r),
+                                  upper_inc(r), haskell_upper_inc(r),
+                                  lower_inf(r), haskell_lower_inf(r),
+                                  upper_inf(r), haskell_upper_inf(r)
+                           FROM t""")
 
             for row in cur:
                 assert row["lower"] == row["haskell_lower"]
@@ -204,11 +194,9 @@ class TestRange(PLHaskellTestBase):
                     {"mr": self.random_multirange(lambda: randrange(-(2**31), 2**31))},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE mr != echo(mr)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE mr != echo(mr)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -224,11 +212,9 @@ class TestRange(PLHaskellTestBase):
                     {"mr": self.random_multirange(lambda: randrange(-(2**63), 2**63))},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE mr != echo(mr)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE mr != echo(mr)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -244,11 +230,9 @@ class TestRange(PLHaskellTestBase):
                     {"mr": self.random_multirange(self.random_date)},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE mr != echo(mr)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE mr != echo(mr)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -264,11 +248,9 @@ class TestRange(PLHaskellTestBase):
                     {"mr": self.random_multirange(self.random_datetime)},
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE mr != echo(mr)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE mr != echo(mr)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -291,8 +273,8 @@ class TestRange(PLHaskellTestBase):
 
             cur.execute(
                 """SELECT count(*)
-                   FROM t
-                   WHERE tsmultirange(r1, r2, r3) != combine_tsranges(r1, r2, r3)"""
+                           FROM t
+                           WHERE tsmultirange(r1, r2, r3) != combine_tsranges(r1, r2, r3)"""
             )
 
             assert cur.fetchone()["count"] == 0
@@ -312,19 +294,15 @@ class TestRange(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT i, r
-                   FROM t, unnest_tsranges(mr) AS r"""
-            )
+            cur.execute("""SELECT i, r
+                           FROM t, unnest_tsranges(mr) AS r""")
 
             d1 = defaultdict(set)
             for row in cur:
                 d1[row["i"]].add(row["r"])
 
-            cur.execute(
-                """SELECT i, r
-                   FROM t, unnest(mr) AS r"""
-            )
+            cur.execute("""SELECT i, r
+                           FROM t, unnest(mr) AS r""")
 
             d2 = defaultdict(set)
             for row in cur:
@@ -348,11 +326,9 @@ class TestRange(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE r != retrieve_tsrange(i)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE r != retrieve_tsrange(i)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -371,11 +347,9 @@ class TestRange(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t
-                   WHERE mr != retrieve_tsmultirange(i)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t
+                           WHERE mr != retrieve_tsmultirange(i)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -395,16 +369,12 @@ class TestRange(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT insert_tsrange(i, r)
-                   FROM t1"""
-            )
+            cur.execute("""SELECT insert_tsrange(i, r)
+                           FROM t1""")
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t1 JOIN t2 USING(i)
-                   WHERE t1.r != t2.r"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t1 JOIN t2 USING(i)
+                           WHERE t1.r != t2.r""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -424,16 +394,12 @@ class TestRange(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT insert_tsmultirange(i, mr)
-                   FROM t1"""
-            )
+            cur.execute("""SELECT insert_tsmultirange(i, mr)
+                           FROM t1""")
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t1 JOIN t2 USING(i)
-                   WHERE t1.mr != t2.mr"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t1 JOIN t2 USING(i)
+                           WHERE t1.mr != t2.mr""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -455,11 +421,9 @@ class TestRange(PLHaskellTestBase):
                     "INSERT INTO t2(ts) VALUES(%(ts)s)", {"ts": self.random_datetime()}
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t1, t2
-                   WHERE (r @> ts) != contains_tsrange(r, ts)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t1, t2
+                           WHERE (r @> ts) != contains_tsrange(r, ts)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -481,10 +445,8 @@ class TestRange(PLHaskellTestBase):
                     "INSERT INTO t2(ts) VALUES(%(ts)s)", {"ts": self.random_datetime()}
                 )
 
-            cur.execute(
-                """SELECT count(*)
-                   FROM t1, t2
-                   WHERE (mr @> ts) != contains_tsmultirange(mr, ts)"""
-            )
+            cur.execute("""SELECT count(*)
+                           FROM t1, t2
+                           WHERE (mr @> ts) != contains_tsmultirange(mr, ts)""")
 
             assert cur.fetchone()["count"] == 0

@@ -85,16 +85,14 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/check_mk_date.sql")
 
         with self.conn.cursor() as cur:
-            cur.execute(
-                """CREATE TABLE t (
+            cur.execute("""CREATE TABLE t (
                         year int,
                         month int,
                         day int,
                         expect_dow int,
                         expect_doy int,
                         expect_isoyear int,
-                        expect_isoweek int)"""
-            )
+                        expect_isoweek int)""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -130,13 +128,11 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/check_mk_time.sql")
 
         with self.conn.cursor() as cur:
-            cur.execute(
-                """CREATE TABLE t(
+            cur.execute("""CREATE TABLE t(
                      hour int,
                      minute int,
                      second int,
-                     microsecond int)"""
-            )
+                     microsecond int)""")
 
             for _ in range(100):
                 hour, minute, second, microsecond = self.random_time()
@@ -152,11 +148,9 @@ class TestDatetime(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM t
-                   WHERE not check_mk_time(hour, minute, second, microsecond)"""
-            )
+                   WHERE not check_mk_time(hour, minute, second, microsecond)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -165,8 +159,7 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
 
-            cur.execute(
-                """CREATE TABLE t (
+            cur.execute("""CREATE TABLE t (
                      year int,
                      month int,
                      day int,
@@ -177,8 +170,7 @@ class TestDatetime(PLHaskellTestBase):
                      expect_dow int,
                      expect_doy int,
                      expect_isoyear int,
-                     expect_isoweek int)"""
-            )
+                     expect_isoweek int)""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -219,8 +211,7 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/check_mk_interval.sql")
 
         with self.conn.cursor() as cur:
-            cur.execute(
-                """CREATE TABLE t (
+            cur.execute("""CREATE TABLE t (
                     years int,
                     months int,
                     weeks int,
@@ -235,8 +226,7 @@ class TestDatetime(PLHaskellTestBase):
                     expect_hours int,
                     expect_minutes int,
                     expect_seconds int,
-                    expect_microseconds int)"""
-            )
+                    expect_microseconds int)""")
 
             for _ in range(100):
                 years, months, weeks, days, hours, minutes, seconds, microseconds = (
@@ -320,12 +310,10 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/separate_time.sql")
 
         with self.conn.cursor() as cur:
-            cur.execute(
-                """CREATE TABLE tab (
+            cur.execute("""CREATE TABLE tab (
                      d date,
                      t time,
-                     ts timestamp)"""
-            )
+                     ts timestamp)""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -341,27 +329,21 @@ class TestDatetime(PLHaskellTestBase):
                     {"d": d, "t": t, "ts": ts},
                 )
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM tab
-                   WHERE combine_timestamp(d, t) <> ts"""
-            )
+                   WHERE combine_timestamp(d, t) <> ts""")
 
             assert cur.fetchone()["count"] == 0
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM tab
-                   WHERE separate_date(ts) <> d"""
-            )
+                   WHERE separate_date(ts) <> d""")
 
             assert cur.fetchone()["count"] == 0
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM tab
-                   WHERE separate_time(ts) <> t"""
-            )
+                   WHERE separate_time(ts) <> t""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -369,10 +351,8 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/compare_dates.sql")
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d date)")
-            cur.execute(
-                """INSERT INTO t(d)
-                   VALUES ('+infinity'), ('-infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')""")
 
             for _ in range(10):
                 year, month, day = self.random_date()
@@ -404,10 +384,8 @@ class TestDatetime(PLHaskellTestBase):
         self.execute_file("sql/datetime/compare_timestamps.sql")
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d timestamp)")
-            cur.execute(
-                """INSERT INTO t(d)
-                   VALUES ('+infinity'), ('-infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')""")
 
             for _ in range(10):
                 year, month, day = self.random_date()
@@ -459,10 +437,8 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d date)")
-            cur.execute(
-                """INSERT INTO t(d)
-                   VALUES ('+infinity'), ('-infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -496,10 +472,8 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d timestamp)")
-            cur.execute(
-                """INSERT INTO t(d)
-                   VALUES ('+infinity'), ('-infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -702,10 +676,8 @@ class TestDatetime(PLHaskellTestBase):
             cur.execute("CREATE TABLE t1 (d date)")
             cur.execute("CREATE TABLE t2 (d interval)")
 
-            cur.execute(
-                """INSERT INTO t1(d)
-                   VALUES('-infinity'), ('+infinity')"""
-            )
+            cur.execute("""INSERT INTO t1(d)
+                   VALUES('-infinity'), ('+infinity')""")
 
             for _ in range(10):
                 year, month, day = self.random_date()
@@ -755,15 +727,11 @@ class TestDatetime(PLHaskellTestBase):
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t(d1 date, d2 date)")
 
-            cur.execute(
-                """INSERT INTO t(d1, d2)
-                   VALUES('-infinity', '-infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d1, d2)
+                   VALUES('-infinity', '-infinity')""")
 
-            cur.execute(
-                """INSERT INTO t(d1, d2)
-                   VALUES('+infinity', '+infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d1, d2)
+                   VALUES('+infinity', '+infinity')""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -778,19 +746,15 @@ class TestDatetime(PLHaskellTestBase):
                     },
                 )
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM t
-                   WHERE d2 <> date_succ(d1)"""
-            )
+                   WHERE d2 <> date_succ(d1)""")
 
             assert cur.fetchone()["count"] == 0
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM t
-                   WHERE d1 <> date_pred(d2)"""
-            )
+                   WHERE d1 <> date_pred(d2)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -811,19 +775,15 @@ class TestDatetime(PLHaskellTestBase):
                     {"d": d, "e": (d - date(2000, 1, 1)).days},
                 )
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM t
-                   WHERE e <> date_from_enum(d)"""
-            )
+                   WHERE e <> date_from_enum(d)""")
 
             assert cur.fetchone()["count"] == 0
 
-            cur.execute(
-                """SELECT count(*)
+            cur.execute("""SELECT count(*)
                    FROM t
-                   WHERE d <> date_to_enum(e)"""
-            )
+                   WHERE d <> date_to_enum(e)""")
 
             assert cur.fetchone()["count"] == 0
 
@@ -832,10 +792,8 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("CREATE TABLE t (d date)")
-            cur.execute(
-                """INSERT INTO t(d)
-                   VALUES ('+infinity'), ('-infinity')"""
-            )
+            cur.execute("""INSERT INTO t(d)
+                   VALUES ('+infinity'), ('-infinity')""")
 
             for _ in range(100):
                 year, month, day = self.random_date()

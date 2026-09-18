@@ -66,14 +66,10 @@ class TestQuery(PLHaskellTestBase):
                 """INSERT INTO deltas(i, d)
                    VALUES (2, ((('world', 42, 1.0)::alpha, -12)::bravo, NULL::charlie)::delta)"""
             )
-            cur.execute(
-                """INSERT INTO deltas(i, d)
-                   VALUES (3, (NULL::bravo, '()'::charlie)::delta)"""
-            )
-            cur.execute(
-                """INSERT INTO deltas(i, d)
-                   VALUES (4, NULL::delta)"""
-            )
+            cur.execute("""INSERT INTO deltas(i, d)
+                           VALUES (3, (NULL::bravo, '()'::charlie)::delta)""")
+            cur.execute("""INSERT INTO deltas(i, d)
+                           VALUES (4, NULL::delta)""")
 
             cur.execute("SELECT query_composite()")
 
