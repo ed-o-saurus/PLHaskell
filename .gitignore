@@ -20,3 +20,6 @@
 *.Dockerfile
 .dockerignore
 repos
+keys
+repo_build_scripts
+repo_test_scripts
