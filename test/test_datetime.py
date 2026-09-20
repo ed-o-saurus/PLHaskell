@@ -86,13 +86,13 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("""CREATE TABLE t (
-                        year int,
-                        month int,
-                        day int,
-                        expect_dow int,
-                        expect_doy int,
-                        expect_isoyear int,
-                        expect_isoweek int)""")
+                               year int,
+                               month int,
+                               day int,
+                               expect_dow int,
+                               expect_doy int,
+                               expect_isoyear int,
+                               expect_isoweek int)""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -129,10 +129,10 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("""CREATE TABLE t(
-                     hour int,
-                     minute int,
-                     second int,
-                     microsecond int)""")
+                               hour int,
+                               minute int,
+                               second int,
+                               microsecond int)""")
 
             for _ in range(100):
                 hour, minute, second, microsecond = self.random_time()
@@ -160,17 +160,17 @@ class TestDatetime(PLHaskellTestBase):
         with self.conn.cursor() as cur:
 
             cur.execute("""CREATE TABLE t (
-                     year int,
-                     month int,
-                     day int,
-                     hour int,
-                     minute int,
-                     second int,
-                     microsecond int,
-                     expect_dow int,
-                     expect_doy int,
-                     expect_isoyear int,
-                     expect_isoweek int)""")
+                               year int,
+                               month int,
+                               day int,
+                               hour int,
+                               minute int,
+                               second int,
+                               microsecond int,
+                               expect_dow int,
+                               expect_doy int,
+                               expect_isoyear int,
+                               expect_isoweek int)""")
 
             for _ in range(100):
                 year, month, day = self.random_date()
@@ -212,21 +212,21 @@ class TestDatetime(PLHaskellTestBase):
 
         with self.conn.cursor() as cur:
             cur.execute("""CREATE TABLE t (
-                    years int,
-                    months int,
-                    weeks int,
-                    days int,
-                    hours int,
-                    minutes int,
-                    seconds int,
-                    microseconds int,
-                    expect_years int,
-                    expect_months int,
-                    expect_days int,
-                    expect_hours int,
-                    expect_minutes int,
-                    expect_seconds int,
-                    expect_microseconds int)""")
+                                years int,
+                                months int,
+                                weeks int,
+                                days int,
+                                hours int,
+                                minutes int,
+                                seconds int,
+                                microseconds int,
+                                expect_years int,
+                                expect_months int,
+                                expect_days int,
+                                expect_hours int,
+                                expect_minutes int,
+                                expect_seconds int,
+                                expect_microseconds int)""")
 
             for _ in range(100):
                 years, months, weeks, days, hours, minutes, seconds, microseconds = (
@@ -776,14 +776,14 @@ class TestDatetime(PLHaskellTestBase):
                 )
 
             cur.execute("""SELECT count(*)
-                   FROM t
-                   WHERE e <> date_from_enum(d)""")
+                           FROM t
+                           WHERE e <> date_from_enum(d)""")
 
             assert cur.fetchone()["count"] == 0
 
             cur.execute("""SELECT count(*)
-                   FROM t
-                   WHERE d <> date_to_enum(e)""")
+                           FROM t
+                           WHERE d <> date_to_enum(e)""")
 
             assert cur.fetchone()["count"] == 0
 
