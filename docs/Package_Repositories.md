@@ -6,7 +6,7 @@ The easiest way to install the project is to use the RPM package repository for 
 
 Add the repository:
 
-**`$>`** `wget --quiet -O- https://ed-o-saurus.github.io/repos/plhaskell/fedora/plhaskell.repo | sudo tee /etc/yum.repos.d/plhaskell.repo > /dev/null`
+**`$>`** `sudo dnf config-manager addrepo --from-repofile=https://ed-o-saurus.github.io/repos/plhaskell/fedora/plhaskell.repo`
 
 Update the repository information:
 
