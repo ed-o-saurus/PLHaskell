@@ -18,13 +18,9 @@ Install the package:
 
 ## Ubuntu
 
-Add the signing key to the apt keys:
-
-**`$>`** `wget --quiet -O- https://ed-o-saurus.github.io/keys/A9DD4516.asc | sudo gpg --dearmor -o /usr/share/keyrings/plhaskell-keyring.gpg`
-
 Add the repository:
 
-**`$>`** `echo deb \[signed-by=/usr/share/keyrings/plhaskell-keyring.gpg\] https://ed-o-saurus.github.io/repos/plhaskell/ubuntu/$(lsb_release -cs)/apt-repo stable main | sudo tee /etc/apt/sources.list.d/plhaskell.list > /dev/null`
+**`$>`** `wget -P /etc/apt/sources.list.d https://ed-o-saurus.github.io/repos/plhaskell/ubuntu/$(lsb_release -cs)/plhaskell.sources`
 
 Update the repository information:
 
