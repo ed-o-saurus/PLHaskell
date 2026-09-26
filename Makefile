@@ -36,7 +36,7 @@ PG_PKG_LIB_DIR = $(shell pg_config --pkglibdir)
 
 RTS_INCLUDE_DIR = $(shell ghc-pkg --simple-output field rts include-dirs)
 
-PLHASKELL_VERSION = 5.0
+PLHASKELL_VERSION = 6.0
 
 .NOTPARALLEL:
 
