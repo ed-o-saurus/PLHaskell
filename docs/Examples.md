@@ -273,11 +273,10 @@ $$
   import PGutils
     ( Array,
       PGm,
-      arrayMap,
     )
 
   increment_array :: Maybe (Array (Maybe Int32)) -> PGm (Maybe (Array (Maybe Int32)))
-  increment_array  = return . (fmap $ arrayMap $ fmap succ)
+  increment_array  = return . (fmap $ fmap $ fmap succ)
 $$
 LANGUAGE plhaskell;
 ```
@@ -290,11 +289,10 @@ $$
     )
   import PGutils
     ( Array,
-      arrayMap,
     )
 
   increment_array :: Maybe (Array (Maybe Int32)) -> IO (Maybe (Array (Maybe Int32)))
-  increment_array  = return . (fmap $ arrayMap $ fmap succ)
+  increment_array  = return . (fmap $ fmap $ fmap succ)
 $$
 LANGUAGE plhaskellu;
 ```

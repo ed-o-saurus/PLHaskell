@@ -46,8 +46,6 @@ module PGutils
     Month (..),
     HasDate (..),
     HasTime (..),
-    arrayMap,
-    arrayMapM,
     commit,
     report,
     raiseError,
@@ -160,8 +158,6 @@ import Foreign.Storable
   )
 import PGutils.Array
   ( Array (..),
-    arrayMap,
-    arrayMapM,
     readArray,
     writeArray,
   )

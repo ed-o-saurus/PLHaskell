@@ -25,8 +25,6 @@
 
 module PGutils.Array
   ( Array (..),
-    arrayMap,
-    arrayMapM,
     readArray,
     writeArray,
   )
@@ -79,12 +77,10 @@ import Prelude
       ( Just,
         Nothing
       ),
-    Monad,
     Num,
     Show,
     Traversable,
     concat,
-    fmap,
     fromIntegral,
     length,
     map,
@@ -113,12 +109,6 @@ data Array a
   | Array5D (Int32, Int32, Int32, Int32, Int32) [[[[[a]]]]]
   | Array6D (Int32, Int32, Int32, Int32, Int32, Int32) [[[[[[a]]]]]]
   deriving stock (Show, Functor, Foldable, Traversable)
-
-arrayMapM :: (Monad m) => (a -> m b) -> Array a -> m (Array b)
-arrayMapM = mapM
-
-arrayMap :: (a -> b) -> Array a -> Array b
-arrayMap = fmap
 
 arrayDims1 :: [a] -> Int
 arrayDims1 = length

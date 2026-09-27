@@ -158,8 +158,6 @@ The `Int32` values represent the lower bounds of the array indexes and the lists
 
 An `Array` is a `Functor` and `Traversable`. Therefore, `fmap` and `mapM` can be used to transform them.
 
-The functions `arrayMap :: (a -> b) -> Array a -> Array b` and `arrayMapM :: Monad m => (a -> m b) -> Array a -> m (Array b)` are deprecated and will be removed in a future release.
-
 ## (Multi)Ranges
 
 Ranges and multiranges can be passed to and returned from functions.
