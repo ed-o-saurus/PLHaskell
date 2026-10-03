@@ -24,9 +24,6 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
--- This module implements functions to allocate memory using postgres' memory allocation.
--- This prevents memory leaks in case of an ERROR event.
-
 #{include "../plhaskell.h"}
 
 module PGutils.Common
